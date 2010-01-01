@@ -31,15 +31,28 @@ rosrun sensor_utils lidar_alarm
 Run estop listener:
 rosrun sensor_utils estop_listener
 
+These next two are the manual way to run amcl.
+The command after is actually much better.
 Run map_server:
-cd ~/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/cwru_base_hydro/cwru_maps/maps
-rosrun map_server map_server 2nd_floor_one_door.yaml 
+//cd ~/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src//cwru_base_hydro/cwru_maps/maps
+//rosrun map_server map_server 2nd_floor_one_door.yaml 
 
 Run amcl:
-rosrun amcl amcl scan:=/scan  (or scan:=base_laser1_scan) 
+//rosrun amcl amcl scan:=/scan  (or scan:=base_laser1_scan) 
 
-Run velocity profiler:
-rosrun robot_commander vel_profiler
+Run amcl and map:
+roslaunch cwru_nav start_amcl_2ndfloor.launch
+
+Run des state generator:
+rosrun des_state_generator des_state_generator
+
+BE ON ESTOP HERE!
+
+Run steering algorithm:
+rosrun steering_algorithm steering_algorithm
+
+Run path sender:
+rosrun des_state_generator path_sender
 
 When done ctrl-c all terminals.
 Comment added line out of ~/.bashrc
