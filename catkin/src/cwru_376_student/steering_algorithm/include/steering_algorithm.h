@@ -61,6 +61,8 @@ public:
     double compute_controller_speed(double trip_dist_err);
     double compute_controller_omega(double trip_dist_err,
         double heading_err, double lateral_err);
+
+	bool got_des_state;
     
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  

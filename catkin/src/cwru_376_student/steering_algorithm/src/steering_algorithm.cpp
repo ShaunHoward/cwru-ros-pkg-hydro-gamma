@@ -47,6 +47,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle, SteerVelProf
     twist_cmd_.angular.y = 0.0;
     twist_cmd_.angular.z = 0.0;
     lastCallbackTime = ros::Time::now();
+	got_des_state = false;
 
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header  
@@ -128,7 +129,8 @@ void SteeringController::desStateCallback(const nav_msgs::Odometry& des_state_rc
     des_state_phi_ = convertPlanarQuat2Phi(des_state_quat_); // cheap conversion from quaternion to heading for planar motion
     // fill in an Eigen-style 2x1 vector as well--potentially convenient for linear algebra operations    
     des_xy_vec_(0) = des_state_x_;
-    des_xy_vec_(1) = des_state_y_;      
+    des_xy_vec_(1) = des_state_y_; 
+    got_des_state = true;     
 }
 
 //utility fnc to compute min dang, accounting for periodicity
@@ -202,21 +204,26 @@ void SteeringController::my_clever_steering_algorithm() {
     steering_errs_publisher_.publish(steering_errs_); // suitable for plotting w/ rqt_plot
     
     controller_speed = des_state_vel_;
-
-    if (trip_dist_err < -TRIP_ERR_TOL || trip_dist_err > TRIP_ERR_TOL 
-        && des_state_vel_ != 0){
-        controller_speed += trip_dist_err;
-        controller_speed = MAX_SPEED*sat(controller_speed/MAX_SPEED); // saturate speed command at specified limits
-    }
-    
     controller_omega = des_state_omega_;
-    if (heading_err < -HEAD_ERR_TOL) {// || heading_err > HEAD_TOL){
-        controller_omega += 2 * K_PHI * heading_err;
-    } else if (heading_err > HEAD_ERR_TOL){
-        controller_omega += K_PHI * heading_err;
-    }
-    controller_omega += K_LAT * lateral_err; //sgn(lateral_err) * LAT_ADJUST;
-    controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+
+	if (got_des_state){
+		if (trip_dist_err < -TRIP_ERR_TOL || trip_dist_err > TRIP_ERR_TOL 
+		    && des_state_vel_ != 0){
+		    controller_speed += trip_dist_err;
+		    controller_speed = MAX_SPEED*sat(controller_speed/MAX_SPEED); // saturate speed command at specified limits
+		}    
+		if (heading_err < -HEAD_ERR_TOL) {// || heading_err > HEAD_TOL){
+			controller_omega += 2 * K_PHI * heading_err;
+		} else if (heading_err > HEAD_ERR_TOL){
+			controller_omega += K_PHI * heading_err;
+		}
+		controller_omega += K_LAT * lateral_err; //sgn(lateral_err) * LAT_ADJUST;
+		controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+	} else {
+		controller_omega = 0.0;
+		controller_speed = 0.0;
+	}
+    
  //   }
       //  if (lateral_err < -LAT_TOL || lateral_err > LAT_TOL) {
     //    }

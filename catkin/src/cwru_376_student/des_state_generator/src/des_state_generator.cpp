@@ -693,7 +693,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
 double DesStateGenerator::compute_speed_profile() {
     //Update the steering profiler with fresh odom readings.
     update_steering_profiler();
-    
+    //put check in here for segment type
     //Compute the speed profile from the steering velocity profiler.
     double speedProfile = steeringProfiler_.trapezoidalSlowDown(steeringProfiler_.currSegLength);
     double commandSpeed = steeringProfiler_.trapezoidalSpeedUp(speedProfile);

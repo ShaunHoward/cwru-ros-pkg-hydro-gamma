@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
     //vertex 1
     //x = -3.452093;
     //y = -3.270599;
-    x = 4.75539;
+ /*   x = 4.75539;
 	//x = 5.5;    
 	y = 0;
     phi = -1.57; //this is just the end rotation we want
@@ -165,6 +165,49 @@ int main(int argc, char **argv) {
 //	x=1;
     y = -12.069;
     phi = -3.14; //this is just the end rotation we want
+    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+*/
+
+    x = 7.65263438466;
+    y = 14.5143860241;
+    phi = -0.918061444575; 
+    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+
+   x = 5.09993113083;
+    y = 11.9590104928;
+    phi = 0.931375845707; 
+    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+
+   x = -3.33305079521;
+    y = 20.7515996994;
+    phi = 0.927774077288; 
+    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+
+x = 0.652917432199;
+    y = 24.4962222805;
+    phi = -0.920845477744; 
+    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+
+x = -3.68119336817;
+    y = 20.442523328;
+    phi = -0.355685201734; 
+    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+
+x = 5.64358315338;
+    y = 11.6388698361;
+    phi = -0.923632539266; 
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
