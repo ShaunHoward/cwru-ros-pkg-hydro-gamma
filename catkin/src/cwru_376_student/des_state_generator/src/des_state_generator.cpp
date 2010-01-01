@@ -527,7 +527,8 @@ void DesStateGenerator::unpack_next_path_segment() {
             //compute goal heading:
             ROS_INFO("unpacking a spin-in-place segment");
             current_seg_phi_goal_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_) * current_seg_length_;
-            steeringProfiler_.desiredPhi = current_seg_phi_goal_;
+		//	steeringProfiler_.currSegLength = current_seg_length_;
+            steeringProfiler_.desiredPhi = current_seg_length_;
             steeringProfiler_.phiLeft = current_seg_length_;
             steeringProfiler_.lastCallbackPhi = odom_phi_;
             break;
@@ -639,10 +640,10 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
   //  double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
    // ROS_INFO("update_des_state_spin: delta_phi = %f", delta_phi);
    // current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
-   // ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
-    current_seg_length_to_go_ = steeringProfiler_.phiLeft; 
-
-    if (current_seg_length_to_go_ < -HEADING_TOL) { // check if done with this move
+ 	current_seg_length_to_go_ = steeringProfiler_.phiLeft; 
+    ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
+   
+    if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
         current_seg_type_ = HALT;
         current_seg_xy_des_ = current_seg_ref_point_; // specify destination vertex as exact, current goal
         current_seg_length_to_go_ = 0.0;

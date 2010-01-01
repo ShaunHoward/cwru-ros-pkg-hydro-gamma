@@ -19,8 +19,8 @@
 // dynamic limitations that should be changed based on robot physics
 const double MAX_SPEED = 0.5; // m/sec;
 const double MAX_OMEGA = 0.5; //1.0; // rad/sec; 
-const double MAX_ACCEL = 0.25; // m/sec^2; 
-const double MAX_ALPHA = 0.3; // rad/sec^2;
+const double MAX_ACCEL = 0.4; // m/sec^2; 
+const double MAX_ALPHA = 0.4; // rad/sec^2;
 
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
 

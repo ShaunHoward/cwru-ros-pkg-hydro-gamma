@@ -206,7 +206,7 @@ void SteeringController::my_clever_steering_algorithm() {
     controller_speed = des_state_vel_;
     controller_omega = des_state_omega_;
 
-	if (got_des_state){
+	//if (got_des_state){
 		if (trip_dist_err < -TRIP_ERR_TOL || trip_dist_err > TRIP_ERR_TOL 
 		    && des_state_vel_ != 0){
 		    controller_speed += trip_dist_err;
@@ -219,10 +219,10 @@ void SteeringController::my_clever_steering_algorithm() {
 		}
 		controller_omega += K_LAT * lateral_err; //sgn(lateral_err) * LAT_ADJUST;
 		controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
-	} else {
-		controller_omega = 0.0;
-		controller_speed = 0.0;
-	}
+//	} else {
+//		controller_omega = 0.0;
+//		controller_speed = 0.0;
+//	}
     
  //   }
       //  if (lateral_err < -LAT_TOL || lateral_err > LAT_TOL) {

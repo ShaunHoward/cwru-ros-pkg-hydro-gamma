@@ -210,8 +210,8 @@ double SteerVelProfiler::turnSlowDown(bool turnRight_) {
     ROS_INFO("Phi rotated: %f", phiCompleted);
 
     //Set the phi left to rotate on the current rotation segment
-    //phiLeft = fabs(desiredPhi) - phiCompleted;
-    phiLeft = min_dang(desiredPhi - odomPhi);
+    phiLeft = desiredPhi - fabs(phiCompleted);
+    //phiLeft = min_dang(desiredPhi - odomPhi);
     ROS_INFO("rads left: %f", phiLeft);
     //double phiLeft = desiredPhi;
 
