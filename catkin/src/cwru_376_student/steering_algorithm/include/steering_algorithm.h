@@ -37,13 +37,13 @@
 
 //speed and omega gains
 //accounts for the heading error in odom vs des state
-const double K_PHI = 10.0; // control gains for steering
+const double K_PHI = .5; // control gains for steering
 //accounts for the displacement error in odom vs des state
 const double K_DISP = 3.0;
 //accounts for the trip distance error in odom vs des state
-const double K_TRIP_DIST = 1.0;
+const double K_TRIP_DIST = .5;
 //accounts for the lateral error in odom vs des state
-const double K_LAT = .1;
+const double K_LAT = .01;
 
 //tolerance for the errors in steering
 const double TRIP_TOL = .2;
