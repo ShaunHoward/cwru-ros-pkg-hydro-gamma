@@ -31,6 +31,8 @@ therefore, theta = 2*atan2(qz,qw)
 
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Float32.h> //Including the Float32 class from std_msgs
+#include <std_msgs/Bool.h> // boolean message time
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <math.h>
@@ -68,6 +70,10 @@ double segment_length_done = 0.0; // need to compute actual distance travelled w
 double start_x = 0.0; // fill these in with actual values once odom message is received
 double start_y = 0.0; // subsequent segment start coordinates should be specified relative to end of previous segment
 double start_phi = 0.0;
+
+//Lidar variables
+float ping_dist_in_front_ = 0.0f;
+bool lidar_alarm = false;
 
 geometry_msgs::Twist cmd_vel; //create a variable of type "Twist" to publish speed/spin commands
 
@@ -252,6 +258,28 @@ void initializeNewMove(ros::Rate rtimer) {
     }
 }
 
+void pingDistanceCallback(const std_msgs::Float32& ping_distance) {
+    //assign the conversion float type from from ROS Float32 type
+    //lidar_dist_in_front = ;
+}
+
+void lidarAlarmCallback(const std_msgs::Bool& lidar_alarm) {
+    //assign conversion to bool type from ROS Bool type
+    //lidar_alarm = ;
+}
+
+//
+//void listenForStopCmd(ros::Subscriber lidar_subscriber) {
+//    //check subscriber status via lidar_alarm message OR lidar_dist message
+//    //if "stop" then
+//    //call stopRobot(float distance))
+//}
+
+void stopRobot(float distance) {
+    //set vel.x = 0 according to distance
+    //and publish twist_cmd
+}
+
 int main(int argc, char **argv) {
     ros::init(argc, argv, "vel_scheduler"); // name of this node will be "minimal_publisher1"
     ros::NodeHandle nh; // get a ros nodehandle; standard yadda-yadda
@@ -259,6 +287,12 @@ int main(int argc, char **argv) {
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
     ros::Publisher vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>("robot0/cmd_vel", 1);
     ros::Subscriber sub = nh.subscribe("/robot0/odom", 1, odomCallback);
+    
+    ros::Subscriber ping_dist_subscriber = nh.subscribe("lidar_dist", 1, pingDistanceCallback);
+    ros::Subscriber lidar_alarm_subscriber = nh.subscribe("lidar_alarm", 1, lidarAlarmCallback);
+    ros::spin(); //this is essentially a "while(1)" statement, except it
+    //listenForStopCmd(lidar_subscriber);
+
     ros::Rate rtimer(1 / DT); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
     initializeNewMove(rtimer);

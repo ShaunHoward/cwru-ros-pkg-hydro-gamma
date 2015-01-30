@@ -36,7 +36,6 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         // but this will do for simple illustration
         ping_index_ = (int) (0.0 -angle_min_)/angle_increment_;
         ROS_INFO("LIDAR setup: ping_index = %d",ping_index_);
-        
     }
     
    ping_dist_in_front_ = laser_scan.ranges[ping_index_];
