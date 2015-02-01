@@ -70,10 +70,14 @@ double segment_length_done = 0.0; // need to compute actual distance travelled w
 double start_x = 0.0; // fill these in with actual values once odom message is received
 double start_y = 0.0; // subsequent segment start coordinates should be specified relative to end of previous segment
 double start_phi = 0.0;
+double dist_to_go = 0.0;
+double curr_seg_length = 0.0;
 
 //Lidar variables
-float ping_dist_in_front_ = 0.0f;
+float ping_dist_in_front = 0.0f;
 bool lidar_alarm = false;
+bool stop = false;
+ros::Publisher vel_cmd_publisher;
 
 geometry_msgs::Twist cmd_vel; //create a variable of type "Twist" to publish speed/spin commands
 
@@ -127,12 +131,95 @@ bool rotate(double startTime, double currTime, double cmd_omega, double currRota
     }
 }
 
+void resetCmdVel() {
+    cmd_vel.linear.x = 0.0; // initialize these values to zero
+    cmd_vel.linear.y = 0.0;
+    cmd_vel.linear.z = 0.0;
+    cmd_vel.angular.x = 0.0;
+    cmd_vel.angular.y = 0.0;
+    cmd_vel.angular.z = 0.0;
+}
+
+void e_stop(){
+    resetCmdVel();
+    vel_cmd_publisher.publish(cmd_vel); 
+}
+
+float trapezoidal_slow_down(float segment_length){
+    // compute distance traveled so far:
+    double delta_x = odom_x_ - start_x;
+    double delta_y = odom_y_ - start_y;
+    float scheduled_vel = 0.0f;
+    segment_length_done = sqrt(delta_x * delta_x + delta_y * delta_y);
+    ROS_INFO("dist traveled: %f", segment_length_done);
+    dist_to_go = segment_length - segment_length_done;
+
+    //use segment_length_done to decide what vel should be, as per plan
+    if (dist_to_go <= 0.0) { // at goal, or overshot; stop!
+        scheduled_vel = 0.0;
+    } else if (dist_to_go <= dist_decel) { //possibly should be braking to a halt
+        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
+        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
+        scheduled_vel = sqrt(2 * dist_to_go * a_max);
+        ROS_INFO("braking zone: v_sched = %f", scheduled_vel);
+    } else { // not ready to decel, so target vel is v_max, either accel to it or hold it
+        scheduled_vel = v_max;
+    }
+    return scheduled_vel;
+}
+
+void decideToStop(){
+    float slow_down_start = 3.0f;
+    float e_stop_distance = 0.5f;
+    float dist = ping_dist_in_front;
+    //not sure about stop distance if obstacle before end of path
+    float calc_stop_dist = dist - e_stop_distance;
+    if (dist > e_stop_distance && dist <= slow_down_start){
+        stop = true;
+        ROS_INFO("Deciding to stop with trapezoidal slow down.");
+        if (dist_to_go <= 0) {
+            stop = false; 
+        } else if (calc_stop_dist >= dist_to_go){
+            trapezoidal_slow_down(curr_seg_length);
+        } else {
+            trapezoidal_slow_down(calc_stop_dist);
+        }
+    } else if (dist > slow_down_start) {
+        stop = false;
+    }
+}
+
+float trapezoidal_speed_up(float scheduled_vel, float new_cmd_vel){
+    //how does the current velocity compare to the scheduled vel?
+    if (odom_vel_ < scheduled_vel) { // maybe we halted, e.g. due to estop or obstacle;
+        // may need to ramp up to v_max; do so within accel limits
+        double v_test = odom_vel_ + a_max*dt_callback_; // if callbacks are slow, this could be abrupt
+        // operator:  c = (a>b) ? a : b;
+        new_cmd_vel = (v_test < scheduled_vel) ? v_test : scheduled_vel; //choose lesser of two options
+        // this prevents overshooting scheduled_vel
+    } else if (odom_vel_ > scheduled_vel) { //travelling too fast--this could be trouble
+        // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
+        // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
+        ROS_INFO("odom vel: %f; sched vel: %f", odom_vel_, scheduled_vel); //debug/analysis output; can comment this out
+
+        double v_test = odom_vel_ - 1.2 * a_max*dt_callback_; //moving too fast--try decelerating faster than nominal a_max
+
+        new_cmd_vel = (v_test > scheduled_vel) ? v_test : scheduled_vel; // choose larger of two options...don't overshoot scheduled_vel
+    } else {
+        new_cmd_vel = scheduled_vel; //silly third case: this is already true, if here.  Issue the scheduled velocity
+    }
+    
+    return new_cmd_vel;
+}
+
 //Moves the robot on a given segment length with the desired angular velocity z.
 //Will stop rotating when the end rotation is met according to the timing of the method calls.
 //Can use to just rotate robot if segment length is 0.
 //Can use to just move robot forward if z and endRotation are both 0.
 
 void moveOnSegment(ros::Publisher vel_cmd_publisher, ros::Rate rtimer, double segment_length, double z, double endRotation) {
+    curr_seg_length = segment_length;
+    ROS_INFO("The current segment length is: %f", curr_seg_length);
     bool firstCall = true;
     double startTime;
     double currTime = 0.0;
@@ -151,49 +238,19 @@ void moveOnSegment(ros::Publisher vel_cmd_publisher, ros::Rate rtimer, double se
     //dist_decel*= 2.0; // TEST TEST TEST
     while (ros::ok()) // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
     {
+        ROS_INFO("Distance to end of path segment: %f", dist_to_go);
         ros::spinOnce(); // allow callbacks to populate fresh data
-        // compute distance travelled so far:
-        double delta_x = odom_x_ - start_x;
-        double delta_y = odom_y_ - start_y;
-        segment_length_done = sqrt(delta_x * delta_x + delta_y * delta_y);
-        ROS_INFO("dist travelled: %f", segment_length_done);
-        double dist_to_go = segment_length - segment_length_done;
+        if (!stop){
+            scheduled_vel = trapezoidal_slow_down(segment_length);
 
-        //use segment_length_done to decide what vel should be, as per plan
-        if (dist_to_go <= 0.0) { // at goal, or overshot; stop!
-            scheduled_vel = 0.0;
-        } else if (dist_to_go <= dist_decel) { //possibly should be braking to a halt
-            // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
-            // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-            scheduled_vel = sqrt(2 * dist_to_go * a_max);
-            ROS_INFO("braking zone: v_sched = %f", scheduled_vel);
-        } else { // not ready to decel, so target vel is v_max, either accel to it or hold it
-            scheduled_vel = v_max;
+            new_cmd_vel = trapezoidal_speed_up(scheduled_vel, new_cmd_vel);
+
+            ROS_INFO("cmd vel: %f", new_cmd_vel); // debug output
+
+            cmd_vel.linear.x = new_cmd_vel;
         }
 
-        //how does the current velocity compare to the scheduled vel?
-        if (odom_vel_ < scheduled_vel) { // maybe we halted, e.g. due to estop or obstacle;
-            // may need to ramp up to v_max; do so within accel limits
-            double v_test = odom_vel_ + a_max*dt_callback_; // if callbacks are slow, this could be abrupt
-            // operator:  c = (a>b) ? a : b;
-            new_cmd_vel = (v_test < scheduled_vel) ? v_test : scheduled_vel; //choose lesser of two options
-            // this prevents overshooting scheduled_vel
-        } else if (odom_vel_ > scheduled_vel) { //travelling too fast--this could be trouble
-            // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
-            // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
-            ROS_INFO("odom vel: %f; sched vel: %f", odom_vel_, scheduled_vel); //debug/analysis output; can comment this out
-
-            double v_test = odom_vel_ - 1.2 * a_max*dt_callback_; //moving too fast--try decelerating faster than nominal a_max
-
-            new_cmd_vel = (v_test > scheduled_vel) ? v_test : scheduled_vel; // choose larger of two options...don't overshoot scheduled_vel
-        } else {
-            new_cmd_vel = scheduled_vel; //silly third case: this is already true, if here.  Issue the scheduled velocity
-        }
-        ROS_INFO("cmd vel: %f", new_cmd_vel); // debug output
-
-        cmd_vel.linear.x = new_cmd_vel;
-
-        //Handle setting up timer since beginning of method call.
+        //Handle setting up timer for rotation since beginning of method call.
         if (firstCall) {
             firstCall = false;
             startTime = ros::Time::now().toSec();
@@ -215,9 +272,7 @@ void moveOnSegment(ros::Publisher vel_cmd_publisher, ros::Rate rtimer, double se
 
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_vel
         rtimer.sleep(); // sleep for remainder of timed iteration
-        if (dist_to_go <= 0.0 && doneRotating) break; // halt this node when this segment is complete.
-        // will want to generalize this to handle multiple segments
-        // ideally, will want to receive segments dynamically as publications from a higher-level planner
+        if (dist_to_go <= 0.0 && doneRotating && !stop) break; // halt this node when this segment is complete.
     }
     ROS_INFO("completed move along segment with desired rotation");
 }
@@ -242,30 +297,28 @@ void initializePosition() {
     ROS_INFO("start pose: x %f, y= %f, phi = %f", start_x, start_y, start_phi);
 }
 
-void initializeCmdVel() {
-    cmd_vel.linear.x = 0.0; // initialize these values to zero
-    cmd_vel.linear.y = 0.0;
-    cmd_vel.linear.z = 0.0;
-    cmd_vel.angular.x = 0.0;
-    cmd_vel.angular.y = 0.0;
-    cmd_vel.angular.z = 0.0;
-}
-
 void initializeNewMove(ros::Rate rtimer) {
     if (odomCallValidation(rtimer)) {
         initializePosition();
-        initializeCmdVel();
+        resetCmdVel();
     }
 }
 
 void pingDistanceCallback(const std_msgs::Float32& ping_distance) {
-    //assign the conversion float type from from ROS Float32 type
-    //lidar_dist_in_front = ;
+    //assign the conversion float type from ROS Float32 type
+    ping_dist_in_front = ping_distance.data;
+    ROS_INFO("The ping distance from front of robot is: %f", ping_dist_in_front);
+    decideToStop();
 }
 
-void lidarAlarmCallback(const std_msgs::Bool& lidar_alarm) {
+void lidarAlarmCallback(const std_msgs::Bool& lidar_alarm_) {
     //assign conversion to bool type from ROS Bool type
-    //lidar_alarm = ;
+    lidar_alarm = lidar_alarm_.data;
+    if (lidar_alarm){
+        ROS_INFO("The lidar alarm is on!");
+        stop = true;
+        e_stop();
+    }
 }
 
 //
@@ -275,23 +328,22 @@ void lidarAlarmCallback(const std_msgs::Bool& lidar_alarm) {
 //    //call stopRobot(float distance))
 //}
 
-void stopRobot(float distance) {
-    //set vel.x = 0 according to distance
-    //and publish twist_cmd
-}
+//void stopRobot(float distance) {
+//    //set vel.x = 0 according to distance
+//    //and publish twist_cmd
+//    decideToStop();
+//}
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "vel_scheduler"); // name of this node will be "minimal_publisher1"
     ros::NodeHandle nh; // get a ros nodehandle; standard yadda-yadda
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
-    ros::Publisher vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>("robot0/cmd_vel", 1);
+    vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>("robot0/cmd_vel", 1);
     ros::Subscriber sub = nh.subscribe("/robot0/odom", 1, odomCallback);
     
     ros::Subscriber ping_dist_subscriber = nh.subscribe("lidar_dist", 1, pingDistanceCallback);
     ros::Subscriber lidar_alarm_subscriber = nh.subscribe("lidar_alarm", 1, lidarAlarmCallback);
-    ros::spin(); //this is essentially a "while(1)" statement, except it
-    //listenForStopCmd(lidar_subscriber);
 
     ros::Rate rtimer(1 / DT); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 

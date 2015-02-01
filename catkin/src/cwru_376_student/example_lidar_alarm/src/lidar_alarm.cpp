@@ -57,7 +57,7 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "lidar_alarm"); //name this node
-    ros::NodeHandle nh; 
+    ros::NodeHandle nh;
     //create a Subscriber object and have it subscribe to the lidar topic
     ros::Publisher pub = nh.advertise<std_msgs::Bool>("lidar_alarm", 1);
     lidar_alarm_publisher_ = pub; // let's make this global, so callback can use it
