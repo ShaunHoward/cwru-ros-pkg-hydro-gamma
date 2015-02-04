@@ -74,9 +74,10 @@ double dist_to_go = 0.0;
 double curr_seg_length = 0.0;
 
 //Lidar variables
-float ping_dist_in_front = 0.0f;
+float closest_ping_dist = 0.0f;
 bool lidar_alarm = false;
-bool stop = false;
+bool estop_on = false;
+bool stopping = false;
 ros::Publisher vel_cmd_publisher;
 
 geometry_msgs::Twist cmd_vel; //create a variable of type "Twist" to publish speed/spin commands
@@ -171,21 +172,22 @@ float trapezoidal_slow_down(float segment_length){
 void decideToStop(){
     float slow_down_start = 3.0f;
     float e_stop_distance = 0.5f;
-    float dist = ping_dist_in_front;
+    float dist = closest_ping_dist;
     //not sure about stop distance if obstacle before end of path
     float calc_stop_dist = dist - e_stop_distance;
     if (dist > e_stop_distance && dist <= slow_down_start){
-        stop = true;
-        ROS_INFO("Deciding to stop with trapezoidal slow down.");
+        stopping = true;
         if (dist_to_go <= 0) {
-            stop = false; 
+            stopping = false; 
         } else if (calc_stop_dist >= dist_to_go){
-            trapezoidal_slow_down(curr_seg_length);
+            ROS_INFO("Deciding to stop with trapezoidal slow down until goal.");
+            trapezoidal_slow_down(dist_to_go); //curr_seg_length - dist
         } else {
+            ROS_INFO("Deciding to stop with trapezoidal slow down before goal.");
             trapezoidal_slow_down(calc_stop_dist);
         }
     } else if (dist > slow_down_start) {
-        stop = false;
+        stopping = false;
     }
 }
 
@@ -240,7 +242,7 @@ void moveOnSegment(ros::Publisher vel_cmd_publisher, ros::Rate rtimer, double se
     {
         ROS_INFO("Distance to end of path segment: %f", dist_to_go);
         ros::spinOnce(); // allow callbacks to populate fresh data
-        if (!stop){
+        if (!stopping){
             scheduled_vel = trapezoidal_slow_down(segment_length);
 
             new_cmd_vel = trapezoidal_speed_up(scheduled_vel, new_cmd_vel);
@@ -272,7 +274,7 @@ void moveOnSegment(ros::Publisher vel_cmd_publisher, ros::Rate rtimer, double se
 
         vel_cmd_publisher.publish(cmd_vel); // publish the command to robot0/cmd_vel
         rtimer.sleep(); // sleep for remainder of timed iteration
-        if (dist_to_go <= 0.0 && doneRotating && !stop) break; // halt this node when this segment is complete.
+        if (dist_to_go <= 0.0 && doneRotating && !stopping) break; // halt this node when this segment is complete.
     }
     ROS_INFO("completed move along segment with desired rotation");
 }
@@ -306,8 +308,8 @@ void initializeNewMove(ros::Rate rtimer) {
 
 void pingDistanceCallback(const std_msgs::Float32& ping_distance) {
     //assign the conversion float type from ROS Float32 type
-    ping_dist_in_front = ping_distance.data;
-    ROS_INFO("The ping distance from front of robot is: %f", ping_dist_in_front);
+    closest_ping_dist = ping_distance.data;
+    ROS_INFO("The ping distance from front of robot is: %f", closest_ping_dist);
     decideToStop();
 }
 
@@ -316,7 +318,17 @@ void lidarAlarmCallback(const std_msgs::Bool& lidar_alarm_) {
     lidar_alarm = lidar_alarm_.data;
     if (lidar_alarm){
         ROS_INFO("The lidar alarm is on!");
-        stop = true;
+        stopping = true;
+        e_stop();
+    }
+}
+
+void estopCallback(const std_msgs::Bool& estop) {
+    //assign conversion to bool type from ROS Bool type
+    estop_on = estop.data;
+    if (estop_on){
+        ROS_INFO("Velocity scheduler ESTOP enabled.");
+        stopping = true;
         e_stop();
     }
 }
@@ -344,6 +356,7 @@ int main(int argc, char **argv) {
     
     ros::Subscriber ping_dist_subscriber = nh.subscribe("lidar_dist", 1, pingDistanceCallback);
     ros::Subscriber lidar_alarm_subscriber = nh.subscribe("lidar_alarm", 1, lidarAlarmCallback);
+    ros::Subscriber estop_subscriber = nh.subscribe("estop_listener", 1, estopCallback);
 
     ros::Rate rtimer(1 / DT); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 

@@ -4,20 +4,24 @@
 #include <fstream>
 #include <cwru_base/cRIOSensors.h>
 #include <std_msgs/Bool.h>
-using namespace std;
 
-bool estop;
-string check;
+bool motors_enabled;
+ros::Publisher estop_publisher;
 
-void estopCallback(const std_msgs::Bool::ConstPtr& estop) 
+/**
+ * In order to call the estop command from terminal, use the following line:
+ * rostopic pub -r 10 /motors_enabled std_msgs/Bool False
+ */
+void estopCallback(const std_msgs::Bool::ConstPtr& motors_enabled) 
 {
-    if (estop->data == true)
-      check = "estop_off";  // means motors are ENABLED
-    else if (estop->data == false)
-      check = "estop_on";  // means motors are DISABLED
+    if (motors_enabled->data == true)
+      ROS_INFO("Estop is off."); // means motors are ENABLED
+    else if (motors_enabled->data == false)
+      ROS_INFO("Estop is on."); // means motors are ENABLED
     
-
-    cout<<check<<endl;
+   std_msgs::Bool estop_msg;
+   estop_msg.data = !motors_enabled;
+   estop_publisher.publish(estop_msg);
 }
 
 int main(int argc, char **argv)
@@ -40,6 +44,9 @@ int main(int argc, char **argv)
 	 * NodeHandle destructed will close down the node.
 	 */
 	ros::NodeHandle n;
+        
+        ros::Publisher pub = n.advertise<std_msgs::Bool>("estop_listener", 1);
+        estop_publisher = pub; // let's make this global, so callback can use it
 
 	/**
 	 * The subscribe() call is how you tell ROS that you want to receive messages

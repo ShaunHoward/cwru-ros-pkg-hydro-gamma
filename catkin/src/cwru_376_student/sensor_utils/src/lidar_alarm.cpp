@@ -1,6 +1,5 @@
-// wsn example program to illustrate LIDAR processing.  1/23/15
-
 #include <ros/ros.h> //Must include this for all ROS cpp projects
+#include <float.h>
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Float32.h> //Including the Float32 class from std_msgs
 #include <std_msgs/Bool.h> // boolean message time
@@ -8,39 +7,68 @@
 
 const double MIN_SAFE_DISTANCE = 0.5; // set alarm if anything is within 0.5m of the front of robot
 
-// these values to be set within the laser callback
-float ping_dist_in_front_=3.0; // global var to hold length of a SINGLE LIDAR ping--in front
-int ping_index_= -1; // NOT real; callback will have to find this
-double angle_min_=0.0;
-double angle_max_=0.0;
-double angle_increment_=0.0;
-double range_min_ = 0.0;
-double range_max_ = 0.0;
+//Values that are utilized for laser callback
+float ping_dist_in_front_ = 3.0; // global var to hold length of a SINGLE LIDAR ping--in front
+float closest_ping = 3.0;
+bool firstRun = true;
+float angle_min_ = 0.0;
+float angle_max_ = 0.0;
+float angle_increment_ = 0.0;
+float range_min_ = 0.0;
+float range_max_ = 0.0;
+
+int min_ping_index = 0;
+int max_ping_index = 0;
+float start_min_angle = -.52333333;
+float end_max_angle = .52333333;
 bool laser_alarm_=false;
 
 ros::Publisher lidar_alarm_publisher_;
 ros::Publisher lidar_dist_publisher_;
-// really, do NOT want to depend on a single ping.  Should consider a subset of pings
-// to improve reliability and avoid false alarms or failure to see an obstacle
 
+/**
+ * Determines the closest ping to the robot according to LIDAR ping ranges.
+ * The smallest found ping distance value is returned.
+ */
+float getClosestPingDist(std::vector<float> ping_ranges, int minIndex, int maxIndex){
+  float *pings = &ping_ranges[0];  
+  float smallest = ping_ranges[0];
+  for (int i = minIndex; i <= maxIndex; i++){
+    if (ping_ranges[i] < smallest){
+      smallest = ping_ranges[i];
+    }
+  }
+  return smallest; 
+}
+
+/**
+ * Receives the laser scan data from the last callback to the LIDAR.
+ * Determines the smallest ping distance in a range between -30 degrees and 30 degrees
+ * and publishes this as a lidar distance message. If the smallest ping distance from 
+ * the LIDAR is less than .5 meters, then a lidar alarm message will be published that 
+ * recognizes the lidar alarm has sounded.
+ */
 void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
-    if (ping_index_<0)  {
+    if (firstRun)  {
+      firstRun = false;
         //for first message received, set up the desired index of LIDAR range to eval
         angle_min_ = laser_scan.angle_min;
         angle_max_ = laser_scan.angle_max;
         angle_increment_ = laser_scan.angle_increment;
         range_min_ = laser_scan.range_min;
         range_max_ = laser_scan.range_max;
-        // what is the index of the ping that is straight ahead?
-        // BETTER would be to use transforms, which would reference how the LIDAR is mounted;
-        // but this will do for simple illustration
-        ping_index_ = (int) (0.0 -angle_min_)/angle_increment_;
-        ROS_INFO("LIDAR setup: ping_index = %d",ping_index_);
+
+        //find the indices to start and stop checking pings from lidar at
+        min_ping_index = (int) start_min_angle / angle_increment_;
+        max_ping_index = (int) end_max_angle / angle_increment_;
+        ROS_INFO("LIDAR setup: min_ping_index = %i", min_ping_index);
+        ROS_INFO("LIDAR setup: max_ping_index = %i", max_ping_index);
     }
-    
-   ping_dist_in_front_ = laser_scan.ranges[ping_index_];
-   ROS_INFO("ping dist in front = %f",ping_dist_in_front_);
-   if (ping_dist_in_front_<MIN_SAFE_DISTANCE) {
+
+   closest_ping = getClosestPingDist(laser_scan.ranges, min_ping_index, max_ping_index);
+   ROS_INFO("The closest ping is: %f", closest_ping);
+
+   if (closest_ping < MIN_SAFE_DISTANCE) {
        ROS_WARN("DANGER, WILL ROBINSON!!");
        laser_alarm_=true;
    }
@@ -51,7 +79,7 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
    lidar_alarm_msg.data = laser_alarm_;
    lidar_alarm_publisher_.publish(lidar_alarm_msg);
    std_msgs::Float32 lidar_dist_msg;
-   lidar_dist_msg.data = ping_dist_in_front_;
+   lidar_dist_msg.data = closest_ping;
    lidar_dist_publisher_.publish(lidar_dist_msg);   
 }
 
