@@ -42,6 +42,15 @@ float getClosestPingDist(std::vector<float> ping_ranges, int minIndex, int maxIn
 }
 
 /**
+ * Gets the absolute value of the given value.
+ */
+float absValue(float value){
+	if (value >= 0)
+		return value;
+	return -1 * value;
+}
+
+/**
  * Receives the laser scan data from the last callback to the LIDAR.
  * Determines the smallest ping distance in a range between -30 degrees and 30 degrees
  * and publishes this as a lidar distance message. If the smallest ping distance from 
@@ -59,8 +68,8 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         range_max_ = laser_scan.range_max;
 
         //find the indices to start and stop checking pings from lidar at
-        min_ping_index = (int) start_min_angle / angle_increment_;
-        max_ping_index = (int) end_max_angle / angle_increment_;
+        min_ping_index = (int) abs(start_min_angle - angle_min_) / angle_increment_;
+        max_ping_index = (int) (end_max_angle + abs(angle_min_)) / angle_increment_;
         ROS_INFO("LIDAR setup: min_ping_index = %i", min_ping_index);
         ROS_INFO("LIDAR setup: max_ping_index = %i", max_ping_index);
     }
