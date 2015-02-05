@@ -19,8 +19,8 @@ float range_max_ = 0.0;
 
 int min_ping_index = 0;
 int max_ping_index = 0;
-float start_min_angle = -.52333333;
-float end_max_angle = .52333333;
+float start_min_angle = -.33333333;
+float end_max_angle = .33333333;
 bool laser_alarm_=false;
 
 ros::Publisher lidar_alarm_publisher_;
@@ -32,10 +32,10 @@ ros::Publisher lidar_dist_publisher_;
  */
 float getClosestPingDist(std::vector<float> ping_ranges, int minIndex, int maxIndex){
   float *pings = &ping_ranges[0];  
-  float smallest = ping_ranges[0];
+  float smallest = pings[minIndex];
   for (int i = minIndex; i <= maxIndex; i++){
-    if (ping_ranges[i] < smallest){
-      smallest = ping_ranges[i];
+    if (pings[i] < smallest){
+      smallest = pings[i];
     }
   }
   return smallest; 
@@ -68,8 +68,10 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         range_max_ = laser_scan.range_max;
 
         //find the indices to start and stop checking pings from lidar at
-        min_ping_index = (int) abs(start_min_angle - angle_min_) / angle_increment_;
-        max_ping_index = (int) (end_max_angle + abs(angle_min_)) / angle_increment_;
+      //  min_ping_index = (int) abs(start_min_angle - angle_min_) / angle_increment_; //159
+      //  max_ping_index = (int) (end_max_angle + 1.5*abs(angle_min_)) / angle_increment_; //477
+        min_ping_index = 212;
+        max_ping_index = 424;
         ROS_INFO("LIDAR setup: min_ping_index = %i", min_ping_index);
         ROS_INFO("LIDAR setup: max_ping_index = %i", max_ping_index);
     }
