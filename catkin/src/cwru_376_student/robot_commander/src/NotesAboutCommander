@@ -1,0 +1,30 @@
+
+// try this, e.g. with roslaunch stdr_launchers server_with_map_and_gui_plus_robot.launch
+// or:  roslaunch cwru_376_launchers stdr_glennan_2.launch 
+// watch resulting velocity commands with: rqt_plot /robot0/cmd_vel/linear/x (or jinx/cmd_vel...)
+
+//intent of this program: modulate the velocity command to comply with a speed limit, v_max,
+// acceleration limits, +/-a_max, and come to a halt gracefully at the end of
+// an intended line segment
+
+// notes on quaternions:
+/*
+From:
+http://www.euclideanspace.com/maths/geometry/rotations/conversions/angleToQuaternion/
+
+qx = ax * sin(angle/2)
+qy = ay * sin(angle/2)
+qz = az * sin(angle/2)
+qw = cos(angle/2)
+
+
+so, quaternion in 2-D plane (x,y,theta):
+ax=0, ay=0, az = 1.0
+
+qx = 0;
+qy = 0;
+qz = sin(angle/2)
+qw = cos(angle/2)
+
+therefore, theta = 2*atan2(qz,qw)
+ */
