@@ -9,15 +9,15 @@
 
 struct callback{
 	// globals for communication w/ callbacks:
-	float odomVelocity = 0.0; // measured/published system speed
-	float odomOmega = 0.0; // measured/published system yaw rate (spin)
-	float odomX = 0.0;
-	float odomY = 0.0;
-	float odomPhi = 0.0;
-	float odomDt = 0.0;
+	float odomVelocity; // measured/published system speed
+	float odomOmega; // measured/published system yaw rate (spin)
+	float odomX;
+	float odomY;
+	float odomPhi;
+	float odomDt;
 	ros::Time lastCallbackTime;
-	float dt = 0.0;
-	float quaternionZ = 0.0, quaternionW = 0.0;
+	float dt;
+	float quaternionZ, quaternionW;
 	
 	void setOdomPhi(){
 		odomPhi = 2.0 * atan2(quaternionZ, quaternionW); // cheap conversion from quaternion to heading for planar motion		
@@ -43,9 +43,6 @@ struct callback{
 	void setDt(float dt){
 		this.dt = dt;
 	}
-	void setOdomDt(float odomDt){
-		this.odomDt = odomDt;
-	}
 	void setQuaternionZ(float z){
 		this.quaternionZ = z;
 	}
@@ -60,11 +57,11 @@ struct callback{
 struct segment{
 	//here's a subtlety:  might be tempted to measure distance to the goal, instead of distance from the start.
 	// HOWEVER, will NEVER satisfy distance to goal = 0 precisely, but WILL eventually move far enought to satisfy distance travelled condition
-	float lengthCompleted = 0.0; // need to compute actual distance travelled within the current segment
-	float startX = 0.0; // fill these in with actual values once odom message is received
-	float startY = 0.0; // subsequent segment start coordinates should be specified relative to end of previous segment
-	float startPhi = 0.0;
-	float distanceLeft = 0.0;
+	float lengthCompleted; // need to compute actual distance travelled within the current segment
+	float startX; // fill these in with actual values once odom message is received
+	float startY; // subsequent segment start coordinates should be specified relative to end of previous segment
+	float startPhi;
+	float distanceLeft;
 	
 	void setStartX(float startX){
 		this.startX = startX;
@@ -101,9 +98,9 @@ struct segment{
 
 struct lidar{
 	//Lidar variables
-	float closestPing = 0.0f;
-	bool alarm = false;
-	bool stop = false;
+	float closestPing;
+	bool alarm;
+	bool stop;
 	
 	void setAlarm(bool alarm){
 		this.alarm = alarm;
@@ -117,7 +114,7 @@ struct lidar{
 };
 
 struct estop{
-	bool on = false;
+	bool on;
 	void set(bool on){
 		this.on = on;
 	}
