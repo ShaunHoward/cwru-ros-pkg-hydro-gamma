@@ -161,7 +161,7 @@ void moveOnSegment(ros::Publisher velocityPublisher, float segmentLength) {
             velocityCommand.linear.x = 0.0; //command vel=0
         }
 
-		velocityPublisher.publish(velocityCommand);
+	velocityPublisher.publish(velocityCommand);
         if (segment.distanceLeft <= 0.0) break; //halt when segment is complete
     }
     ROS_INFO("completed move along segment with desired rotation");
