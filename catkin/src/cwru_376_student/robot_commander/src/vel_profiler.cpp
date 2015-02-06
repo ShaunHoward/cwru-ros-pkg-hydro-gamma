@@ -71,37 +71,37 @@ float trapezoidalSlowDown(float segmentLength){
     //use segmentLengthCompleted to decide what vel should be, as per plan
     if (segment.distanceLeft <= 0.0) { // at goal, or overshot; stop!
         scheduledVelocity = 0.0;
-    } else if (segment.distanceLeft <= velocityProfile.decelerationDistance) { //possibly should be braking to a halt
+    } else if (segment.distanceLeft <= decelerationDistance) { //possibly should be braking to a halt
         // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
         // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-        scheduledVelocity = sqrt(2 * segment.distanceLeft * velocityProfile.maxAcceleration);
+        scheduledVelocity = sqrt(2 * segment.distanceLeft * maxAcceleration);
         ROS_INFO("braking zone: v_sched = %f", scheduledVelocity);
     } else { // not ready to decel, so target vel is v_max, either accel to it or hold it
-        scheduledVelocity = velocityProfile.maxVelocity;
+        scheduledVelocity = maxVelocity;
     }
     return scheduledVelocity;
 }
 
 void decideToStop(){
-    float slow_down_start = 2.0f;
-    float e_stop_distance = 0.5f;
-    float dist = closest_ping_dist;
-    //not sure about stop distance if obstacle before end of path
-    float calc_stop_dist = dist - e_stop_distance;
-    if (dist > e_stop_distance && dist <= slow_down_start){
-        stopping = true;
-        if (dist_to_go <= 0) {
-            stopping = false; 
-        } else if (calc_stop_dist >= dist_to_go){
-            ROS_INFO("Deciding to stop with trapezoidal slow down until goal.");
-            trapezoidal_slow_down(dist_to_go); //curr_seg_length - dist
-        } else {
-            ROS_INFO("Deciding to stop with trapezoidal slow down before goal.");
-            trapezoidal_slow_down(calc_stop_dist);
-        }
-    } else if (dist > slow_down_start) {
-        stopping = false;
-    }
+//    float slow_down_start = 2.0f;
+//    float e_stop_distance = 0.5f;
+//    float dist = closest_ping_dist;
+//    //not sure about stop distance if obstacle before end of path
+//    float calc_stop_dist = dist - e_stop_distance;
+//    if (dist > e_stop_distance && dist <= slow_down_start){
+//        stopping = true;
+//        if (dist_to_go <= 0) {
+//            stopping = false; 
+//        } else if (calc_stop_dist >= dist_to_go){
+//            ROS_INFO("Deciding to stop with trapezoidal slow down until goal.");
+//            trapezoidal_slow_down(dist_to_go); //curr_seg_length - dist
+//        } else {
+//            ROS_INFO("Deciding to stop with trapezoidal slow down before goal.");
+//            trapezoidal_slow_down(calc_stop_dist);
+//        }
+//    } else if (dist > slow_down_start) {
+//        stopping = false;
+//    }
 }
 
 float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
@@ -109,7 +109,7 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
 	//how does the current velocity compare to the scheduled vel?
     if (callback.odomVelocity < scheduledVelocity) { // maybe we halted, e.g. due to estop or obstacle;
         // may need to ramp up to v_max; do so within accel limits
-         testVelocity = callback.odomVelocity + velocityProfile.maxAcceleration * callback.dt; // if callbacks are slow, this could be abrupt
+         testVelocity = callback.odomVelocity + maxAcceleration * callback.dt; // if callbacks are slow, this could be abrupt
         // operator:  c = (a>b) ? a : b;
         newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
         // this prevents overshooting scheduled_vel
@@ -118,7 +118,7 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
         // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
         ROS_INFO("odom vel: %f; sched vel: %f", callback.odomVelocity, scheduledVelocity); //debug/analysis output; can comment this out
 
-        testVelocity = callback.odomVelocity - 1.2 * velocityProfile.maxAcceleration * callback.dt; //moving too fast--try decelerating faster than nominal a_max
+        testVelocity = callback.odomVelocity - 1.2 * maxAcceleration * callback.dt; //moving too fast--try decelerating faster than nominal a_max
 
         newVelocityCommand = (testVelocity > scheduledVelocity) ? testVelocity : scheduledVelocity; // choose larger of two options...don't overshoot scheduled_vel
     } else {
@@ -135,9 +135,9 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
 
 void moveOnSegment(ros::Publisher velocityPublisher, float segmentLength) {
     segment.resetLengthCompleted(); // need to compute actual distance travelled within the current segment
-    float constantVelocityDistance = segmentLength - velocityProfile.accelerationDistance - velocityProfile.decelerationDistance; //if this is <0, never get to full spd
-    float constantVelocityTime = constantVelocityDistance / velocityProfile.maxVelocity; //will be <0 if don't get to full speed
-    float duration = velocityProfile.accelerationTime + velocityProfile.decelerationTime + constantVelocityTime; // expected duration of this move
+    float constantVelocityDistance = segmentLength - accelerationDistance - decelerationDistance; //if this is <0, never get to full spd
+    float constantVelocityTime = constantVelocityDistance / maxVelocity; //will be <0 if don't get to full speed
+    float duration = accelerationTime + decelerationTime + constantVelocityTime; // expected duration of this move
 
     // here is a crude description of one segment of a journey.  Will want to generalize this to handle multiple segments
     // define the desired path length of this segment
@@ -182,7 +182,7 @@ void rotate(ros::Publisher velocityPublisher, ros::Rate rTimer, float z, float e
         }
 	//Rotate and check if at desired rotation in rads.
         currTime = ros::Time::now().toSec();
-        bool doneRotating = rotate(startTime, currTime, newCommandomega, currRotation, endRotation);
+        bool doneRotating = rotate(startTime, currTime, newCommandOmega, currRotation, endRotation);
 	
         //Set angular z velocity to 0 when done rotating.
         if (doneRotating) {
@@ -262,7 +262,7 @@ int main(int argc, char **argv) {
     ros::Rate rTimer(1 / DT); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
     initializeNewMove(rTimer);
-    moveOnSegment(velocityPublisher, rTimer, 4.75, 0.0, 0.0);
+    moveOnSegment(velocityPublisher, 4.75);
 //    initializeNewMove(rtimer);
 //    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);
 //    initializeNewMove(rtimer);
