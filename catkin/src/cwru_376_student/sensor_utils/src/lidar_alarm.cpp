@@ -8,8 +8,7 @@
 const double MIN_SAFE_DISTANCE = 0.5; // set alarm if anything is within 0.5m of the front of robot
 
 //Values that are utilized for laser callback
-float ping_dist_in_front_ = 3.0; // global var to hold length of a SINGLE LIDAR ping--in front
-float closest_ping = 3.0;
+float closest_ping = 0.0;
 bool firstRun = true;
 float angle_min_ = 0.0;
 float angle_max_ = 0.0;
@@ -19,9 +18,9 @@ float range_max_ = 0.0;
 
 int min_ping_index = 0;
 int max_ping_index = 0;
-float start_min_angle = -.33333333;
-float end_max_angle = .33333333;
-bool laser_alarm_=false;
+float start_min_angle = -.523333333;
+float end_max_angle = .52333333;
+bool laser_alarm_ = false;
 
 ros::Publisher lidar_alarm_publisher_;
 ros::Publisher lidar_dist_publisher_;
@@ -30,24 +29,24 @@ ros::Publisher lidar_dist_publisher_;
  * Determines the closest ping to the robot according to LIDAR ping ranges.
  * The smallest found ping distance value is returned.
  */
-float getClosestPingDist(std::vector<float> ping_ranges, int minIndex, int maxIndex){
-  float *pings = &ping_ranges[0];  
-  float smallest = pings[minIndex];
-  for (int i = minIndex; i <= maxIndex; i++){
-    if (pings[i] < smallest){
-      smallest = pings[i];
+float getClosestPingDist(std::vector<float> ping_ranges, int minIndex, int maxIndex) {
+    float *pings = &ping_ranges[0];
+    float smallest = pings[minIndex];
+    for (int i = minIndex; i <= maxIndex; i++) {
+        if (pings[i] < smallest) {
+            smallest = pings[i];
+        }
     }
-  }
-  return smallest; 
+    return smallest;
 }
 
 /**
  * Gets the absolute value of the given value.
  */
-float absValue(float value){
-	if (value >= 0)
-		return value;
-	return -1 * value;
+float absValue(float value) {
+    if (value >= 0)
+        return value;
+    return -1 * value;
 }
 
 /**
@@ -58,8 +57,8 @@ float absValue(float value){
  * recognizes the lidar alarm has sounded.
  */
 void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
-    if (firstRun)  {
-      firstRun = false;
+    if (firstRun) {
+        firstRun = false;
         //for first message received, set up the desired index of LIDAR range to eval
         angle_min_ = laser_scan.angle_min;
         angle_max_ = laser_scan.angle_max;
@@ -68,30 +67,27 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         range_max_ = laser_scan.range_max;
 
         //find the indices to start and stop checking pings from lidar at
-      //  min_ping_index = (int) abs(start_min_angle - angle_min_) / angle_increment_; //159
-      //  max_ping_index = (int) (end_max_angle + 1.5*abs(angle_min_)) / angle_increment_; //477
-        min_ping_index = 212;
-        max_ping_index = 424;
+        min_ping_index = (int) abs(start_min_angle - angle_min_) / angle_increment_; //159
+        max_ping_index = (int) (end_max_angle + 1.5 * abs(angle_min_)) / angle_increment_; //477
         ROS_INFO("LIDAR setup: min_ping_index = %i", min_ping_index);
         ROS_INFO("LIDAR setup: max_ping_index = %i", max_ping_index);
     }
 
-   closest_ping = getClosestPingDist(laser_scan.ranges, min_ping_index, max_ping_index);
-   ROS_INFO("The closest ping is: %f", closest_ping);
+    closest_ping = getClosestPingDist(laser_scan.ranges, min_ping_index, max_ping_index);
+    ROS_INFO("The closest ping is: %f", closest_ping);
 
-   if (closest_ping < MIN_SAFE_DISTANCE) {
-       ROS_WARN("DANGER, WILL ROBINSON!!");
-       laser_alarm_=true;
-   }
-   else {
-       laser_alarm_=false;
-   }
-   std_msgs::Bool lidar_alarm_msg;
-   lidar_alarm_msg.data = laser_alarm_;
-   lidar_alarm_publisher_.publish(lidar_alarm_msg);
-   std_msgs::Float32 lidar_dist_msg;
-   lidar_dist_msg.data = closest_ping;
-   lidar_dist_publisher_.publish(lidar_dist_msg);   
+    if (closest_ping < MIN_SAFE_DISTANCE) {
+        ROS_WARN("DANGER, WILL ROBINSON!!");
+        laser_alarm_ = true;
+    } else {
+        laser_alarm_ = false;
+    }
+    std_msgs::Bool lidar_alarm_msg;
+    lidar_alarm_msg.data = laser_alarm_;
+    lidar_alarm_publisher_.publish(lidar_alarm_msg);
+    std_msgs::Float32 lidar_dist_msg;
+    lidar_dist_msg.data = closest_ping;
+    lidar_dist_publisher_.publish(lidar_dist_msg);
 }
 
 int main(int argc, char **argv) {
@@ -100,7 +96,7 @@ int main(int argc, char **argv) {
     //create a Subscriber object and have it subscribe to the lidar topic
     ros::Publisher pub = nh.advertise<std_msgs::Bool>("lidar_alarm", 1);
     lidar_alarm_publisher_ = pub; // let's make this global, so callback can use it
-    ros::Publisher pub2 = nh.advertise<std_msgs::Float32>("lidar_dist", 1);  
+    ros::Publisher pub2 = nh.advertise<std_msgs::Float32>("lidar_dist", 1);
     lidar_dist_publisher_ = pub2;
     ros::Subscriber lidar_subscriber = nh.subscribe("robot0/laser_0", 1, laserCallback);
     ros::spin(); //this is essentially a "while(1)" statement, except it

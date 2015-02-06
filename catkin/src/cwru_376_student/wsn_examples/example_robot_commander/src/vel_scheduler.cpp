@@ -170,7 +170,7 @@ float trapezoidal_slow_down(float segment_length){
 }
 
 void decideToStop(){
-    float slow_down_start = 3.0f;
+    float slow_down_start = 2.0f;
     float e_stop_distance = 0.5f;
     float dist = closest_ping_dist;
     //not sure about stop distance if obstacle before end of path
@@ -354,9 +354,9 @@ int main(int argc, char **argv) {
     vel_cmd_publisher = nh.advertise<geometry_msgs::Twist>("robot0/cmd_vel", 1);
     ros::Subscriber sub = nh.subscribe("/robot0/odom", 1, odomCallback);
     
-    ros::Subscriber ping_dist_subscriber = nh.subscribe("lidar_dist", 1, pingDistanceCallback);
-    ros::Subscriber lidar_alarm_subscriber = nh.subscribe("lidar_alarm", 1, lidarAlarmCallback);
-    ros::Subscriber estop_subscriber = nh.subscribe("estop_listener", 1, estopCallback);
+//    ros::Subscriber ping_dist_subscriber = nh.subscribe("lidar_dist", 1, pingDistanceCallback);
+//    ros::Subscriber lidar_alarm_subscriber = nh.subscribe("lidar_alarm", 1, lidarAlarmCallback);
+//    ros::Subscriber estop_subscriber = nh.subscribe("estop_listener", 1, estopCallback);
 
     ros::Rate rtimer(1 / DT); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
