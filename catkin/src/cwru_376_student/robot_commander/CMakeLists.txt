@@ -4,12 +4,16 @@ project(robot_commander)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-##find_package(catkin REQUIRED COMPONENTS
-##  catkin_simple
-##  geometry_msgs
-##  nav_msgs
-##  roscpp
-##)
+find_package(catkin REQUIRED COMPONENTS
+  catkin_simple
+  geometry_msgs
+  nav_msgs
+  roscpp
+)
+
+find_package(catkin_simple REQUIRED)
+
+catkin_simple()
 
 
 
