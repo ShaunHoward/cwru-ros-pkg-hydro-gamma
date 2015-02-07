@@ -130,13 +130,12 @@ Lidar lidar;
 Estop estop;
 
 // set some dynamic limits...
-const float maxVelocity = 2.0; //1m/sec is a slow walk
+const float maxVelocity = 5.0; //1m/sec is a slow walk
 const float minVelocity = 0.1; // if command velocity too low, robot won't move
 const float maxAcceleration = 0.1; //1m/sec^2 is 0.1 g's
 const float maxOmega = 1.0; //1 rad/sec-> about 6 seconds to rotate 1 full rev
 const float maxAlpha = 0.5; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
 const float changeInTime = 0.050; // choose an update rate of 20Hz; go faster with actual hardware
-const float DT = 0.05;
 
 // compute some properties of trapezoidal velocity profile plan:
 float accelerationTime = maxVelocity / maxAcceleration; //...assumes start from rest

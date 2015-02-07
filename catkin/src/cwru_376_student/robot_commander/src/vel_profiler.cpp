@@ -64,7 +64,7 @@ float trapezoidalSlowDown(float segmentLength){
     float deltaX = callback.odomX - segment.startX;
     float deltaY = callback.odomY - segment.startY;
     float scheduledVelocity = 0.0f;
-    segment.setLengthCompleted(sqrt(deltaX * deltaY + deltaY * deltaY));
+    segment.setLengthCompleted(sqrt(deltaX * deltaX + deltaY * deltaY));
     ROS_INFO("dist traveled: %f", segment.lengthCompleted);
     segment.setDistanceLeft(segmentLength - segment.lengthCompleted);
 
@@ -79,6 +79,7 @@ float trapezoidalSlowDown(float segmentLength){
     } else { // not ready to decel, so target vel is v_max, either accel to it or hold it
         scheduledVelocity = maxVelocity;
     }
+	ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
     return scheduledVelocity;
 }
 
@@ -105,11 +106,10 @@ void decideToStop(){
 }
 
 float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
-	float testVelocity = 0;    
 	//how does the current velocity compare to the scheduled vel?
     if (callback.odomVelocity < scheduledVelocity) { // maybe we halted, e.g. due to estop or obstacle;
         // may need to ramp up to v_max; do so within accel limits
-         testVelocity = callback.odomVelocity + maxAcceleration * callback.dt; // if callbacks are slow, this could be abrupt
+        float testVelocity = callback.odomVelocity + maxAcceleration * callback.dt; // if callbacks are slow, this could be abrupt
         // operator:  c = (a>b) ? a : b;
         newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
         // this prevents overshooting scheduled_vel
@@ -118,13 +118,13 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
         // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
         ROS_INFO("odom vel: %f; sched vel: %f", callback.odomVelocity, scheduledVelocity); //debug/analysis output; can comment this out
 
-        testVelocity = callback.odomVelocity - 1.2 * maxAcceleration * callback.dt; //moving too fast--try decelerating faster than nominal a_max
+        float testVelocity = callback.odomVelocity - 1.2 * maxAcceleration * callback.dt; //moving too fast--try decelerating faster than nominal a_max
 
         newVelocityCommand = (testVelocity > scheduledVelocity) ? testVelocity : scheduledVelocity; // choose larger of two options...don't overshoot scheduled_vel
     } else {
         newVelocityCommand = scheduledVelocity; //silly third case: this is already true, if here.  Issue the scheduled velocity
     }
-    
+    ROS_INFO("New speedup command is: %f", newVelocityCommand);
     return newVelocityCommand;
 }
 
@@ -132,8 +132,7 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
 //Will stop rotating when the end rotation is met according to the timing of the method calls.
 //Can use to just rotate robot if segment length is 0.
 //Can use to just move robot forward if z and endRotation are both 0.
-
-void moveOnSegment(ros::Publisher velocityPublisher, float segmentLength) {
+void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float segmentLength) {
     segment.resetLengthCompleted(); // need to compute actual distance travelled within the current segment
     float constantVelocityDistance = segmentLength - accelerationDistance - decelerationDistance; //if this is <0, never get to full spd
     float constantVelocityTime = constantVelocityDistance / maxVelocity; //will be <0 if don't get to full speed
@@ -149,20 +148,23 @@ void moveOnSegment(ros::Publisher velocityPublisher, float segmentLength) {
     {
         ROS_INFO("Distance to end of path segment: %f", segment.distanceLeft);
         ros::spinOnce(); // allow callbacks to populate fresh data
-        scheduledVelocity = trapezoidalSlowDown(segmentLength);
+		if(!estop.on) {
+			scheduledVelocity = trapezoidalSlowDown(segmentLength);
 
-        newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
+			newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
 
-        ROS_INFO("cmd vel: %f", newVelocityCommand); // debug output
+			ROS_INFO("cmd vel: %f", newVelocityCommand); // debug output
 
-        velocityCommand.linear.x = newVelocityCommand;
-        
-        if (segment.distanceLeft <= 0.0) { //uh-oh...went too far already!
-            velocityCommand.linear.x = 0.0; //command vel=0
-        }
+			velocityCommand.linear.x = newVelocityCommand;
+			
+			if (segment.distanceLeft <= 0.0) { //uh-oh...went too far already!
+				velocityCommand.linear.x = 0.0; //command vel=0
+			}
 
-	velocityPublisher.publish(velocityCommand);
-        if (segment.distanceLeft <= 0.0) break; //halt when segment is complete
+			velocityPublisher.publish(velocityCommand);
+			//rTimer.sleep();
+			if (segment.distanceLeft <= 0.0) break; //halt when segment is complete
+		}
     }
     ROS_INFO("completed move along segment with desired rotation");
 }
@@ -252,17 +254,17 @@ int main(int argc, char **argv) {
     ros::NodeHandle nodeHandle; // get a ros nodehandle; standard yadda-yadda
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
-    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("robot0/velocityCommand", 1);
+    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("robot0/cmd_vel", 1);
     ros::Subscriber sub = nodeHandle.subscribe("/robot0/odom", 1, odomCallback);
     
     ros::Subscriber ping_dist_subscriber = nodeHandle.subscribe("lidar_dist", 1, pingDistanceCallback);
     ros::Subscriber lidar_alarm_subscriber = nodeHandle.subscribe("lidar_alarm", 1, lidarAlarmCallback);
     ros::Subscriber estop_subscriber = nodeHandle.subscribe("estop_listener", 1, estopCallback);
 
-    ros::Rate rTimer(1 / DT); // frequency corresponding to chosen sample period DT; the main loop will run this fast
+    ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
     initializeNewMove(rTimer);
-    moveOnSegment(velocityPublisher, 4.75);
+    moveOnSegment(velocityPublisher, rTimer, 4.75);
 //    initializeNewMove(rtimer);
 //    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);
 //    initializeNewMove(rtimer);

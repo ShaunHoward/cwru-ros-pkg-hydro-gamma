@@ -5,23 +5,23 @@
 #include <cwru_base/cRIOSensors.h>
 #include <std_msgs/Bool.h>
 
-bool motors_enabled;
-ros::Publisher estop_publisher;
+bool motorsEnabled;
+ros::Publisher estopPublisher;
 
 /**
  * In order to call the estop command from terminal, use the following line:
  * rostopic pub -r 10 /motors_enabled std_msgs/Bool False
  */
-void estopCallback(const std_msgs::Bool::ConstPtr& motors_enabled) 
+void estopCallback(const std_msgs::Bool::ConstPtr& motorsEnabled) 
 {
-    if (motors_enabled->data == true)
+    if (motorsEnabled->data == true)
       ROS_INFO("Estop is off."); // means motors are ENABLED
-    else if (motors_enabled->data == false)
+    else if (motorsEnabled->data == false)
       ROS_INFO("Estop is on."); // means motors are ENABLED
     
-   std_msgs::Bool estop_msg;
-   estop_msg.data = !motors_enabled;
-   estop_publisher.publish(estop_msg);
+   std_msgs::Bool estopMessage;
+   estopMessage.data = !(motorsEnabled->data);
+   estopPublisher.publish(estopMessage);
 }
 
 int main(int argc, char **argv)
@@ -43,10 +43,10 @@ int main(int argc, char **argv)
 	 * The first NodeHandle constructed will fully initialize this node, and the last
 	 * NodeHandle destructed will close down the node.
 	 */
-	ros::NodeHandle n;
+	ros::NodeHandle nodeHandle;
         
-        ros::Publisher pub = n.advertise<std_msgs::Bool>("estop_listener", 1);
-        estop_publisher = pub; // let's make this global, so callback can use it
+    ros::Publisher publisher = nodeHandle.advertise<std_msgs::Bool>("estop_listener", 1);
+    estopPublisher = publisher; // let's make this global, so callback can use it
 
 	/**
 	 * The subscribe() call is how you tell ROS that you want to receive messages
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 	 * is the number of messages that will be buffered up before beginning to throw
 	 * away the oldest ones.
 	 */
-	ros::Subscriber sub = n.subscribe("motors_enabled",1,estopCallback);
+	ros::Subscriber subscriber = nodeHandle.subscribe("motors_enabled", 1, estopCallback);
 
 	/**
 	 * ros::spin() will enter a loop, pumping callbacks.  With this version, all
