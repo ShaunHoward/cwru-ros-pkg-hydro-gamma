@@ -134,6 +134,7 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
 //Can use to just move robot forward if z and endRotation are both 0.
 void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float segmentLength) {
     segment.resetLengthCompleted(); // need to compute actual distance travelled within the current segment
+	segment.setLength(segmentLength);
     float constantVelocityDistance = segmentLength - accelerationDistance - decelerationDistance; //if this is <0, never get to full spd
     float constantVelocityTime = constantVelocityDistance / maxVelocity; //will be <0 if don't get to full speed
     float duration = accelerationTime + decelerationTime + constantVelocityTime; // expected duration of this move
@@ -142,14 +143,15 @@ void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float seg
     // define the desired path length of this segment
     float scheduledVelocity = 0.0; //desired vel, assuming all is per plan
     float newVelocityCommand = 0.1; // value of speed to be commanded; update each iteration
+	float slowdownSegmentLength = 0.0;
 
     //dist_decel*= 2.0; // TEST TEST TEST
     while (ros::ok()) // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
     {
-        ROS_INFO("Distance to end of path segment: %f", segment.distanceLeft);
         ros::spinOnce(); // allow callbacks to populate fresh data
-		if(!estop.on) {
-			scheduledVelocity = trapezoidalSlowDown(segmentLength);
+		if(!(estop.on || lidar.alarm)) {
+			ROS_INFO("Distance to end of path segment: %f", segment.distanceLeft);
+			scheduledVelocity = trapezoidalSlowDown(segment.length);
 
 			newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
 
@@ -225,8 +227,25 @@ void initializeNewMove(ros::Rate rTimer) {
 void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
     //assign the conversion float type from ROS Float32 type
     lidar.setClosestPing(pingDistance.data);
+	float newSegmentLength = lidar.closestPing - minSafeRange;
     ROS_INFO("The ping distance from front of robot is: %f", lidar.closestPing);
-    decideToStop();
+	if (lidar.closestPing <= minSafeRange){
+		lidar.setAlarm(true);
+	} else if (lidar.closestPing <= maxSafeRange && !lidar.modifiedSegment && !estop.on){
+		modifiedSegment.copy(segment);
+		segment.setLength(newSegmentLength);
+		segment.resetLengthCompleted();
+		lidar.setStop(true);
+		lidar.setModifiedSegment(true);
+	} else if (lidar.closestPing > maxSafeRange && lidar.modifiedSegment){
+		float currLengthCompleted = segment.lengthCompleted;
+		float prevLengthCompleted = modifiedSegment.lengthCompleted;
+		segment.copy(modifiedSegment);
+		segment.setLength(segment.length - currLengthCompleted - prevLengthCompleted);
+		segment.resetLengthCompleted();
+		lidar.setStop(false);
+		lidar.setModifiedSegment(false);
+	}
 }
 
 void lidarAlarmCallback(const std_msgs::Bool& lidarAlarmMsg) {
@@ -234,7 +253,6 @@ void lidarAlarmCallback(const std_msgs::Bool& lidarAlarmMsg) {
     lidar.setAlarm(lidarAlarmMsg.data);
     if (lidar.alarm){
         ROS_INFO("The lidar alarm is on!");
-        lidar.stop = true;
         eStop();
     }
 }
@@ -264,7 +282,7 @@ int main(int argc, char **argv) {
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
     initializeNewMove(rTimer);
-    moveOnSegment(velocityPublisher, rTimer, 4.75);
+    moveOnSegment(velocityPublisher, rTimer, 6); //4.75
 //    initializeNewMove(rtimer);
 //    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);
 //    initializeNewMove(rtimer);

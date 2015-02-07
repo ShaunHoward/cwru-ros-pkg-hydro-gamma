@@ -64,6 +64,20 @@ struct Segment{
 	float startY; // subsequent segment start coordinates should be specified relative to end of previous segment
 	float startPhi;
 	float distanceLeft;
+	float length;
+	
+	void copy(const Segment& copyFrom){
+		lengthCompleted = copyFrom.lengthCompleted;
+		startX = copyFrom.startX;
+		startY = copyFrom.startY;
+		startPhi = copyFrom.startPhi;
+		distanceLeft = copyFrom.distanceLeft;
+		length = copyFrom.length;
+	}
+	
+	void setLength(float l){
+		length = l;
+	}
 	
 	void setStartX(float x){
 		startX = x;
@@ -104,6 +118,7 @@ struct Lidar{
 	float closestPing;
 	bool alarm;
 	bool stop;
+	bool modifiedSegment;
 	
 	void setAlarm(bool alarm_bool){
 		alarm = alarm_bool;
@@ -113,6 +128,9 @@ struct Lidar{
 	}
 	void setClosestPing(float closest){
 		closestPing = closest;
+	}
+	void setModifiedSegment(bool modified){
+		modifiedSegment = modified;
 	}
 };
 
@@ -125,7 +143,7 @@ struct Estop{
 };
 
 Callback callback;
-Segment segment;
+Segment segment, modifiedSegment;
 Lidar lidar;
 Estop estop;
 
@@ -136,6 +154,8 @@ const float maxAcceleration = 0.1; //1m/sec^2 is 0.1 g's
 const float maxOmega = 1.0; //1 rad/sec-> about 6 seconds to rotate 1 full rev
 const float maxAlpha = 0.5; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
 const float changeInTime = 0.050; // choose an update rate of 20Hz; go faster with actual hardware
+const float maxSafeRange = 2.5; //start slowing down when object is within this range of robot
+const float minSafeRange = 0.5; //stop the robot when at this distance from object
 
 // compute some properties of trapezoidal velocity profile plan:
 float accelerationTime = maxVelocity / maxAcceleration; //...assumes start from rest
