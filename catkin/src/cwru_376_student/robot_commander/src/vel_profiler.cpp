@@ -272,8 +272,8 @@ int main(int argc, char **argv) {
     ros::NodeHandle nodeHandle; // get a ros nodehandle; standard yadda-yadda
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
-    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("robot0/cmd_vel", 1);
-    ros::Subscriber sub = nodeHandle.subscribe("/robot0/odom", 1, odomCallback);
+    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("jinx/cmd_vel", 1);
+    ros::Subscriber sub = nodeHandle.subscribe("/jinx/odom", 1, odomCallback);
     
     ros::Subscriber ping_dist_subscriber = nodeHandle.subscribe("lidar_dist", 1, pingDistanceCallback);
     ros::Subscriber lidar_alarm_subscriber = nodeHandle.subscribe("lidar_alarm", 1, lidarAlarmCallback);
