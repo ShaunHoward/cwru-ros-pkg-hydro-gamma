@@ -156,6 +156,7 @@ struct Estop{
 	}
 };
 
+//Various structs for use within the vel_scheduler
 Callback callback;
 Segment segment, modifiedSegment;
 Lidar lidar;

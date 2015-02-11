@@ -1,8 +1,8 @@
 #include <ros/ros.h>
-#include <cwru_base/Pose.h>
+#include <cwru_msgs/Pose.h>
 #include <iostream>
 #include <fstream>
-#include <cwru_base/cRIOSensors.h>
+#include <cwru_msgs/cRIOSensors.h>
 #include <std_msgs/Bool.h>
 
 bool motorsEnabled;
