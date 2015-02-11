@@ -7,6 +7,9 @@
 #include <math.h>
 #include <float.h>
 
+/**
+ * A callback struct for holding odometer values and change in time.
+ */
 struct Callback{
 	// globals for communication w/ callbacks:
     public:
@@ -55,6 +58,10 @@ struct Callback{
 	}
 };
 
+/**
+ * A segment struct for the current segment to move the robot on. It holds all
+ * necessary values to run the robot on the given segment.
+ */
 struct Segment{
     public:
 	//here's a subtlety:  might be tempted to measure distance to the goal, instead of distance from the start.
@@ -112,6 +119,10 @@ struct Segment{
 	}
 };
 
+/**
+ * A lidar struct that holds the values necessary to determine lidar values
+ * in the velocity profiler.
+ */
 struct Lidar{
     public:
 	//Lidar variables
@@ -134,6 +145,9 @@ struct Lidar{
 	}
 };
 
+/**
+ * An estop struct that just allows estop to be set on or off.
+ */
 struct Estop{
     public:
 	bool on;
@@ -167,6 +181,7 @@ ros::Publisher velocityPublisher;
 
 geometry_msgs::Twist velocityCommand; //create a variable of type "Twist" to publish speed/spin commands
 
+//See comments in actual cpp file.
 void odomCallback(const nav_msgs::Odometry& odom_rcvd);
 
 bool rotate(float startTime, float currTime, float commandOmega, float currRotation, float endRotation);

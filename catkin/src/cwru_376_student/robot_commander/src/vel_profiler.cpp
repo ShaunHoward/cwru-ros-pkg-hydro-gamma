@@ -1,10 +1,13 @@
 #include <vel_profiler.h>
 
-// receive the pose and velocity estimates from the simulator (or the physical robot)
-// copy the relevant values to global variables, for use by "main"
-// Note: stdr updates odom only at 10Hz; Jinx is 50Hz (?)
+/**
+ * Receives the pose and velocity estimates from the simulator (or the physical robot),
+ * copies the relevant values to global variables, for use by "main"
+ * Note: stdr updates odom only at 10Hz; Jinx is 50Hz (?).
+ * @param odom_rcvd - the odom message from the robot
+ */
 void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
-    //here's a trick to compute the delta-time between successive callbacks:
+    //compute time since last callback
     callback.dt = (ros::Time::now() - callback.lastCallbackTime).toSec();
     callback.lastCallbackTime = ros::Time::now(); // let's remember the current time, and use it next iteration
 
@@ -28,7 +31,17 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     callback.printValues();
 }
 
-bool rotate(float startTime, float currTime, float commandOmega, float currRotation, float endRotation) {
+/**
+ * Determines if the robot has rotated successfully to the desired end rotation.
+ * 
+ * @param startTime - the starting time of the rotation
+ * @param currTime - the current time of the rotation
+ * @param commandOmega - the omega desired
+ * @param currRotation - the current rotation of the robot
+ * @param endRotation - the desired end rotation of the robot
+ * @return whether the robot rotated successfully
+ */
+bool isDoneRotating(float startTime, float currTime, float commandOmega, float currRotation, float endRotation) {
     //for degrees do: currRotation = currRotation + (new_cmd_omega) * (currTime - startTime);
     currRotation = (commandOmega) * (currTime - startTime);
     ROS_INFO("The current rotation in rads is: %f", currRotation);
@@ -45,6 +58,9 @@ bool rotate(float startTime, float currTime, float commandOmega, float currRotat
     }
 }
 
+/**
+ * Resets all relevant velocities in the velocity command.
+ */
 void resetVelocityCommand() {
     velocityCommand.linear.x = 0.0; // initialize these values to zero
     velocityCommand.linear.y = 0.0;
@@ -54,12 +70,21 @@ void resetVelocityCommand() {
     velocityCommand.angular.z = 0.0;
 }
 
-void eStop(){
+/**
+ * Resets the velocity of the robot in an effort to stop the robot immediately.
+ */
+void eStop() {
     resetVelocityCommand();
-    velocityPublisher.publish(velocityCommand); 
+    velocityPublisher.publish(velocityCommand);
 }
 
-float trapezoidalSlowDown(float segmentLength){
+/**
+ * Slows down the robot trapezoidally.
+ * 
+ * @param segmentLength - the segment to slow the robot down along
+ * @return the newly scheduled velocity determined by the algorithm
+ */
+float trapezoidalSlowDown(float segmentLength) {
     // compute distance traveled so far:
     float deltaX = callback.odomX - segment.startX;
     float deltaY = callback.odomY - segment.startY;
@@ -79,34 +104,19 @@ float trapezoidalSlowDown(float segmentLength){
     } else { // not ready to decel, so target vel is v_max, either accel to it or hold it
         scheduledVelocity = maxVelocity;
     }
-	ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
+    ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
     return scheduledVelocity;
 }
 
-void decideToStop(){
-//    float slow_down_start = 2.0f;
-//    float e_stop_distance = 0.5f;
-//    float dist = closest_ping_dist;
-//    //not sure about stop distance if obstacle before end of path
-//    float calc_stop_dist = dist - e_stop_distance;
-//    if (dist > e_stop_distance && dist <= slow_down_start){
-//        stopping = true;
-//        if (dist_to_go <= 0) {
-//            stopping = false; 
-//        } else if (calc_stop_dist >= dist_to_go){
-//            ROS_INFO("Deciding to stop with trapezoidal slow down until goal.");
-//            trapezoidal_slow_down(dist_to_go); //curr_seg_length - dist
-//        } else {
-//            ROS_INFO("Deciding to stop with trapezoidal slow down before goal.");
-//            trapezoidal_slow_down(calc_stop_dist);
-//        }
-//    } else if (dist > slow_down_start) {
-//        stopping = false;
-//    }
-}
-
-float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
-	//how does the current velocity compare to the scheduled vel?
+/**
+ * Speeds up the robot trapezoidally.
+ * 
+ * @param scheduledVelocity - the velocity provided via the trapezoidal slow down algorithm
+ * @param newVelocityCommand - the velocity command to publish
+ * @return the new velocity to command
+ */
+float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand) {
+    //how does the current velocity compare to the scheduled vel?
     if (callback.odomVelocity < scheduledVelocity) { // maybe we halted, e.g. due to estop or obstacle;
         // may need to ramp up to v_max; do so within accel limits
         float testVelocity = callback.odomVelocity + maxAcceleration * callback.dt; // if callbacks are slow, this could be abrupt
@@ -128,66 +138,76 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand){
     return newVelocityCommand;
 }
 
-//Moves the robot on a given segment length with the desired angular velocity z.
-//Will stop rotating when the end rotation is met according to the timing of the method calls.
-//Can use to just rotate robot if segment length is 0.
-//Can use to just move robot forward if z and endRotation are both 0.
+/**
+ * Moves the robot on a given segment length with the desired angular velocity z.
+ * Will stop rotating when the end rotation is met according to the timing of the method calls.
+ * Can use to just rotate robot if segment length is 0.
+ * Can use to just move robot forward if z and endRotation are both 0.
+ * @param velocityPublisher - the publisher to publish velocity commands to
+ * @param rTimer - the timer for the movement
+ * @param segmentLength - the length of the segment to move along
+ */
 void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float segmentLength) {
-    segment.resetLengthCompleted(); // need to compute actual distance travelled within the current segment
-	segment.setLength(segmentLength);
+    segment.resetLengthCompleted(); //reset the length completed on the current segment
+    segment.setLength(segmentLength); //set the length of the current segment
     float constantVelocityDistance = segmentLength - accelerationDistance - decelerationDistance; //if this is <0, never get to full spd
     float constantVelocityTime = constantVelocityDistance / maxVelocity; //will be <0 if don't get to full speed
     float duration = accelerationTime + decelerationTime + constantVelocityTime; // expected duration of this move
 
-    // here is a crude description of one segment of a journey.  Will want to generalize this to handle multiple segments
-    // define the desired path length of this segment
     float scheduledVelocity = 0.0; //desired vel, assuming all is per plan
     float newVelocityCommand = 0.1; // value of speed to be commanded; update each iteration
-	float slowdownSegmentLength = 0.0;
+    float slowdownSegmentLength = 0.0;
 
-    //dist_decel*= 2.0; // TEST TEST TEST
     while (ros::ok()) // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
     {
         ros::spinOnce(); // allow callbacks to populate fresh data
-		if(!(estop.on || lidar.alarm)) {
-			ROS_INFO("Distance to end of path segment: %f", segment.distanceLeft);
-			scheduledVelocity = trapezoidalSlowDown(segment.length);
+        if (!(estop.on || lidar.alarm)) {
+            ROS_INFO("Distance to end of path segment: %f", segment.distanceLeft);
+            scheduledVelocity = trapezoidalSlowDown(segment.length);
 
-			newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
+            newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
 
-			ROS_INFO("cmd vel: %f", newVelocityCommand); // debug output
+            ROS_INFO("cmd vel: %f", newVelocityCommand); // debug output
 
-			velocityCommand.linear.x = newVelocityCommand;
-			
-			if (segment.distanceLeft <= 0.0) { //uh-oh...went too far already!
-				velocityCommand.linear.x = 0.0; //command vel=0
-			}
+            velocityCommand.linear.x = newVelocityCommand;
 
-			velocityPublisher.publish(velocityCommand);
-			//rTimer.sleep();
-			if (segment.distanceLeft <= 0.0) break; //halt when segment is complete
-		}
+            if (segment.distanceLeft <= 0.0) { //uh-oh...went too far already!
+                velocityCommand.linear.x = 0.0; //command vel=0
+            }
+
+            velocityPublisher.publish(velocityCommand);
+            //rTimer.sleep();
+            if (segment.distanceLeft <= 0.0) break; //halt when segment is complete
+        }
     }
     ROS_INFO("completed move along segment with desired rotation");
 }
 
-void rotate(ros::Publisher velocityPublisher, ros::Rate rTimer, float z, float endRotation){
+/**
+ * Rotates the robot with a trapezoidal speed up and speed down profile.
+ * 
+ * @param velocityPublisher - the publisher to publish the new velocity to
+ * @param rTimer - the timer of the rotation movement
+ * @param z - the spin rate desired for the robot
+ * @param endRotation - the desired end rotation of the robot
+ */
+void rotate(ros::Publisher velocityPublisher, ros::Rate rTimer, float z, float endRotation) {
     bool firstCall = true;
     float startTime;
     float currTime = 0.0;
     float currRotation = 0.0;
     float newCommandOmega = z; //update spin rate
-    while (ros::ok()){
+    while (ros::ok()) {
         //Handle setting up timer for rotation since beginning of method call.
         if (firstCall) {
             firstCall = false;
             startTime = ros::Time::now().toSec();
             velocityCommand.angular.z = newCommandOmega; // spin command;
         }
-	//Rotate and check if at desired rotation in rads.
+        //Rotate and check if at desired rotation in rads.
         currTime = ros::Time::now().toSec();
-        bool doneRotating = rotate(startTime, currTime, newCommandOmega, currRotation, endRotation);
-	
+        bool doneRotating = isDoneRotating(startTime, currTime, newCommandOmega, currRotation, endRotation);
+
         //Set angular z velocity to 0 when done rotating.
         if (doneRotating) {
             velocityCommand.angular.z = 0.0;
@@ -197,6 +217,12 @@ void rotate(ros::Publisher velocityPublisher, ros::Rate rTimer, float z, float e
     }
 }
 
+/**
+ * Validates that the odometer is receiving feasible values to use.
+ * 
+ * @param rTimer - the timer of the odom callback call
+ * @return true when validation is complete
+ */
 bool odomCallValidation(ros::Rate rTimer) {
     // let's wait for odom callback to start getting good values...
     callback.odomOmega = 1000000; // absurdly high
@@ -209,14 +235,26 @@ bool odomCallValidation(ros::Rate rTimer) {
     return true;
 }
 
+/**
+ * Initializes the position of the robot according to the current segment.
+ * These values are printed via ROS_INFO.
+ */
 void initializePosition() {
     ROS_INFO("received odom message; proceeding");
     segment.setStartX(callback.odomX);
     segment.setStartY(callback.odomY);
     segment.setStartPhi(callback.odomPhi);
-	segment.printValues();
+    segment.printValues();
 }
 
+/**
+ * Initializes moving along a new segment. Validates that the
+ * odometer is receiving feasible values, initializes the position
+ * of the robot according to the new segment, and resets all velocity
+ * of the robot to 0.
+ * 
+ * @param rTimer - the timer for odometer validation
+ */
 void initializeNewMove(ros::Rate rTimer) {
     if (odomCallValidation(rTimer)) {
         initializePosition();
@@ -224,57 +262,86 @@ void initializeNewMove(ros::Rate rTimer) {
     }
 }
 
+/**
+ * Determines whether to run the robot along a new, slow down segment, to sound a 
+ * lidar alarm, or to keep moving.
+ * 
+ * @param pingDistance - the distance of the ping closest to the robot within a given angle range
+ */
 void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
-    //assign the conversion float type from ROS Float32 type
     lidar.setClosestPing(pingDistance.data);
-	float newSegmentLength = lidar.closestPing - minSafeRange;
+    float newSegmentLength = lidar.closestPing - minSafeRange;
     ROS_INFO("The ping distance from front of robot is: %f", lidar.closestPing);
-	if (lidar.closestPing <= minSafeRange){
-		lidar.setAlarm(true);
-	} else if (lidar.closestPing <= maxSafeRange && !lidar.modifiedSegment && !estop.on){
-		modifiedSegment.copy(segment);
-		segment.setLength(newSegmentLength);
-		segment.resetLengthCompleted();
-		lidar.setStop(true);
-		lidar.setModifiedSegment(true);
-	} else if (lidar.closestPing > maxSafeRange && lidar.modifiedSegment){
-		float currLengthCompleted = segment.lengthCompleted;
-		float prevLengthCompleted = modifiedSegment.lengthCompleted;
-		segment.copy(modifiedSegment);
-		segment.setLength(segment.length - currLengthCompleted - prevLengthCompleted);
-		segment.resetLengthCompleted();
-		lidar.setStop(false);
-		lidar.setModifiedSegment(false);
-	}
+    //Determine to sound a lidar alarm
+    if (lidar.closestPing <= minSafeRange) {
+        lidar.setAlarm(true);
+    } else if (lidar.closestPing <= maxSafeRange && !lidar.modifiedSegment && !estop.on) {
+        //determine whether to slow down on a new segment to before the position of the object near robot
+        modifiedSegment.copy(segment);
+        segment.setLength(newSegmentLength);
+        segment.resetLengthCompleted();
+        lidar.setStop(true);
+        lidar.setModifiedSegment(true);
+    } else if (lidar.closestPing > maxSafeRange && lidar.modifiedSegment) {
+        //run on the rest of the desired segment length
+        float currLengthCompleted = segment.lengthCompleted;
+        float prevLengthCompleted = modifiedSegment.lengthCompleted;
+        segment.copy(modifiedSegment);
+        segment.setLength(segment.length - currLengthCompleted - prevLengthCompleted);
+        segment.resetLengthCompleted();
+        lidar.setStop(false);
+        lidar.setModifiedSegment(false);
+    }
 }
 
+/**
+ * Determines whether to stop the robot due to a lidar alarm.
+ * 
+ * @param lidarAlarmMsg - a boolean message that designates if the robot needs to
+ * be stopped immediately
+ */
 void lidarAlarmCallback(const std_msgs::Bool& lidarAlarmMsg) {
-    //assign conversion to bool type from ROS Bool type
     lidar.setAlarm(lidarAlarmMsg.data);
-    if (lidar.alarm){
+    if (lidar.alarm) {
         ROS_INFO("The lidar alarm is on!");
         eStop();
     }
 }
 
+/**
+ * Determines whether to stop the robot immediately
+ * because estop is on.
+ * 
+ * @param estopMsg - a boolean message that designates whether the robot
+ * estop is on
+ */
 void estopCallback(const std_msgs::Bool& estopMsg) {
     //assign conversion to bool type from ROS Bool type
     estop.set(estopMsg.data);
-    if (estop.on){
+    if (estop.on) {
         ROS_INFO("Velocity profiler ESTOP enabled.");
         estop.set(true);
         eStop();
     }
 }
 
+/**
+ * Initializes a new velocity profiler node, subscribes to odometer, lidar, and estop
+ * messages. Movement segments and rotations should be declared in this method after the
+ * ROS timer is declared by initializing a new move and moving on a new segment.
+ * 
+ * @param argc - ROS initialization values
+ * @param argv - ROS initialization values
+ * @return the exit code of the program
+ */
 int main(int argc, char **argv) {
     ros::init(argc, argv, "vel_profiler"); // name of this node will be "minimal_publisher1"
     ros::NodeHandle nodeHandle; // get a ros nodehandle; standard yadda-yadda
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
-    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("jinx/cmd_vel", 1);
-    ros::Subscriber sub = nodeHandle.subscribe("/jinx/odom", 1, odomCallback);
-    
+    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    ros::Subscriber sub = nodeHandle.subscribe("odom", 1, odomCallback);
+
     ros::Subscriber ping_dist_subscriber = nodeHandle.subscribe("lidar_dist", 1, pingDistanceCallback);
     ros::Subscriber lidar_alarm_subscriber = nodeHandle.subscribe("lidar_alarm", 1, lidarAlarmCallback);
     ros::Subscriber estop_subscriber = nodeHandle.subscribe("estop_listener", 1, estopCallback);
@@ -283,13 +350,14 @@ int main(int argc, char **argv) {
 
     initializeNewMove(rTimer);
     moveOnSegment(velocityPublisher, rTimer, 6); //4.75
-//    initializeNewMove(rtimer);
-//    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);
-//    initializeNewMove(rtimer);
-//   moveOnSegment(velocityPublisher, rtimer, 12.3, 0.0, 0.0);
-//   initializeNewMove(rtimer);
-//    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);
-//    initializeNewMove(rtimer);
-//    moveOnSegment(velocityPublisher, rtimer, 12.3, 0.0, 0.0);
+    //    initializeNewMove(rtimer);
+    //    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);
+    //    initializeNewMove(rtimer);
+    //   moveOnSegment(velocityPublisher, rtimer, 12.3, 0.0, 0.0);
+    //   initializeNewMove(rtimer);
+    //    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);
+    //    initializeNewMove(rtimer);
+    //    moveOnSegment(velocityPublisher, rtimer, 12.3, 0.0, 0.0);
+    return 0;
 }
 

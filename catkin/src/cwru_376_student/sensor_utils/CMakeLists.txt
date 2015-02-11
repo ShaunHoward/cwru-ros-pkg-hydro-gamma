@@ -8,6 +8,7 @@ find_package(catkin_simple REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  cwru_msgs
 )
 
 catkin_simple()
