@@ -5,6 +5,7 @@
 #include <cwru_msgs/cRIOSensors.h>
 #include <std_msgs/Bool.h>
 
+//Whether the motors are enabled via subscription to robot
 bool motorsEnabled;
 ros::Publisher estopPublisher;
 
@@ -14,6 +15,7 @@ ros::Publisher estopPublisher;
  * message. 
  * In order to call the estop command from terminal, use a line like the following:
  * rostopic pub -r 10 /motors_enabled std_msgs/Bool False
+ * 
  * @param motorsEnabled - a boolean message about whether the robot motors are enabled
  */
 void estopCallback(const std_msgs::Bool::ConstPtr& motorsEnabled) {
@@ -22,6 +24,8 @@ void estopCallback(const std_msgs::Bool::ConstPtr& motorsEnabled) {
     else if (motorsEnabled->data == false)
         ROS_INFO("Estop is on."); // means motors are ENABLED
 
+	//Publish the negation of whether the motors are enabled as
+	//an ESTOP message.
     std_msgs::Bool estopMessage;
     estopMessage.data = !(motorsEnabled->data);
     estopPublisher.publish(estopMessage);
@@ -39,6 +43,8 @@ void estopCallback(const std_msgs::Bool::ConstPtr& motorsEnabled) {
 int main(int argc, char **argv) {
     ros::init(argc, argv, "estop_listener");
     ros::NodeHandle nodeHandle;
+	
+	//Make a new estop listener publisher
     ros::Publisher publisher = nodeHandle.advertise<std_msgs::Bool>("estop_listener", 1);
     estopPublisher = publisher;
     ros::Subscriber subscriber = nodeHandle.subscribe("motors_enabled", 1, estopCallback);

@@ -28,6 +28,7 @@ ros::Publisher lidar_dist_publisher_;
 /**
  * Determines the closest ping to the robot according to LIDAR ping ranges.
  * The smallest found ping distance value is returned.
+ * 
  * @param ping_ranges - the float vector of ping ranges from the lidar
  * @param minIndex - the index of the minimum (left) ping from the lidar
  * @param maxIndex - the index of the maximum (right) ping from the lidar
@@ -45,6 +46,7 @@ float getClosestPingDist(std::vector<float> ping_ranges, int minIndex, int maxIn
 
 /**
  * Gets the absolute value of the given value.
+ * 
  * @param value - the value to get the abs value of
  */
 float absValue(float value) {
@@ -59,6 +61,7 @@ float absValue(float value) {
  * and publishes this as a lidar distance message. If the smallest ping distance from 
  * the LIDAR is less than .5 meters, then a lidar alarm message will be published that 
  * recognizes the lidar alarm has sounded.
+ * 
  * @param laser_scan - the laser scan message received from the lidar
  */
 void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
@@ -103,6 +106,7 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
  * Initializes a lidar alarm ROS node for the robot. Subscribes to the lidar of
  * the robot and publishes both a lidar alarm and ping distance message via callback
  * functions that determine these values.
+ * 
  * @param argc - initialize ROS values
  * @param argv - initialize ROS values
  * @return the exit code of the program
@@ -110,11 +114,12 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
 int main(int argc, char **argv) {
     ros::init(argc, argv, "lidar_alarm");
     ros::NodeHandle nh;
+	//Make new publishers for lidar alarm and ping distance
     ros::Publisher pub = nh.advertise<std_msgs::Bool>("lidar_alarm", 1);
     lidar_alarm_publisher_ = pub;
     ros::Publisher pub2 = nh.advertise<std_msgs::Float32>("lidar_dist", 1);
     lidar_dist_publisher_ = pub2;
-    ros::Subscriber lidar_subscriber = nh.subscribe("base_laser1_scan", 1, laserCallback);
+    ros::Subscriber lidar_subscriber = nh.subscribe("/laser/scan", 1, laserCallback); //base_laser1_scan for Jinx
     ros::spin();
     return 0;
 }
