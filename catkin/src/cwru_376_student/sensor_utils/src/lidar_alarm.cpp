@@ -22,6 +22,7 @@ float start_min_angle = -.523333333;
 float end_max_angle = .52333333;
 bool laser_alarm_ = false;
 
+//Publishers for lidar alarm and closest ping distance
 ros::Publisher lidar_alarm_publisher_;
 ros::Publisher lidar_dist_publisher_;
 
