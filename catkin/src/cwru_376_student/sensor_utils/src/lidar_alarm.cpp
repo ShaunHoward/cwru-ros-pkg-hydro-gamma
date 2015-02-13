@@ -82,6 +82,8 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         ROS_INFO("LIDAR setup: max_ping_index = %i", max_ping_index);
     }
 
+    //gets the closest ping distance found in range -30 degrees to 30 degrees from front, center
+    //of robot
     closest_ping = getClosestPingDist(laser_scan.ranges, min_ping_index, max_ping_index);
     ROS_INFO("The closest ping is: %f", closest_ping);
 
@@ -119,7 +121,7 @@ int main(int argc, char **argv) {
     lidar_alarm_publisher_ = pub;
     ros::Publisher pub2 = nh.advertise<std_msgs::Float32>("lidar_dist", 1);
     lidar_dist_publisher_ = pub2;
-    ros::Subscriber lidar_subscriber = nh.subscribe("/laser/scan", 1, laserCallback); //base_laser1_scan for Jinx
+    ros::Subscriber lidar_subscriber = nh.subscribe("base_laser1_scan", 1, laserCallback); //base_laser1_scan for Jinx
     ros::spin();
     return 0;
 }
