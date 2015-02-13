@@ -1,5 +1,7 @@
 # sensor_utils
 
+Team Gamma
+
 This package contains files for running the sensors of Jinx.
 The sensors utilized are LIDAR and estop.
 A lidar_alarm file exists within the package in order to subscribe to messages

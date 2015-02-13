@@ -1,5 +1,7 @@
 # robot_commander
 
+Team Gamma
+
 This package exists to command the velocity of the robot. 
 A velocity scheduler (vel_scheduler) node exists in the package which determines when to 
 accelerate, decelerate, or stop the robot. Trapezoidal speed up and trapezoidal
@@ -15,6 +17,9 @@ to run the velocity scheduler. Each time a move is initialized, the coordinates
 are set to the most recent coordinates given by the odometer callback to track
 current position. The rotation is set according to the odometer as well.
 
+Currently, rotation does not work properly, but we are working on a fix for this 
+in the next project.
+
 Example of how to run the robot on a new line segment in vel_scheduler in main():
 "velocityPublisher <- publishes "cmd_vel" message
 rTimer <- ROS timer
@@ -24,6 +29,7 @@ initializeNewMove(rTimer);
 //representing meters in length.
 moveOnSegment(velocityPublisher, rTimer, segmentLength);"
 
+Not Currently Working:
 Example of how to turn the robot on a new segment in vel_scheduler in main():
 "velocityPublisher <- publishes "cmd_vel" message
 rTimer <- ROS timer
@@ -55,6 +61,6 @@ console about the location, movement, etc. of the robot.
 
 Rotation:
 
-Rotation also uses the trapezoidal speed up and down algorithms but in terms of
+Rotation will also use the trapezoidal speed up and down algorithms but in terms of
 angular velocity and odometer rotation. The rotation will stop when the
 desired end rotation is met. The rotation is measured in radians.
