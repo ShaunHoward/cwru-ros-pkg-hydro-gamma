@@ -81,7 +81,7 @@ void eStop() {
     velocityCommand.angular.y = 0.0;
     velocityCommand.angular.z = 0.0;
     velocityPublisher.publish(velocityCommand);
-	ROS_INFO("ESTOP function executed.");
+    ROS_INFO("ESTOP function executed.");
 }
 
 /**
@@ -156,15 +156,10 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand) {
 void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float segmentLength) {
     segment.resetLengthCompleted(); //reset the length completed on the current segment
     segment.setLength(segmentLength); //set the length of the current segment
-    //float constantVelocityDistance = segmentLength - accelerationDistance - decelerationDistance; //if this is <0, never get to full spd
-    //float constantVelocityTime = constantVelocityDistance / maxVelocity; //will be <0 if don't get to full speed
- //   float duration = accelerationTime + decelerationTime + constantVelocityTime; // expected duration of this move
 
     float scheduledVelocity = 0.0; //desired vel, assuming all is per plan
     float newVelocityCommand = 0.1; // value of speed to be commanded; update each iteration
     float slowdownSegmentLength = 0.0;
-	//lidar.modifiedSegment = false;
-	//lidar.alarm = false;
 
     while (ros::ok()) // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
     {
@@ -202,16 +197,16 @@ void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float seg
 
             velocityPublisher.publish(velocityCommand);
             rTimer.sleep();
-            if (segment.distanceLeft <= 0.0){
-				ROS_INFO("Completed modified segment. Move out of way to finish original 					path.");			
-			}
-        } else if (halt){
-			velocityCommand.linear.x = 0.0;
-			velocityPublisher.publish(velocityCommand);
-			ROS_INFO("Software halt enabled. Robot is static.");
-		}
+            if (segment.distanceLeft <= 0.0) {
+                ROS_INFO("Completed modified segment. Move out of way to finish original 					path.");
+            }
+        } else if (halt) {
+            velocityCommand.linear.x = 0.0;
+            velocityPublisher.publish(velocityCommand);
+            ROS_INFO("Software halt enabled. Robot is static.");
+        }
     }
-    ROS_INFO("completed move along segment with desired rotation");
+    ROS_INFO("Completed move along segment with desired rotation");
 }
 
 /**
@@ -315,7 +310,7 @@ void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
         lidar.setModifiedSegment(true);
     } else if (lidar.closestPing > maxSafeRange && lidar.modifiedSegment) {
         //run on the rest of the desired segment length
-		float origPathLength = modifiedSegment.length;
+        float origPathLength = modifiedSegment.length;
         float currLengthCompleted = segment.lengthCompleted;
         float prevLengthCompleted = modifiedSegment.lengthCompleted;
         segment.copy(modifiedSegment);
@@ -323,7 +318,7 @@ void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
         segment.resetLengthCompleted();
         lidar.setStop(false);
         lidar.setModifiedSegment(false);
-		lidar.setAlarm(false);
+        lidar.setAlarm(false);
     }
 }
 
@@ -369,7 +364,7 @@ void haltCallback(const std_msgs::Bool& haltMsg) {
     //assign conversion to bool type from ROS Bool type
     halt = haltMsg.data;
     if (halt) {
-        ROS_INFO("Halt enabled.");
+        ROS_INFO("Software halt enabled.");
         eStop();
     }
 }
@@ -394,7 +389,7 @@ int main(int argc, char **argv) {
     ros::Subscriber ping_dist_subscriber = nodeHandle.subscribe("lidar_dist", 1, pingDistanceCallback);
     ros::Subscriber lidar_alarm_subscriber = nodeHandle.subscribe("lidar_alarm", 1, lidarAlarmCallback);
     ros::Subscriber estop_subscriber = nodeHandle.subscribe("estop_listener", 1, estopCallback);
-	ros::Subscriber halt_subscriber = nodeHandle.subscribe("halt_cmd", 1, haltCallback);
+    ros::Subscriber halt_subscriber = nodeHandle.subscribe("halt_cmd", 1, haltCallback);
 
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
