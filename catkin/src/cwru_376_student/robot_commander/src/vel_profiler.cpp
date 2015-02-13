@@ -74,8 +74,14 @@ void resetVelocityCommand() {
  * Resets the velocity of the robot in an effort to stop the robot immediately.
  */
 void eStop() {
-    resetVelocityCommand();
+    velocityCommand.linear.x = 0.0; // initialize these values to zero
+    velocityCommand.linear.y = 0.0;
+    velocityCommand.linear.z = 0.0;
+    velocityCommand.angular.x = 0.0;
+    velocityCommand.angular.y = 0.0;
+    velocityCommand.angular.z = 0.0;
     velocityPublisher.publish(velocityCommand);
+	ROS_INFO("ESTOP function executed.");
 }
 
 /**
@@ -150,19 +156,21 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand) {
 void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float segmentLength) {
     segment.resetLengthCompleted(); //reset the length completed on the current segment
     segment.setLength(segmentLength); //set the length of the current segment
-    float constantVelocityDistance = segmentLength - accelerationDistance - decelerationDistance; //if this is <0, never get to full spd
-    float constantVelocityTime = constantVelocityDistance / maxVelocity; //will be <0 if don't get to full speed
-    float duration = accelerationTime + decelerationTime + constantVelocityTime; // expected duration of this move
+    //float constantVelocityDistance = segmentLength - accelerationDistance - decelerationDistance; //if this is <0, never get to full spd
+    //float constantVelocityTime = constantVelocityDistance / maxVelocity; //will be <0 if don't get to full speed
+ //   float duration = accelerationTime + decelerationTime + constantVelocityTime; // expected duration of this move
 
     float scheduledVelocity = 0.0; //desired vel, assuming all is per plan
     float newVelocityCommand = 0.1; // value of speed to be commanded; update each iteration
     float slowdownSegmentLength = 0.0;
+	//lidar.modifiedSegment = false;
+	//lidar.alarm = false;
 
     while (ros::ok()) // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
     {
         ros::spinOnce(); // allow callbacks to populate fresh data
-        if (!(estop.on || lidar.alarm)) {
-            ROS_INFO("Distance to end of path segment: %f", segment.distanceLeft);
+        if (!lidar.modifiedSegment && !(estop.on || lidar.alarm || halt)) {
+            ROS_INFO("Distance to end of original path segment: %f", segment.distanceLeft);
             scheduledVelocity = trapezoidalSlowDown(segment.length);
 
             newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
@@ -176,9 +184,32 @@ void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float seg
             }
 
             velocityPublisher.publish(velocityCommand);
-            //rTimer.sleep();
+            rTimer.sleep();
             if (segment.distanceLeft <= 0.0) break; //halt when segment is complete
-        }
+        } else if (lidar.modifiedSegment && !(estop.on || lidar.alarm || halt)) {
+            ROS_INFO("Distance to end of modified path segment: %f", segment.distanceLeft);
+            scheduledVelocity = trapezoidalSlowDown(segment.length);
+
+            newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
+
+            ROS_INFO("cmd vel: %f", newVelocityCommand); // debug output
+
+            velocityCommand.linear.x = newVelocityCommand;
+
+            if (segment.distanceLeft <= 0.0) { //uh-oh...went too far already!
+                velocityCommand.linear.x = 0.0; //command vel=0
+            }
+
+            velocityPublisher.publish(velocityCommand);
+            rTimer.sleep();
+            if (segment.distanceLeft <= 0.0){
+				ROS_INFO("Completed modified segment. Move out of way to finish original 					path.");			
+			}
+        } else if (halt){
+			velocityCommand.linear.x = 0.0;
+			velocityPublisher.publish(velocityCommand);
+			ROS_INFO("Software halt enabled. Robot is static.");
+		}
     }
     ROS_INFO("completed move along segment with desired rotation");
 }
@@ -284,13 +315,15 @@ void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
         lidar.setModifiedSegment(true);
     } else if (lidar.closestPing > maxSafeRange && lidar.modifiedSegment) {
         //run on the rest of the desired segment length
+		float origPathLength = modifiedSegment.length;
         float currLengthCompleted = segment.lengthCompleted;
         float prevLengthCompleted = modifiedSegment.lengthCompleted;
         segment.copy(modifiedSegment);
-        segment.setLength(segment.length - currLengthCompleted - prevLengthCompleted);
+        segment.setLength(origPathLength - currLengthCompleted - prevLengthCompleted);
         segment.resetLengthCompleted();
         lidar.setStop(false);
         lidar.setModifiedSegment(false);
+		lidar.setAlarm(false);
     }
 }
 
@@ -326,6 +359,22 @@ void estopCallback(const std_msgs::Bool& estopMsg) {
 }
 
 /**
+ * Determines whether to stop the robot immediately
+ * because software halt is enabled.
+ * 
+ * @param haltMsg - a boolean message that designates whether the robot
+ * should halt
+ */
+void haltCallback(const std_msgs::Bool& haltMsg) {
+    //assign conversion to bool type from ROS Bool type
+    halt = haltMsg.data;
+    if (halt) {
+        ROS_INFO("Halt enabled.");
+        eStop();
+    }
+}
+
+/**
  * Initializes a new velocity profiler node, subscribes to odometer, lidar, and estop
  * messages. Movement segments and rotations should be declared in this method after the
  * ROS timer is declared by initializing a new move and moving on a new segment.
@@ -345,11 +394,12 @@ int main(int argc, char **argv) {
     ros::Subscriber ping_dist_subscriber = nodeHandle.subscribe("lidar_dist", 1, pingDistanceCallback);
     ros::Subscriber lidar_alarm_subscriber = nodeHandle.subscribe("lidar_alarm", 1, lidarAlarmCallback);
     ros::Subscriber estop_subscriber = nodeHandle.subscribe("estop_listener", 1, estopCallback);
+	ros::Subscriber halt_subscriber = nodeHandle.subscribe("halt_cmd", 1, haltCallback);
 
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
     initializeNewMove(rTimer);
-    moveOnSegment(velocityPublisher, rTimer, 6); //4.75
+    moveOnSegment(velocityPublisher, rTimer, 25); //4.75
     //    initializeNewMove(rtimer);
     //    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);
     //    initializeNewMove(rtimer);

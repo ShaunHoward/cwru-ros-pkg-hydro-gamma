@@ -163,12 +163,12 @@ Lidar lidar;
 Estop estop;
 
 // set some dynamic limits...
-const float maxVelocity = 5.0; //1m/sec is a slow walk
+const float maxVelocity = 0.8; //1m/sec is a slow walk
 const float minVelocity = 0.1; // if command velocity too low, robot won't move
-const float maxAcceleration = 0.1; //1m/sec^2 is 0.1 g's
+const float maxAcceleration = 0.5; //1m/sec^2 is 0.1 g's
 const float maxOmega = 1.0; //1 rad/sec-> about 6 seconds to rotate 1 full rev
 const float maxAlpha = 0.5; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
-const float changeInTime = 0.050; // choose an update rate of 20Hz; go faster with actual hardware
+const float changeInTime = 0.05; // choose an update rate of 20Hz; go faster with actual hardware
 const float maxSafeRange = 2.5; //start slowing down when object is within this range of robot
 const float minSafeRange = 0.5; //stop the robot when at this distance from object
 
@@ -177,6 +177,8 @@ float accelerationTime = maxVelocity / maxAcceleration; //...assumes start from 
 float decelerationTime = maxVelocity / maxAcceleration; //(for same decel as accel); assumes brake to full halt
 float accelerationDistance = 0.5 * maxAcceleration * (accelerationTime * accelerationTime); //distance rqd to ramp up to full speed
 float decelerationDistance = 0.5 * maxAcceleration * (decelerationTime * decelerationTime); //same as ramp-up distance
+
+bool halt = false;
 
 ros::Publisher velocityPublisher;
 
