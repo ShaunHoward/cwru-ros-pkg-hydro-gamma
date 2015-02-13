@@ -12,7 +12,7 @@ ros::Publisher estopPublisher;
  * Publishes an estop message as to whether the estop is enabled or not. If
  * the motors on the robot are not enabled, then estop is on according to this
  * message. 
- * In order to call the estop command from terminal, use the following line:
+ * In order to call the estop command from terminal, use a line like the following:
  * rostopic pub -r 10 /motors_enabled std_msgs/Bool False
  * @param motorsEnabled - a boolean message about whether the robot motors are enabled
  */

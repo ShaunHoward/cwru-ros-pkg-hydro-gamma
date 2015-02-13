@@ -21,8 +21,18 @@ The estop_listener publishes the following messages:
 This also translates into whether the hardware estop is on.
 
 In order to run the lidar_alarm, execute the following command:
+
 "rosrun sensor_utils lidar_alarm"
 
 In order to run the estop_listener, execute the following command:
+
 "rosrun sensor_utils estop_listener"
+
+One could also call the estop command via terminal like so:
+
+"rostopic pub -r 10 /motors_enabled std_msgs/Bool False"
+
+To revoke this command, one could use the following:
+
+"rostopic pub -r 10 /motors_enabled std_msgs/Bool True"
 

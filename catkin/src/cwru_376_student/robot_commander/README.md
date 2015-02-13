@@ -7,20 +7,35 @@ A velocity scheduler (vel_scheduler) node exists in the package which determines
 accelerate, decelerate, or stop the robot. Trapezoidal speed up and trapezoidal
 speed down algorithms determine at what rate to speed up or down the robot according to 
 the lidar_alarm node and estop_listener node as well as the odometer readings
-from the robot. The messages subscribed to are the nav_msgs about odometry , i.e.
+from the robot. The messages subscribed to are the nav_msgs about odometry, i.e.
 "odom", and the "lidar_alarm", "lidar_dist" and "estop_listener" messages
 published from package "sensor_utils". The message published is called "cmd_vel"
-which are a type of Twist message for robot velocity.
+which are a type of Twist message for robot velocity. It also has a subscriber for a
+software halt command. This subscriber subscribes to the boolean "halt_cmd" message.
+A message like this can be published within a terminal when the vel_profiler
+is run with rosrun in order to stop the robot on demand like estop.
+
+Currently, rotation does not work properly, but we are working on a fix for this 
+in the next project.
+
+To run vel_profiler:
+
+"rosrun robot_commander vel_profiler"
+
+To publish software halt command:
+
+"rostopic pub /halt_cmd std_msgs/Bool True"
+
+To revoke halt command:
+
+"rostopic pub /halt_cmd std_msgs/Bool False"
 
 Either line segments or rotation segments should be specified in the main method
 to run the velocity scheduler. Each time a move is initialized, the coordinates
 are set to the most recent coordinates given by the odometer callback to track
 current position. The rotation is set according to the odometer as well.
 
-Currently, rotation does not work properly, but we are working on a fix for this 
-in the next project.
-
-Example of how to run the robot on a new line segment in vel_scheduler in main():
+Example of how to code the robot to run on a new line segment in vel_scheduler in main():
 "velocityPublisher <- publishes "cmd_vel" message
 rTimer <- ROS timer
 //Initializes a new move along a segment.
