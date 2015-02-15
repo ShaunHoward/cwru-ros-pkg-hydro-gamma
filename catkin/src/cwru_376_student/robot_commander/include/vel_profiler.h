@@ -11,20 +11,28 @@
  * A callback struct for holding odometer values and change in time.
  */
 struct Callback{
-	// globals for communication w/ callbacks:
+	//Globals for communication w/ callbacks
     public:
+
+	//Odom callback values
         float odomVelocity; // measured/published system speed
 	float odomOmega; // measured/published system yaw rate (spin)
 	float odomX;
 	float odomY;
 	float odomPhi;
 	float odomDt;
+
+	//Last time odom callback took place
 	ros::Time lastCallbackTime;
+
+	//Change in time of the velocity profiler
 	float dt;
 	float quaternionZ, quaternionW;
 	
+	//Setters for callback values
 	void setOdomPhi(){
-		odomPhi = 2.0 * atan2(quaternionZ, quaternionW); // cheap conversion from quaternion to heading for planar motion		
+		//Conversion from quaternion to heading for planar motion
+		odomPhi = 2.0 * atan2(quaternionZ, quaternionW); 		
 	}
 	void setOdomVelocity(float velocity){
 		odomVelocity = velocity;
@@ -53,6 +61,10 @@ struct Callback{
 	void setQuaternionW(float w){
 		quaternionW = w;
 	}
+
+	/**
+	 * Prints the callback values via ROS_INFO().
+	 */
 	void printValues(){
 		ROS_INFO("odom CB: x = %f, y= %f, phi = %f, v = %f, omega = %f", odomX, odomY, odomPhi, odomVelocity, odomOmega);		
 	}
@@ -64,15 +76,24 @@ struct Callback{
  */
 struct Segment{
     public:
-	//here's a subtlety:  might be tempted to measure distance to the goal, instead of distance from the start.
-	// HOWEVER, will NEVER satisfy distance to goal = 0 precisely, but WILL eventually move far enought to satisfy distance travelled condition
-	float lengthCompleted; // need to compute actual distance travelled within the current segment
-	float startX; // fill these in with actual values once odom message is received
-	float startY; // subsequent segment start coordinates should be specified relative to end of previous segment
+	//The length complete thus far on the current segment
+	float lengthCompleted;
+
+	//The initial x and y coordinates and phi of the robot when this segment was made
+	float startX;
+	float startY;
 	float startPhi;
+
+	//The distance left to travel along this path segment
 	float distanceLeft;
+
+	//The lenght of this path segment
 	float length;
 	
+	/**
+	 * Copies all important values from one segment to this segment.
+	 * @param copyFrom - the segment to copy values from
+	 */
 	void copy(const Segment& copyFrom){
 		lengthCompleted = copyFrom.lengthCompleted;
 		startX = copyFrom.startX;
@@ -82,6 +103,7 @@ struct Segment{
 		length = copyFrom.length;
 	}
 	
+	//Setters for values of this segment
 	void setLength(float l){
 		length = l;
 	}
@@ -106,14 +128,17 @@ struct Segment{
 		lengthCompleted = length;
 	}
 	
+	//Reset the length completed along this segment
 	void resetLengthCompleted(){
 		lengthCompleted = 0.0;
 	}
 	
+	//Reset the distance left to travel along this segment
 	void resetDistanceLeft(){
 		distanceLeft = 0.0;
 	}
 	
+	//Print x, y, and phi to console via ROS_INFO
 	void printValues(){
 		ROS_INFO("start pose: x %f, y= %f, phi = %f", startX, startY, startPhi);
 	}
@@ -161,6 +186,7 @@ struct Lidar{
 	bool stop;
 	bool modifiedSegment;
 	
+	//Setters for lidar values
 	void setAlarm(bool alarm_bool){
 		alarm = alarm_bool;
 	}
@@ -180,7 +206,10 @@ struct Lidar{
  */
 struct Estop{
     public:
+	//Whether the estop is on
 	bool on;
+
+	//Set whether the estop is on
 	void set(bool on_){
 		on = on_;
 	}
@@ -212,6 +241,7 @@ float decelerationDistance = 0.5 * maxAcceleration * (decelerationTime * deceler
 float turnAccelTime = maxOmega / maxAlpha; //...assumes start from rest
 float turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
 
+//Whether to halt the robot due to software halt command
 bool halt = false;
 
 ros::Publisher velocityPublisher;
