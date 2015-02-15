@@ -119,6 +119,36 @@ struct Segment{
 	}
 };
 
+
+/**
+  *A Rotate struct that holds the values needed for a rotational
+  *command in degrees
+  */
+struct Rotate{
+    public:
+    float phi;
+    float startPhi;
+    float endPhi;
+    float phiCompleted;
+    float phiLeft;
+
+    void setPhi(float phi){
+        phi = phi;
+    }
+    void setStartPhi(float phi){
+        startPhi = phi;
+    }
+    void setEndPhi(float phi){
+        endPhi = phi;
+    } 
+    void setPhiCompleted(float phi){
+        phiCompleted = phi;
+    }
+    void setPhiLeft(float phi){
+        phiLeft = phi;
+    }
+};
+
 /**
  * A lidar struct that holds the values necessary to determine lidar values
  * in the velocity profiler.
@@ -161,12 +191,14 @@ Callback callback;
 Segment segment, modifiedSegment;
 Lidar lidar;
 Estop estop;
+Rotate rotate;
 
 // set some dynamic limits...
 const float maxVelocity = 0.8; //1m/sec is a slow walk
 const float minVelocity = 0.1; // if command velocity too low, robot won't move
 const float maxAcceleration = 0.5; //1m/sec^2 is 0.1 g's
 const float maxOmega = 1.0; //1 rad/sec-> about 6 seconds to rotate 1 full rev
+const float minOmenga = 0.1; //this might need to change if value is too small to move robot
 const float maxAlpha = 0.5; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
 const float changeInTime = 0.05; // choose an update rate of 20Hz; go faster with actual hardware
 const float maxSafeRange = 2.5; //start slowing down when object is within this range of robot
@@ -177,6 +209,8 @@ float accelerationTime = maxVelocity / maxAcceleration; //...assumes start from 
 float decelerationTime = maxVelocity / maxAcceleration; //(for same decel as accel); assumes brake to full halt
 float accelerationDistance = 0.5 * maxAcceleration * (accelerationTime * accelerationTime); //distance rqd to ramp up to full speed
 float decelerationDistance = 0.5 * maxAcceleration * (decelerationTime * decelerationTime); //same as ramp-up distance
+float turnAccelTime = maxOmega / maxAlpha; //...assumes start from rest
+float turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
 
 bool halt = false;
 
@@ -186,8 +220,6 @@ geometry_msgs::Twist velocityCommand; //create a variable of type "Twist" to pub
 
 //See comments in actual cpp file.
 void odomCallback(const nav_msgs::Odometry& odom_rcvd);
-
-bool rotate(float startTime, float currTime, float commandOmega, float currRotation, float endRotation);
 
 void resetVelocityCommand();
 
@@ -201,7 +233,11 @@ float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand);
 
 void moveOnSegment(ros::Publisher velocityPublisher, float segmentLength);
 
-void rotate(ros::Publisher velocityPublisher, ros::Rate rTimer, float z, float endRotation);
+float turnSlowDown(float phi);
+
+float turnSpeedUp(float scheduledOmega, float newOmegaCommand);
+
+void rotateToPhi(ros::Publisher velocityPublisher, ros::Rate rTimer, float endRotation);
 
 bool odomCallValidation(ros::Rate rTimer);
 
