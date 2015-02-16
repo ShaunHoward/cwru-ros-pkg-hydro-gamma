@@ -33,8 +33,6 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     callback.printValues();
 }
 
-
-
 /**
  * Resets all relevant velocities in the velocity command.
  */
@@ -62,7 +60,9 @@ void eStop() {
 }
 
 /**
- * Slows down the robot trapezoidally.
+ * Slows down the robot's forward velocity trapezoidally according to
+ * the segment length distance traveled and distance left to travel as
+ * well as deceleration constants.
  * 
  * @param segmentLength - the segment to slow the robot down along
  * @return the newly scheduled velocity determined by the algorithm
@@ -76,6 +76,7 @@ float trapezoidalSlowDown(float segmentLength) {
     //Set the length completed along the current segment thus far
     segment.setLengthCompleted(sqrt(deltaX * deltaX + deltaY * deltaY));
     ROS_INFO("dist traveled: %f", segment.lengthCompleted);
+
     //Set the distance left to travel on the current segment
     segment.setDistanceLeft(segmentLength - segment.lengthCompleted);
 
@@ -96,15 +97,16 @@ float trapezoidalSlowDown(float segmentLength) {
     return scheduledVelocity;
 }
 
-
 /**
- * Speeds up the robot trapezoidally.
+ * Speeds up the robot's forward velocity trapezoidally according to the 
+ * scheduled velocity provided from the slow down function and the odom 
+ * callback velocity as well as acceleration constants.
  * 
  * @param scheduledVelocity - the velocity provided via the trapezoidal slow down algorithm
- * @param newVelocityCommand - the velocity command to publish
  * @return the new velocity to command
  */
-float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand) {
+float trapezoidalSpeedUp(float scheduledVelocity) {
+    float newVelocityCommand;
     //how does the current velocity compare to the scheduled vel?
     if (callback.odomVelocity < scheduledVelocity) { // maybe we halted, e.g. due to estop or obstacle;
         // may need to ramp up to v_max; do so within accel limits
@@ -150,7 +152,6 @@ void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float seg
     //Set the length of the current segment
     segment.setLength(segmentLength);
 
-
     while (ros::ok()) // do work here in infinite loop (desired for this example), but terminate if detect ROS has faulted (or ctl-C)
     {
         ros::spinOnce(); // allow callbacks to populate fresh data
@@ -164,7 +165,7 @@ void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float seg
             scheduledVelocity = trapezoidalSlowDown(segment.length);
 
             //Decide to speed up the robot and issue the new velocity command
-            newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
+            newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity);
 
             ROS_INFO("cmd vel: %f", newVelocityCommand); // debug output
 
@@ -193,7 +194,7 @@ void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float seg
             scheduledVelocity = trapezoidalSlowDown(segment.length);
 
             //Decide whether to speed up robot and issue new velocity command
-            newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity, newVelocityCommand);
+            newVelocityCommand = trapezoidalSpeedUp(scheduledVelocity);
 
             ROS_INFO("cmd vel: %f", newVelocityCommand); // debug output
 
@@ -227,21 +228,27 @@ void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float seg
     ROS_INFO("Completed move along segment with desired rotation");
 }
 
-
-float turnSlowDown(float phi) {
+/**
+ * Slows down the robot's rotational velocity trapezoidally according to
+ * the phi left to rotate on the current rotation segment as well as
+ * rotational deceleration constants.
+ * 
+ * @return the scheduled omega for slowing down the robot spin
+ */
+float turnSlowDown() {
     //Compute the angle turned thus far in the current rotation segment
     float deltaPhi = fabs(callback.odomPhi - rotate.startPhi);
     float scheduledOmega = 0.0f;
-    
+
     //Set the phi (angle) turned thus far in the current rotation segment
     rotate.setPhiCompleted(deltaPhi);
     ROS_INFO("Phi rotated: %f", rotate.phiCompleted);
-    
-    //Set the phi left to rotation on the current rotation segment
+
+    //Set the phi left to rotate on the current rotation segment
     rotate.setPhiLeft(fabs(rotate.phi) - rotate.phiCompleted);
     ROS_INFO("rads left: %f", rotate.phiLeft);
 
-    //use segmentLengthCompleted to decide what vel should be, as per plan
+    //use rotate.phiLeft to decide what omega should be, as per plan
     if (rotate.phiLeft <= 0.0) { // at goal, or overshot; stop!
         scheduledOmega = 0.0;
     } else if (rotate.phiLeft <= rotationalDecelerationPhi) { //possibly should be braking to a halt
@@ -249,28 +256,44 @@ float turnSlowDown(float phi) {
         // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
         scheduledOmega = sqrtf(2 * rotate.phiLeft * maxAlpha);
         ROS_INFO("braking zone: o_sched = %f", scheduledOmega);
-    } else { // not ready to decel, so target vel is v_max, either accel to it or hold it
+    } else {
+        //Not ready to decelerate robot so scheduled omega will be the max omega (need to accelerate 
+        //or hold the max omega
         scheduledOmega = maxOmega;
     }
-    ROS_INFO("Slow down scheduled velocity is: %f", scheduledOmega);
+    ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
     return scheduledOmega;
 }
 
-float turnSpeedUp(float scheduledOmega, float newOmegaCommand) {
-    //how does the current velocity compare to the scheduled vel?
+/**
+ * Speeds up the robot's angular velocity according to the scheduled slow-down 
+ * omega and the robot's odom omega as well as rotational accerlation constants.
+ * 
+ * @param scheduledOmega - the omega scheduled via the turn slow down function
+ * @return the new omega spin command to publish to the robot's motors
+ */
+float turnSpeedUp(float scheduledOmega) {
+    float newOmegaCommand;
+
+    //how does the current omega compare to the scheduled omega?
     if (fabs(callback.odomOmega) < scheduledOmega) { // maybe we halted
-        // may need to ramp up to v_max; do so within accel limits
+        // may need to ramp up to maxOmega; do so within accel limits
         float testOmega = fabs(callback.odomOmega) + maxAlpha * callback.dt; // if callbacks are slow, this could be abrupt
         newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
     } else if (fabs(callback.odomOmega) > scheduledOmega) { //travelling too fast--this could be trouble
-        // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
-        // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
+        // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
+        // need to catch up, so ramp down even faster than maxAlpha.  Try 1.2*maxAlpha.
         ROS_INFO("odom omega: %f; sched omega: %f", fabs(callback.odomOmega), scheduledOmega);
-        float testOmega = fabs(callback.odomOmega) - 1.2 * maxAlpha * callback.dt; //moving too fast decelerating faster than nominal a_max
-        newOmegaCommand = (testOmega > scheduledOmega) ? testOmega : scheduledOmega; // choose larger of two..don't overshoot
+
+        //moving too fast decelerating faster than nominal maxAlpha
+        float testOmega = fabs(callback.odomOmega) - 1.2 * maxAlpha * callback.dt;
+        // choose larger of two..don't overshoot
+        newOmegaCommand = (testOmega > scheduledOmega) ? testOmega : scheduledOmega;
     } else {
+        //Just hold the scheduled omega
         newOmegaCommand = scheduledOmega;
     }
+
     ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
     return newOmegaCommand;
 }
@@ -281,21 +304,21 @@ float turnSpeedUp(float scheduledOmega, float newOmegaCommand) {
  * @param startTime - the starting time of the rotation
  * @param currTime - the current time of the rotation
  * @param commandOmega - the omega desired
- * @param endRotation - the desired end rotation of the robot
+ * @param endPhi - the desired end rotation of the robot
  * @return whether the robot rotated successfully
  */
-bool isDoneRotating(float startTime, float currTime, float commandOmega, float endRotation) {
+bool isDoneRotating(float startTime, float currTime, float commandOmega, float endPhi) {
     //for degrees do: currRotation = currRotation + (new_cmd_omega) * (currTime - startTime);
     ROS_INFO("The current rotation in rads is: %f", rotate.phiCompleted);
 
     //When desired angular rotation is negative, check if the current rotation has met the desired end rotation.
     if (commandOmega < 0) {
-        if (rotate.phiCompleted <= endRotation) {
+        if (rotate.phiCompleted <= endPhi) {
             return true;
         }
     } else if (commandOmega > 0) {
         //When desired angular rotation is positive, check if the current rotation has met the desired end rotation.
-        if (rotate.phiCompleted >= endRotation) {
+        if (rotate.phiCompleted >= endPhi) {
             return true;
         }
     } else {
@@ -310,84 +333,73 @@ bool isDoneRotating(float startTime, float currTime, float commandOmega, float e
  * @param velocityPublisher - the publisher to publish the new velocity to
  * @param rTimer - the timer of the rotation movement
  * @param z - the spin rate desired for the robot
- * @param endRotation - the desired end rotation of the robot
+ * @param endPhi - the desired end rotation of the robot
  */
-void rotateToPhi(ros::Publisher velocityPublisher, ros::Rate rTimer, float endRotation) {
-    
-//    //odomPhi is b/n pi and -pi
+void rotateToPhi(ros::Publisher velocityPublisher, ros::Rate rTimer, float endPhi) {
 
-//    float rotatePhi;
-//    if (endRotation + rotate.startPhi > M_PI) {
-//        rotatePhi = endRotation + rotate.startPhi - 2 * M_PI;
-//    } else if (endRotation + rotate.startPhi < -(M_PI)) {
-//        rotatePhi = endRotation + rotate.startPhi + 2 * M_PI;
-//    }
-//    rotate.setEndPhi(rotatePhi);
-    rotate.setStartPhi(callback.odomPhi);
-    rotate.resetPhiCompleted();
-    rotate.setPhi(endRotation);
-    
-    bool turnLeft;
-    if (endRotation < 0) {
-        //turning counterclockwise (negative)
-        turnLeft = true;
-    } else if (endRotation > 0){
-        //turning clockwise (positive)
-        turnLeft = false;
-    } else {
-        ROS_INFO("Rotation was called with zero phi... Returning.");
-        return;
-    }
-    
+    //Initialize the rotation of the robot according to the given end phi
+    bool turnRight = initializeRotation(endPhi, rTimer);
     bool firstCall = true;
     float startTime = 0.0;
     float currTime = 0.0;
     float scheduledOmega = 0.0;
     float newOmegaCommand = 0.1;
+
+    //Rotate to the given end phi while the robot is OK.
+    //Hold rotation if any stop commands were given via estop, lidar, or halt
     while (ros::ok()) {
         ros::spinOnce();
-        
-        //Handle setting up timer for rotation since beginning of method call.
-        if (firstCall) {
-            firstCall = false;
-            startTime = ros::Time::now().toSec();
+
+        //Only rotation when estop, lidar alarm, and halt are off
+        if (!(estop.on || lidar.alarm || halt)) {
+            //Handle setting up timer for rotation since beginning of method call.
+            if (firstCall && endPhi != 0.0) {
+                firstCall = false;
+                startTime = ros::Time::now().toSec();
+            } else if (endPhi == 0.0) {
+                return;
+            }
+
+            //calculates the new omega with trapezoidal velocity profiling
+            scheduledOmega = turnSlowDown();
+            newOmegaCommand = turnSpeedUp(scheduledOmega);
+
+            //assigns the sign to omega
+            if (turnRight) {
+                newOmegaCommand = -1.0 * (newOmegaCommand);
+            }
+
+            ROS_INFO("omega cmd vel: %f", newOmegaCommand); // debug output
+
+            //Issue latest angular velocity command
+            velocityCommand.angular.z = newOmegaCommand;
+
+            currTime = ros::Time::now().toSec();
+
+            //Determine if the robot has met it's end phi rotation
+            bool doneRotating = isDoneRotating(startTime, currTime, newOmegaCommand, rotate.phi);
+
+            //Set angular z velocity to 0 when done rotating
+            if (doneRotating) {
+                velocityCommand.angular.z = 0.0;
+            }
+
+            //Publish latest velocity command
+            velocityPublisher.publish(velocityCommand);
+
+            // sleep for remainder of timed iteration
+            rTimer.sleep();
+
+            //Break from rotation loop if done rotating
+            if (doneRotating) {
+                break;
+            }
+        } else if (halt) {
+            //We want to halt when software halt is enabled, so we constantly update velocity rotation command to zero.
+            velocityCommand.linear.z = 0.0;
+            velocityPublisher.publish(velocityCommand);
+            ROS_INFO("Software halt enabled. Robot is static.");
         }
-        
-        //calculates the new omega
-        scheduledOmega = turnSlowDown(endRotation);
-        newOmegaCommand = turnSpeedUp(scheduledOmega, newOmegaCommand);
-        
-        //assigns the sign to omega
-        if (turnLeft) {
-            newOmegaCommand = -1.0 * (newOmegaCommand);
-        }
-        
-        ROS_INFO("omega cmd vel: %f", newOmegaCommand); // debug output
-        
-        velocityCommand.angular.z = newOmegaCommand;
-        
-        currTime = ros::Time::now().toSec();
-        bool doneRotating = isDoneRotating(startTime, currTime, newOmegaCommand, rotate.phi);
-        //Set angular z velocity to 0 when done rotating.
-         if (doneRotating) {
-             velocityCommand.angular.z = 0.0;
-         }
-        
-        velocityPublisher.publish(velocityCommand);
-        
-        rTimer.sleep(); // sleep for remainder of timed iteration
-        
-        if (doneRotating){
-            break;
-        }
-//        if (rotate.phiLeft <= 0) {
-//            ROS_INFO("OverShot Turning");
-//            velocityCommand.angular.z = 0.0;
-//            velocityPublisher.publish(velocityCommand); // publish the command to robot0/velocityCommand
-//            break;
-//        }
-        // ROS_INFO("omega value: %f", velocityCommand.angular.z);
-        
     }
 }
 
@@ -419,6 +431,42 @@ void initializePosition() {
     segment.setStartY(callback.odomY);
     segment.setStartPhi(callback.odomPhi);
     segment.printValues();
+}
+
+/**
+ * Initializes the phi of the robot according to the odom callback.
+ * Resets the phi completed during the current rotation thus far and
+ * sets the end phi to reach during this current rotation. Also determines
+ * what direction the robot is rotating in via end phi sign.
+ * 
+ * @param endPhi - the angle to rotate the robot to
+ * @param rTimer - the timer for rotation movement
+ * @return whether the robot is turning right
+ */
+bool initializeRotation(float endPhi, ros::Rate rTimer) {
+    bool turnRight;
+    if (odomCallValidation(rTimer)) {
+        resetVelocityCommand();
+        rotate.setStartPhi(callback.odomPhi);
+        rotate.resetPhiCompleted();
+        rotate.setPhi(endPhi);
+
+        //We are turning right (clockwise) if negative end phi
+        if (endPhi < 0) {
+            turnRight = true;
+            ROS_INFO("Turning to the right.");
+        } else if (endPhi > 0) {
+            //we are turning left (counter-clockwise) if positive end phi
+            turnRight = false;
+            ROS_INFO("Turning to the left.");
+        } else {
+            //We are not turning..
+            turnRight = false;
+            ROS_INFO("Rotation was called with zero phi... Returning.");
+        }
+    }
+
+    return turnRight;
 }
 
 /**
@@ -543,13 +591,7 @@ int main(int argc, char **argv) {
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
     initializeNewMove(rTimer);
-//    velocityCommand.angular.z = 0.5;
-//    velocityPublisher.publish(velocityCommand);
-//    while (ros::ok()) {
-//        ros::spinOnce();
-//        ROS_INFO("fking odom phi %f", callback.odomPhi);
-//    }
-    rotateToPhi(velocityPublisher,rTimer,-1.57);
+    rotateToPhi(velocityPublisher, rTimer, -1.57);
     //moveOnSegment(velocityPublisher, rTimer, 25); //4.75
     //    initializeNewMove(rtimer);
     //    moveOnSegment(velocityPublisher, rtimer, 0.0, -.314, -1.57);

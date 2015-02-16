@@ -267,19 +267,21 @@ float trapezoidalSlowDown(float segmentLength);
 
 void decideToStop();
 
-float trapezoidalSpeedUp(float scheduledVelocity, float newVelocityCommand);
+float trapezoidalSpeedUp(float scheduledVelocity);
 
 void moveOnSegment(ros::Publisher velocityPublisher, float segmentLength);
 
-float turnSlowDown(float phi);
+float turnSlowDown();
 
-float turnSpeedUp(float scheduledOmega, float newOmegaCommand);
+float turnSpeedUp(float scheduledOmega);
 
 void rotateToPhi(ros::Publisher velocityPublisher, ros::Rate rTimer, float endRotation);
 
 bool odomCallValidation(ros::Rate rTimer);
 
 void initializePosition();
+
+bool initializeRotation(float endPhi, ros::Rate rTimer);
 
 void initializeNewMove(ros::Rate rTimer);
 
