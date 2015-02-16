@@ -15,9 +15,6 @@ software halt command. This subscriber subscribes to the boolean "halt_cmd" mess
 A message like this can be published within a terminal when the vel_profiler
 is run with rosrun in order to stop the robot on demand like estop.
 
-Currently, rotation does not work properly, but we are working on a fix for this 
-in the next project.
-
 To run vel_profiler:
 
 "rosrun robot_commander vel_profiler"
@@ -30,7 +27,7 @@ To revoke halt command:
 
 "rostopic pub /halt_cmd std_msgs/Bool False"
 
-Either line segments or rotation segments should be specified in the main method
+Either line segments or rotation segments(radians) should be specified in the main method
 to run the velocity scheduler. Each time a move is initialized, the coordinates
 are set to the most recent coordinates given by the odometer callback to track
 current position. The rotation is set according to the odometer as well.
@@ -44,15 +41,12 @@ initializeNewMove(rTimer);
 //representing meters in length.
 moveOnSegment(velocityPublisher, rTimer, segmentLength);"
 
-Not Currently Working:
 Example of how to turn the robot on a new segment in vel_scheduler in main():
 "velocityPublisher <- publishes "cmd_vel" message
 rTimer <- ROS timer
-//Initializes a new move along a segment.
-initializeNewMove(rTimer);
-//Rotates the robot with the given angular velocity z, which is a float parameter 
-//representing rad/s, to the given rotation which is also a float, representing rads.
-rotate(velocityPublisher, rTimer, segmentLength);"
+//Rotates the robot to the given endPhi (desired angle of rotation) as a float 
+//representing rads via a trapezoidal velocity profile.
+rotateToPhi(velocityPublisher, rTimer, endPhi);"
 
 How LIDAR works:
 
@@ -76,6 +70,9 @@ console about the location, movement, etc. of the robot.
 
 Rotation:
 
-Rotation will also use the trapezoidal speed up and down algorithms but in terms of
+Rotation also uses the trapezoidal speed up and down algorithms but in terms of
 angular velocity and odometer rotation. The rotation will stop when the
-desired end rotation is met. The rotation is measured in radians.
+desired end rotation (endPhi) is met. The rotation is measured in radians. The rotation
+speed is determined by constants defined in the header file. These constants
+are determined similarly to that of forward velocity but in terms of phi, omega, and
+alpha, all with min and max values.
