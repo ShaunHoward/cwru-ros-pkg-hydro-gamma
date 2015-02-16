@@ -87,7 +87,7 @@ struct Segment{
 	//The distance left to travel along this path segment
 	float distanceLeft;
 
-	//The lenght of this path segment
+	//The length of this path segment
 	float length;
 	
 	/**
@@ -157,20 +157,23 @@ struct Rotate{
     float phiCompleted;
     float phiLeft;
 
-    void setPhi(float phi){
-        phi = phi;
+    void setPhi(float phi_){
+        phi = phi_;
     }
-    void setStartPhi(float phi){
-        startPhi = phi;
+    void setStartPhi(float start_phi){
+        startPhi = start_phi;
     }
-    void setEndPhi(float phi){
-        endPhi = phi;
+    void setEndPhi(float end_phi){
+        endPhi = end_phi;
     } 
-    void setPhiCompleted(float phi){
-        phiCompleted = phi;
+    void setPhiCompleted(float phi_comp){
+        phiCompleted = phi_comp;
     }
-    void setPhiLeft(float phi){
-        phiLeft = phi;
+    void setPhiLeft(float phi_left){
+        phiLeft = phi_left;
+    }
+    void resetPhiCompleted(){
+        phiCompleted = 0.0;
     }
 };
 
@@ -238,8 +241,13 @@ float accelerationTime = maxVelocity / maxAcceleration; //...assumes start from 
 float decelerationTime = maxVelocity / maxAcceleration; //(for same decel as accel); assumes brake to full halt
 float accelerationDistance = 0.5 * maxAcceleration * (accelerationTime * accelerationTime); //distance rqd to ramp up to full speed
 float decelerationDistance = 0.5 * maxAcceleration * (decelerationTime * decelerationTime); //same as ramp-up distance
+
+// compute properties of rotational trapezoidal velocity profile plan:
 float turnAccelTime = maxOmega / maxAlpha; //...assumes start from rest
-float turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
+float turnDecelTime = maxOmega / maxAlpha; //(for same decel as accel); assumes brake to full halt
+//float turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
+float rotationalAccelerationPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime);
+float rotationalDecelerationPhi = 0.5 * maxAlpha * (turnDecelTime * turnDecelTime);
 
 //Whether to halt the robot due to software halt command
 bool halt = false;
