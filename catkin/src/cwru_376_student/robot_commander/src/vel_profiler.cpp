@@ -499,7 +499,7 @@ void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
         lidar.setAlarm(true);
     } else if (lidar.closestPing <= maxSafeRange && !lidar.modifiedSegment && !estop.on) {
         //determine whether to slow down on a new segment to before the position of the object near robot
-        modifiedSegment.copy(segment);
+        modifiedSegment = segment;
         segment.setLength(newSegmentLength);
         segment.resetLengthCompleted();
         lidar.setStop(true);
@@ -509,7 +509,7 @@ void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
         float origPathLength = modifiedSegment.length;
         float currLengthCompleted = segment.lengthCompleted;
         float prevLengthCompleted = modifiedSegment.lengthCompleted;
-        segment.copy(modifiedSegment);
+        segment = modifiedSegment;
         segment.setLength(origPathLength - currLengthCompleted - prevLengthCompleted);
         segment.resetLengthCompleted();
         lidar.setStop(false);
