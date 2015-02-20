@@ -228,11 +228,11 @@ Rotate rotate;
 // set some dynamic limits...
 const float maxVelocity = 0.8; //1m/sec is a slow walk
 const float minVelocity = 0.1; // if command velocity too low, robot won't move
-const float maxAcceleration = 0.25; //1m/sec^2 is 0.1 g's
+const float maxAcceleration = 0.5; //1m/sec^2 is 0.1 g's
 const float maxOmega = 1.0; //1 rad/sec-> about 6 seconds to rotate 1 full rev
 const float minOmenga = 0.1; //this might need to change if value is too small to move robot
-const float maxAlpha = 0.25; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
-const float changeInTime = 0.02; // choose an update rate of 20Hz; go faster with actual hardware
+const float maxAlpha = 1; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
+const float changeInTime = 0.05; // choose an update rate of 20Hz; go faster with actual hardware
 const float maxSafeRange = 2.5; //start slowing down when object is within this range of robot
 const float minSafeRange = 0.5; //stop the robot when at this distance from object
 
