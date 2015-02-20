@@ -226,7 +226,7 @@ Estop estop;
 Rotate rotate;
 
 // set some dynamic limits...
-const float maxVelocity = 0.8; //1m/sec is a slow walk
+const float maxVelocity = 0.5; //1m/sec is a slow walk
 const float minVelocity = 0.1; // if command velocity too low, robot won't move
 const float maxAcceleration = 0.5; //1m/sec^2 is 0.1 g's
 const float maxOmega = 1.0; //1 rad/sec-> about 6 seconds to rotate 1 full rev

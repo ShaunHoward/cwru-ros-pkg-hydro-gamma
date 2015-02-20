@@ -121,7 +121,7 @@ float trapezoidalSpeedUp(float scheduledVelocity) {
 
         float testVelocity = callback.odomVelocity - 1.2 * maxAcceleration * callback.dt; //moving too fast--try decelerating faster than nominal a_max
 
-        newVelocityCommand = (testVelocity > scheduledVelocity) ? testVelocity : scheduledVelocity; // choose larger of two options...don't overshoot scheduled_vel
+        newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; // choose larger of two options...don't overshoot scheduled_vel
     } else {
         newVelocityCommand = scheduledVelocity; //silly third case: this is already true, if here.  Issue the scheduled velocity
     }
@@ -579,10 +579,10 @@ int main(int argc, char **argv) {
     ros::NodeHandle nodeHandle; // get a ros nodehandle; standard yadda-yadda
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
-    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    //velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);
-    ros::Subscriber sub = nodeHandle.subscribe("odom", 1, odomCallback);
-    //ros::Subscriber sub = nodeHandle.subscribe("/robot0/odom", 4, odomCallback);
+    //velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);
+    //ros::Subscriber sub = nodeHandle.subscribe("odom", 1, odomCallback);
+    ros::Subscriber sub = nodeHandle.subscribe("/robot0/odom", 4, odomCallback);
 
     ros::Subscriber ping_dist_subscriber = nodeHandle.subscribe("lidar_dist", 1, pingDistanceCallback);
     ros::Subscriber lidar_alarm_subscriber = nodeHandle.subscribe("lidar_alarm", 1, lidarAlarmCallback);
@@ -592,7 +592,7 @@ int main(int argc, char **argv) {
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
     initializeNewMove(rTimer);
-    moveOnSegment(velocityPublisher, rTimer, 3); //4.75
+    moveOnSegment(velocityPublisher, rTimer, 4.75); //4.75
     //initializeNewMove(rTimer);
     //rotateToPhi(velocityPublisher, rTimer, -1.57);
     //initializeNewMove(rTimer);
