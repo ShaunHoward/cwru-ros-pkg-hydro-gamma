@@ -288,7 +288,7 @@ float turnSpeedUp(float scheduledOmega) {
         //moving too fast decelerating faster than nominal maxAlpha
         float testOmega = fabs(callback.odomOmega) - 1.2 * maxAlpha * callback.dt;
         // choose larger of two..don't overshoot
-        newOmegaCommand = (testOmega > scheduledOmega) ? testOmega : scheduledOmega;
+        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega;
     } else {
         //Just hold the scheduled omega
         newOmegaCommand = scheduledOmega;
@@ -591,10 +591,10 @@ int main(int argc, char **argv) {
 
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
-    initializeNewMove(rTimer);
-    moveOnSegment(velocityPublisher, rTimer, 4.75); //4.75
     //initializeNewMove(rTimer);
-    //rotateToPhi(velocityPublisher, rTimer, -1.57);
+    //moveOnSegment(velocityPublisher, rTimer, 4.75); //4.75
+    //initializeNewMove(rTimer);
+    rotateToPhi(velocityPublisher, rTimer, -1.57);
     //initializeNewMove(rTimer);
     //moveOnSegment(velocityPublisher, rTimer, 12.3);
     //initializeNewMove(rTimer);
