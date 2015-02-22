@@ -233,15 +233,14 @@ void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float seg
  * the phi left to rotate on the current rotation segment as well as
  * rotational deceleration constants.
  * 
+ * @param turnRight - whether the robot is currently turning right
  * @return the scheduled omega for slowing down the robot spin
  */
-float turnSlowDown() {
-    //Compute the angle turned thus far in the current rotation segment
-    float deltaPhi = fabs(callback.odomPhi - rotate.startPhi);
+float turnSlowDown(bool turnRight) {
     float scheduledOmega = 0.0f;
 
     //Set the phi (angle) turned thus far in the current rotation segment
-    rotate.setPhiCompleted(deltaPhi);
+    rotate.setPhiCompleted(rotate.phiCompleted + getDeltaPhi(turnRight));
     ROS_INFO("Phi rotated: %f", rotate.phiCompleted);
 
     //Set the phi left to rotate on the current rotation segment
@@ -263,6 +262,49 @@ float turnSlowDown() {
     }
     ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
     return scheduledOmega;
+}
+
+/**
+ * Gets the change in phi since the last call to this method.
+ * Tracks the last odom callback phi value and determines whether the
+ * current odom callback phi has switched from + to - or vice versa. Then
+ * it will calculate the delta phi based on the last odom callback phi and the
+ * current odom callback phi.
+ * 
+ * @param turnRight - whether the robot is turning right currently
+ * 
+ * @return the delta phi since the last call to this method
+ */
+float getDeltaPhi(bool turnRight){
+    float callbackPhi = callback.odomPhi;
+    float dPhi = 0;
+    
+    if (lastCallbackPhi < 0 && callbackPhi >= 0) {
+        if (turnRight) {
+            dPhi = (2 * M_PI) - callbackPhi + fabs((-2*M_PI) - lastCallbackPhi);
+        } else {
+            dPhi = callbackPhi + fabs(lastCallbackPhi);
+        }
+    } else if (lastCallbackPhi > 0 && callbackPhi <= 0) {
+        if (turnRight) {
+            dPhi = lastCallbackPhi + fabs(callbackPhi);
+        } else {
+            //rotating from left to right
+            dPhi = (2 * M_PI) - lastCallbackPhi + fabs((-2*M_PI) - callbackPhi);
+        }
+    } else if (callbackPhi < 0 && lastCallbackPhi > callbackPhi) {
+        dPhi = fabs(lastCallbackPhi - callbackPhi); 
+    } else if (callbackPhi < 0 && lastCallbackPhi < callbackPhi) {
+        dPhi = fabs(callbackPhi - lastCallbackPhi);
+    } else if (callbackPhi > 0 && lastCallbackPhi > callbackPhi) {
+        dPhi = lastCallbackPhi - callbackPhi;
+    } else if (callbackPhi > 0 && lastCallbackPhi < callbackPhi) {
+        dPhi = callbackPhi - lastCallbackPhi;
+    }
+    
+    lastCallbackPhi = callbackPhi;
+    return dPhi;
+
 }
 
 /**
@@ -300,31 +342,32 @@ float turnSpeedUp(float scheduledOmega) {
 
 /**
  * Determines if the robot has rotated successfully to the desired end rotation.
- * 
- * @param startTime - the starting time of the rotation
- * @param currTime - the current time of the rotation
- * @param commandOmega - the omega desired
- * @param endPhi - the desired end rotation of the robot
- * @return whether the robot rotated successfully
+ *
+ * @return whether the robot rotated to its desired phi 
  */
-bool isDoneRotating(float startTime, float currTime, float commandOmega, float endPhi) {
+bool isDoneRotating() {
     //for degrees do: currRotation = currRotation + (new_cmd_omega) * (currTime - startTime);
     ROS_INFO("The current rotation in rads is: %f", rotate.phiCompleted);
 
-    //When desired angular rotation is negative, check if the current rotation has met the desired end rotation.
-    if (commandOmega < 0) {
-        if (rotate.phiCompleted <= endPhi) {
-            return true;
-        }
-    } else if (commandOmega > 0) {
-        //When desired angular rotation is positive, check if the current rotation has met the desired end rotation.
-        if (rotate.phiCompleted >= endPhi) {
-            return true;
-        }
-    } else {
-        //Otherwise there is no rotation and rotate must be complete
+    if (rotate.phiCompleted >= fabs(rotate.phi)){
         return true;
     }
+    return false;
+    
+//    //When desired angular rotation is negative, check if the current rotation has met the desired end rotation.
+//    if (commandOmega < 0) {
+//        if (rotate.phiCompleted <= endPhi) {
+//            return true;
+//        }
+//    } else if (commandOmega > 0) {
+//        //When desired angular rotation is positive, check if the current rotation has met the desired end rotation.
+//        if (rotate.phiCompleted >= endPhi) {
+//            return true;
+//        }
+//    } else {
+//        //Otherwise there is no rotation and rotate must be complete
+//        return true;
+//    }
 }
 
 /**
@@ -344,6 +387,7 @@ void rotateToPhi(ros::Publisher velocityPublisher, ros::Rate rTimer, float endPh
     float currTime = 0.0;
     float scheduledOmega = 0.0;
     float newOmegaCommand = 0.1;
+    lastCallbackPhi = rotate.startPhi;
 
     //Rotate to the given end phi while the robot is OK.
     //Hold rotation if any stop commands were given via estop, lidar, or halt
@@ -361,7 +405,7 @@ void rotateToPhi(ros::Publisher velocityPublisher, ros::Rate rTimer, float endPh
             }
 
             //calculates the new omega with trapezoidal velocity profiling
-            scheduledOmega = turnSlowDown();
+            scheduledOmega = turnSlowDown(turnRight);
             newOmegaCommand = turnSpeedUp(scheduledOmega);
 
             //assigns the sign to omega
@@ -377,7 +421,7 @@ void rotateToPhi(ros::Publisher velocityPublisher, ros::Rate rTimer, float endPh
             currTime = ros::Time::now().toSec();
 
             //Determine if the robot has met it's end phi rotation
-            bool doneRotating = isDoneRotating(startTime, currTime, newOmegaCommand, rotate.phi);
+            bool doneRotating = isDoneRotating();
 
             //Set angular z velocity to 0 when done rotating
             if (doneRotating) {
@@ -591,8 +635,13 @@ int main(int argc, char **argv) {
 
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
-    initializeNewMove(rTimer);
-    moveOnSegment(velocityPublisher, rTimer, 2); //4.75
+    rotateToPhi(velocityPublisher, rTimer, 1.57);
+    //rotateToPhi(velocityPublisher, rTimer, -1.57);
+   // rotateToPhi(velocityPublisher, rTimer, -1.57);
+  //  rotateToPhi(velocityPublisher, rTimer, -1.57);
+ //   rotateToPhi(velocityPublisher, rTimer, -1.57);
+    //initializeNewMove(rTimer);
+    //moveOnSegment(velocityPublisher, rTimer, 2); //4.75
     //initializeNewMove(rTimer);
     //rotateToPhi(velocityPublisher, rTimer, -1.57);
     //initializeNewMove(rTimer);

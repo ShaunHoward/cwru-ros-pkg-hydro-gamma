@@ -249,6 +249,9 @@ float turnDecelTime = maxOmega / maxAlpha; //(for same decel as accel); assumes 
 float rotationalAccelerationPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime);
 float rotationalDecelerationPhi = 0.5 * maxAlpha * (turnDecelTime * turnDecelTime);
 
+//Tracks the last phi value for cases where rotation goes from + to - or vice versa
+float lastCallbackPhi = 0.0f;
+
 //Whether to halt the robot due to software halt command
 bool halt = false;
 
@@ -271,7 +274,7 @@ float trapezoidalSpeedUp(float scheduledVelocity);
 
 void moveOnSegment(ros::Publisher velocityPublisher, float segmentLength);
 
-float turnSlowDown();
+float turnSlowDown(bool turnRight);
 
 float turnSpeedUp(float scheduledOmega);
 
@@ -290,3 +293,7 @@ void pingDistanceCallback(const std_msgs::Float32& pingDistance);
 void lidarAlarmCallback(const std_msgs::Bool& lidarAlarmMsg);
 
 void estopCallback(const std_msgs::Bool& estopMsg);
+
+bool isDoneRotating();
+
+float getDeltaPhi(bool turnRight);
