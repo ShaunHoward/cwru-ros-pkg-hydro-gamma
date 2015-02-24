@@ -1,0 +1,40 @@
+﻿Turn on robot, turn on computer.
+
+Pull and make the code from repository:
+git clone https://github.com/ShaunHoward/cwru-ros-pkg-hydro-gamma.git
+cd ros_workspace/cwru-ros-pkg-hydro-gamma/catkin
+catkin_make
+
+Add line for repo in bash rc:
+gedit ~/.bashrc
+Add line: source /ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/devel/setup.bash
+Save file and exit.
+source ~/.bashrc
+
+UNPLUG ROBOT!!!!!
+
+Get LIDAR ready:
+sudo chmod a+rw /dev/ttyUSB0
+
+roslaunch cwru_base start_base.launch
+
+If necessary, run teleop:
+roslaunch cwru_teleop start_teleop.launch
+
+When done with teleop ctrl-c
+
+Run lidar alarm:
+rosrun sensor_utils lidar_alarm
+
+Run estop listener:
+rosrun sensor_utils estop_listener
+
+Run velocity profiler:
+rosrun robot_commander vel_profiler
+
+When done ctrl-c all terminals.
+Comment added line out of ~/.bashrc
+Delete code from robot.
+Empty trash bin.
+Shut computer down on robot.
+Once computer is off, turn off robot.
