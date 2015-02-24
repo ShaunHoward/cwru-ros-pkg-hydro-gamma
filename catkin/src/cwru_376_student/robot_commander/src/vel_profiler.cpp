@@ -131,6 +131,9 @@ float trapezoidalSpeedUp(float scheduledVelocity) {
 
 /**
  * Moves the robot on a given segment length.
+ * First initializes the move timer, position and velocity of the robot.
+ * Then the function will move the robot to the desired segment length with
+ * trapezoidal speed up and slow down algorithms.
  * When the lidar detector finds that an object is within a distance of 2.5m to the robot, it will
  * slow down to a distance of .5m before that distance. Once the object moves, it will resume and
  * finish its original path to the goal. 
@@ -142,6 +145,8 @@ float trapezoidalSpeedUp(float scheduledVelocity) {
  * @param segmentLength - the length of the segment to move along
  */
 void moveOnSegment(ros::Publisher velocityPublisher, ros::Rate rTimer, float segmentLength) {
+    //Initialize a new move.
+    initializeNewMove(rTimer);
     //Desired velocity, assuming all is per plan
     float scheduledVelocity = 0.0;
     //Value of speed to be commanded; update each iteration
@@ -353,21 +358,6 @@ bool isDoneRotating() {
         return true;
     }
     return false;
-    
-//    //When desired angular rotation is negative, check if the current rotation has met the desired end rotation.
-//    if (commandOmega < 0) {
-//        if (rotate.phiCompleted <= endPhi) {
-//            return true;
-//        }
-//    } else if (commandOmega > 0) {
-//        //When desired angular rotation is positive, check if the current rotation has met the desired end rotation.
-//        if (rotate.phiCompleted >= endPhi) {
-//            return true;
-//        }
-//    } else {
-//        //Otherwise there is no rotation and rotate must be complete
-//        return true;
-//    }
 }
 
 /**
@@ -635,21 +625,12 @@ int main(int argc, char **argv) {
 
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
-    rotateToPhi(velocityPublisher, rTimer, 1.57);
-    //rotateToPhi(velocityPublisher, rTimer, -1.57);
-   // rotateToPhi(velocityPublisher, rTimer, -1.57);
-  //  rotateToPhi(velocityPublisher, rTimer, -1.57);
- //   rotateToPhi(velocityPublisher, rTimer, -1.57);
-    //initializeNewMove(rTimer);
-    //moveOnSegment(velocityPublisher, rTimer, 2); //4.75
-    //initializeNewMove(rTimer);
-    //rotateToPhi(velocityPublisher, rTimer, -1.57);
-    //initializeNewMove(rTimer);
-    //moveOnSegment(velocityPublisher, rTimer, 12.3);
-    //initializeNewMove(rTimer);
-    //rotateToPhi(velocityPublisher, rTimer, -1.56);
-    //initializeNewMove(rTimer);
-    //moveOnSegment(velocityPublisher, rTimer, 12.3);
+    rotateToPhi(velocityPublisher, rTimer, -1.57);
+    moveOnSegment(velocityPublisher, rTimer, 4.75); //4.75
+    rotateToPhi(velocityPublisher, rTimer, -1.57);
+    moveOnSegment(velocityPublisher, rTimer, 12.3);
+    rotateToPhi(velocityPublisher, rTimer, -1.57);
+    moveOnSegment(velocityPublisher, rTimer, 12.3);
     return 0;
 }
 
