@@ -625,12 +625,12 @@ int main(int argc, char **argv) {
 
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
 
-    rotateToPhi(velocityPublisher, rTimer, -1.57);
+    //rotateToPhi(velocityPublisher, rTimer, -1.57);
     moveOnSegment(velocityPublisher, rTimer, 4.75); //4.75
-    rotateToPhi(velocityPublisher, rTimer, -1.57);
+    rotateToPhi(velocityPublisher, rTimer, -1.55);
     moveOnSegment(velocityPublisher, rTimer, 12.3);
-    rotateToPhi(velocityPublisher, rTimer, -1.57);
-    moveOnSegment(velocityPublisher, rTimer, 12.3);
+    rotateToPhi(velocityPublisher, rTimer, -1.55);
+    moveOnSegment(velocityPublisher, rTimer, 8);
     return 0;
 }
 
