@@ -284,29 +284,43 @@ float getDeltaPhi(bool turnRight){
     float callbackPhi = callback.odomPhi;
     float dPhi = 0;
     
+    //When turning from negative to positive phi
     if (lastCallbackPhi < 0 && callbackPhi >= 0) {
+        //If the turn is to the right of the robot, normalize the rotation
         if (turnRight) {
             dPhi = (2 * M_PI) - callbackPhi + fabs((-2*M_PI) - lastCallbackPhi);
         } else {
+            //Otherwise, just add the last and current callback phis together if turning right to left
             dPhi = callbackPhi + fabs(lastCallbackPhi);
         }
     } else if (lastCallbackPhi > 0 && callbackPhi <= 0) {
+        //When turning from positive to negative phi
+        //If the turn is to the right, just add the last and current callback phis together
         if (turnRight) {
             dPhi = lastCallbackPhi + fabs(callbackPhi);
         } else {
-            //rotating from left to right
+            //Otherwise, normalize the rotation if turning right to left
             dPhi = (2 * M_PI) - lastCallbackPhi + fabs((-2*M_PI) - callbackPhi);
         }
     } else if (callbackPhi < 0 && lastCallbackPhi > callbackPhi) {
+        //When phi is decreasing and has gone from positive to negative,
+        //we need the difference between the last and the current callback phi
         dPhi = fabs(lastCallbackPhi - callbackPhi); 
     } else if (callbackPhi < 0 && lastCallbackPhi < callbackPhi) {
+        //When phi is decreasing and is negative, we need the 
+        //difference between the current callback and last callback phi
         dPhi = fabs(callbackPhi - lastCallbackPhi);
     } else if (callbackPhi > 0 && lastCallbackPhi > callbackPhi) {
+        //When phi is positive and increasing, we need the difference
+        //between the last and current callback phis
         dPhi = lastCallbackPhi - callbackPhi;
     } else if (callbackPhi > 0 && lastCallbackPhi < callbackPhi) {
+        //When phi is positive and decreasing, we need the difference
+        //between the current and last callback phis
         dPhi = callbackPhi - lastCallbackPhi;
     }
     
+    //We now have the last callback phi
     lastCallbackPhi = callbackPhi;
     return dPhi;
 
@@ -361,7 +375,12 @@ bool isDoneRotating() {
 }
 
 /**
- * Rotates the robot with a trapezoidal speed up and speed down profile.
+ * Rotates the robot with a trapezoidal speed up and speed down profile in order to reach the
+ * desired end phi. When lidar alarm or estop is on, the rotation will stop but the function will not return.
+ * This means that the function will loop until either lidar alarm or estop is turned off. Once
+ * these are both off, the rotation will resume and continue until it meets the desired end phi.
+ * When software halt is enabled, the function will have the same behavior as in it will continually publish
+ * a command omega of zero until it is disabled. Once disabled, the rotation will continue until the end phi.
  * 
  * @param velocityPublisher - the publisher to publish the new velocity to
  * @param rTimer - the timer of the rotation movement
@@ -479,22 +498,24 @@ void initializePosition() {
  */
 bool initializeRotation(float endPhi, ros::Rate rTimer) {
     bool turnRight;
+    
+    //Validate odom callback and set up initial rotation values
     if (odomCallValidation(rTimer)) {
         resetVelocityCommand();
         rotate.setStartPhi(callback.odomPhi);
         rotate.resetPhiCompleted();
         rotate.setPhi(endPhi);
 
-        //We are turning right (clockwise) if negative end phi
+        //Turning right (clockwise) if negative end phi
         if (endPhi < 0) {
             turnRight = true;
             ROS_INFO("Turning to the right.");
         } else if (endPhi > 0) {
-            //we are turning left (counter-clockwise) if positive end phi
+            //Turning left (counter-clockwise) if positive end phi
             turnRight = false;
             ROS_INFO("Turning to the left.");
         } else {
-            //We are not turning..
+            //Not turning..
             turnRight = false;
             ROS_INFO("Rotation was called with zero phi... Returning.");
         }
@@ -539,7 +560,8 @@ void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
         lidar.setStop(true);
         lidar.setModifiedSegment(true);
     } else if (lidar.closestPing > maxSafeRange && lidar.modifiedSegment) {
-        //run on the rest of the desired segment length
+        //run on the rest of the desired segment length if the previous
+        //segment length was a modified, slow-down segment
         float origPathLength = modifiedSegment.length;
         float currLengthCompleted = segment.lengthCompleted;
         float prevLengthCompleted = modifiedSegment.lengthCompleted;
@@ -624,8 +646,7 @@ int main(int argc, char **argv) {
     ros::Subscriber halt_subscriber = nodeHandle.subscribe("halt_cmd", 1, haltCallback);
 
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
-
-    //rotateToPhi(velocityPublisher, rTimer, -1.57);
+    
     moveOnSegment(velocityPublisher, rTimer, 4.75); //4.75
     rotateToPhi(velocityPublisher, rTimer, -1.55);
     moveOnSegment(velocityPublisher, rTimer, 12.3);
