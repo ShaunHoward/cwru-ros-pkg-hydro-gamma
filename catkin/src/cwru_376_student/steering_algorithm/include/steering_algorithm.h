@@ -48,6 +48,9 @@ public:
     SteeringController(ros::NodeHandle* nodehandle); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
     // may choose to define public methods or public variables, if desired
     void my_clever_steering_algorithm(); // here is the heart of it...use odom state and desired state to compute twist command, and publish it
+    //this may need to incorporate lateral error as well
+    double compute_controller_speed(double trip_dist_err);
+    double compute_controller_omega(double heading_err);
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
     double sat(double x);

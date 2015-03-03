@@ -209,6 +209,31 @@ void SteeringController::my_clever_steering_algorithm() {
     cmd_publisher2_.publish(twist_cmd2_);     
 }
 
+//this will compute the controller speed to accomodate the error but might need to take into account of lateral error
+double SteeringController::compute_controller_speed(double trip_dist_err){
+    double controller_speed;
+    if(trip_dist_err<0){
+        //ahead of schedule: meaning slowdown?
+    }
+    else{
+        //behind schedule: meaning speedup?
+    }
+    return controller_speed;
+}
+
+//this will compute the controller omega to accomodate the error
+double SteeringController::compute_controller_omega(double heading_err){
+    double controller_omega;
+    if(heading_err<0){
+        //rotate -omega
+    }
+    else{
+        //rotate +omega
+    }
+
+    return controller_omega;
+}
+
 int main(int argc, char** argv) 
 {
     // ROS set-ups:
