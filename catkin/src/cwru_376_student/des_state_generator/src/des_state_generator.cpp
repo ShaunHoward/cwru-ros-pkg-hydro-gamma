@@ -518,49 +518,6 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     return desired_state; 
 }
 
-
-
-nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
-    nav_msgs::Odometry desired_state; // fill in this message and return it
-    // need to update these values:
-    //    current_seg_length_to_go_, current_seg_phi_des_, current_seg_xy_des_ 
-    //    current_speed_des_, current_omega_des_
-    current_seg_xy_des_ = current_seg_ref_point_; // this value will not change during spin-in-place
-    current_speed_des_ = 0.0; // also unchanging
-    
-    current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
-    
-    double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
-    ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
-    current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
-    ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f",current_seg_length_to_go_);    
-    
-    if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
-        current_seg_type_ = HALT;
-        current_seg_xy_des_ = current_seg_ref_point_; // specify destination vertex as exact, current goal
-        current_seg_length_to_go_=0.0;
-        current_speed_des_ = 0.0;  // 
-        current_omega_des_ = 0.0;
-        current_seg_phi_des_ =   current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*current_seg_length_;  
-        current_path_seg_done_ = true;
-        ROS_INFO("update_des_state_spin: done with spin");
-    }
-    else { // not done yet--rotate some more
-        // based on angular distance covered, compute current desired heading
-        // consider specified curvature ==> rotation direction to goal
-        current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*(current_seg_length_ - current_seg_length_to_go_);       
-    }
-    
-    // fill in components of desired-state message:
-    desired_state.twist.twist.linear.x =current_speed_des_;
-    desired_state.twist.twist.angular.z = current_omega_des_;
-    desired_state.pose.pose.position.x = current_seg_xy_des_(0);
-    desired_state.pose.pose.position.y = current_seg_xy_des_(1);
-    desired_state.pose.pose.orientation = convertPlanarPhi2Quaternion(current_seg_phi_des_);
-    desired_state.header.stamp = ros::Time::now();
-    return desired_state;         
-}
-
 nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     nav_msgs::Odometry desired_state; // fill in this message and return it
     // fill in components of desired-state message from most recent odom message
@@ -601,7 +558,7 @@ double DesStateGenerator::trapezoidalSlowDown(double segmentLength) {
     double lengthCompleted = sqrt(deltaX * deltaX + deltaY * deltaY);
     ROS_INFO("dist traveled: %f", lengthCompleted);
     //Set the distance left to travel on the current segment
-    current_seg_length_to_go_ = segmentLength - lengthCompleted;
+    //current_seg_length_to_go_ = segmentLength - lengthCompleted;
 
     //use segment.distanceLeft to decide what vel should be, as per plan
     if (current_seg_length_to_go_ <= 0.0) { // at goal, or overshot; stop!
@@ -652,13 +609,126 @@ double DesStateGenerator::trapezoidalSpeedUp(double scheduledVelocity) {
     return newVelocityCommand;
 }
 
-// MAKE THIS BETTER!!
-double DesStateGenerator::compute_omega_profile() {
-    double des_omega = sgn(current_seg_curvature_)*MAX_OMEGA;
-    ROS_INFO("compute_omega_profile: des_omega = %f",des_omega);
-    return des_omega; // spin in direction of closest rotation to target heading
+nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
+    nav_msgs::Odometry desired_state; // fill in this message and return it
+    // need to update these values:
+    //    current_seg_length_to_go_, current_seg_phi_des_, current_seg_xy_des_ 
+    //    current_speed_des_, current_omega_des_
+    current_seg_xy_des_ = current_seg_ref_point_; // this value will not change during spin-in-place
+    current_speed_des_ = 0.0; // also unchanging
+    
+    current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
+    
+    double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
+    ROS_INFO("update_des_state_spin: delta_phi = %f",delta_phi);
+    current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
+    ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f",current_seg_length_to_go_);    
+    
+    if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
+        current_seg_type_ = HALT;
+        current_seg_xy_des_ = current_seg_ref_point_; // specify destination vertex as exact, current goal
+        current_seg_length_to_go_=0.0;
+        current_speed_des_ = 0.0;  // 
+        current_omega_des_ = 0.0;
+        current_seg_phi_des_ =   current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*current_seg_length_;  
+        current_path_seg_done_ = true;
+        ROS_INFO("update_des_state_spin: done with spin");
+    }
+    else { // not done yet--rotate some more
+        // based on angular distance covered, compute current desired heading
+        // consider specified curvature ==> rotation direction to goal
+        current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*(current_seg_length_ - current_seg_length_to_go_);       
+    }
+    
+    // fill in components of desired-state message:
+    desired_state.twist.twist.linear.x =current_speed_des_;
+    desired_state.twist.twist.angular.z = current_omega_des_;
+    desired_state.pose.pose.position.x = current_seg_xy_des_(0);
+    desired_state.pose.pose.position.y = current_seg_xy_des_(1);
+    desired_state.pose.pose.orientation = convertPlanarPhi2Quaternion(current_seg_phi_des_);
+    desired_state.header.stamp = ros::Time::now();
+    return desired_state;         
 }
 
+// MAKE THIS BETTER!!
+double DesStateGenerator::compute_omega_profile() {
+    double turnDirection = sgn(current_seg_curvature_);
+    
+    if (turnDirection != 0){
+        bool turnRight = turnDirection < 0;
+        double omegaProfile = turnSlowDown(turnRight);
+        omegaProfile = turnSpeedUp(omegaProfile);
+        ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
+        return omegaProfile; // spin in direction of closest rotation to target heading
+    }
+ 
+    ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
+    return 0.0;
+
+}
+
+/**
+ * Slows down the robot's rotational velocity trapezoidally according to
+ * the phi left to rotate on the current rotation segment as well as
+ * rotational deceleration constants.
+ * 
+ * @param turnRight - whether the robot is currently turning right
+ * @return the scheduled omega for slowing down the robot spin
+ */
+double DesStateGenerator::turnSlowDown(bool turnRight) {
+    double scheduledOmega = 0.0f;
+    
+    ROS_INFO("rads left: %f", current_seg_length_to_go_);
+
+    //use rotate.phiLeft to decide what omega should be, as per plan
+    if (current_seg_length_to_go_ <= 0.0) { // at goal, or overshot; stop!
+        scheduledOmega = 0.0;
+    } else if (current_seg_length_to_go_ <= rotationalDecelerationPhi) { //possibly should be braking to a halt
+        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
+        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
+        scheduledOmega = sqrtf(2 * current_seg_length_to_go_ * MAX_ALPHA);
+        ROS_INFO("braking zone: o_sched = %f", scheduledOmega);
+    } else {
+        //Not ready to decelerate robot so scheduled omega will be the max omega (need to accelerate 
+        //or hold the max omega
+        scheduledOmega = MAX_OMEGA;
+    }
+    ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
+    return scheduledOmega;
+}
+
+/**
+ * Speeds up the robot's angular velocity according to the scheduled slow-down 
+ * omega and the robot's odom omega as well as rotational accerlation constants.
+ * 
+ * @param scheduledOmega - the omega scheduled via the turn slow down function
+ * @return the new omega spin command to publish to the robot's motors
+ */
+double DesStateGenerator::turnSpeedUp(double scheduledOmega) {
+    double newOmegaCommand;
+
+    //how does the current omega compare to the scheduled omega?
+    if (fabs(odom_omega_) < scheduledOmega) { // maybe we halted
+        // may need to ramp up to maxOmega; do so within accel limits
+        double testOmega = fabs(odom_omega_) + MAX_ALPHA * dt_; // if callbacks are slow, this could be abrupt
+        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
+    } else if (fabs(odom_omega_) > scheduledOmega) { //travelling too fast--this could be trouble
+        // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
+        // need to catch up, so ramp down even faster than maxAlpha.  Try 1.2*maxAlpha.
+        ROS_INFO("odom omega: %f; sched omega: %f", fabs(odom_omega_), scheduledOmega);
+
+        //moving too fast decelerating faster than nominal maxAlpha
+        double testOmega = fabs(odom_omega_) - 1.2 * MAX_ALPHA * dt_;
+        // choose larger of two..don't overshoot
+        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega;
+    } else {
+        //Just hold the scheduled omega
+        newOmegaCommand = scheduledOmega;
+    }
+
+    ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
+    return newOmegaCommand;
+}
 
 int main(int argc, char** argv) {
     // ROS set-ups:
