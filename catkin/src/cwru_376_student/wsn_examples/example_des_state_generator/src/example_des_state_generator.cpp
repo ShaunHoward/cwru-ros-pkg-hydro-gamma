@@ -246,7 +246,7 @@ geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::Po
             std::cout<<"DEBUG:  enter 1: ";
             std::cin>>ans;   
         }    
-    return odom_pose; // dummy--no conversion; when AMCL is running, use base-frame transform to convert from map to odom coords
+    return odom_pose; // uses base-frame transform to convert from map to odom coords
 }
 
 //DUMMY...

@@ -167,7 +167,6 @@ void SteeringController::my_clever_steering_algorithm() {
     double lateral_err;
     double trip_dist_err; // error is scheduling...are we ahead or behind?
     
-
     // have access to: des_state_vel_, des_state_omega_, des_state_x_, des_state_y_, des_state_phi_ and corresponding odom values    
     pos_err_xy_vec_ = des_xy_vec_ - odom_xy_vec_; // vector pointing from odom x-y to desired x-y
     lateral_err = n_vec.dot(pos_err_xy_vec_); //signed scalar lateral offset error; if positive, then desired state is to the left of odom
@@ -192,11 +191,10 @@ void SteeringController::my_clever_steering_algorithm() {
     
      // do something clever with this information     
     
-    //Turn toward target first
-    controller_omega = des_state_omega_; //ditto
-    //Then head to target
-    controller_speed = des_state_vel_; //you call that clever ?!?!?!? should speed up/slow down to null out 
-
+    //Correct errors in omega if there is heading error or lateral error
+    controller_omega = compute_controller_omega(heading_err, lateral_err);
+    //Correct errors in speed if there is a trip dist error
+    controller_speed = compute_controller_speed(trip_dist_err);
  
     controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
     
@@ -209,9 +207,10 @@ void SteeringController::my_clever_steering_algorithm() {
     cmd_publisher2_.publish(twist_cmd2_);     
 }
 
-//this will compute the controller speed to accomodate the error but might need to take into account of lateral error
+//this will compute the controller speed to accommodate the error but
+//might need to take into account of lateral error
 double SteeringController::compute_controller_speed(double trip_dist_err){
-    double controller_speed;
+    double controller_speed = des_state_vel_;
     if(trip_dist_err<0){
         //ahead of schedule: meaning slowdown?
     }
@@ -221,9 +220,9 @@ double SteeringController::compute_controller_speed(double trip_dist_err){
     return controller_speed;
 }
 
-//this will compute the controller omega to accomodate the error
-double SteeringController::compute_controller_omega(double heading_err){
-    double controller_omega;
+//this will compute the controller omega to accommodate the error
+double SteeringController::compute_controller_omega(double heading_err, double lateral_err){
+    double controller_omega = des_state_omega_;
     if(heading_err<0){
         //rotate -omega
     }

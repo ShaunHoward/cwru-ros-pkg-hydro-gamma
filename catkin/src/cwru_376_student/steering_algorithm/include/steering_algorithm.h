@@ -50,7 +50,7 @@ public:
     void my_clever_steering_algorithm(); // here is the heart of it...use odom state and desired state to compute twist command, and publish it
     //this may need to incorporate lateral error as well
     double compute_controller_speed(double trip_dist_err);
-    double compute_controller_omega(double heading_err);
+    double compute_controller_omega(double heading_err, double lateral_err);
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
     double sat(double x);
