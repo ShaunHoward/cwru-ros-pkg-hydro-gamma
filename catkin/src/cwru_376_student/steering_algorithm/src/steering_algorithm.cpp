@@ -1,4 +1,4 @@
-//example_steering_algorithm.cpp:
+//steering_algorithm.cpp:
 //wsn, Feb 2015
 //should subscribe to desired state and to odom
 // then invoke an algorithm to command speed and spin
@@ -7,7 +7,7 @@
 
 
 // this header incorporates all the necessary #include files and defines the class "SteeringController"
-#include "example_steering_algorithm.h"
+#include "steering_algorithm.h"
 
 //CONSTRUCTOR:  this will get called whenever an instance of this class is created
 // want to put all dirty work of initializations here

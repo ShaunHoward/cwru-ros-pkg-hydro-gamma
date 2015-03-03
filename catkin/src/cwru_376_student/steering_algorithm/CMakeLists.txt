@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(des_state_generator)
+project(steering_algorithm)
 
 find_package(catkin_simple REQUIRED)
 
@@ -10,8 +10,6 @@ catkin_simple()
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   catkin_simple
-  cwru_msgs
-  cwru_srv
   eigen
   geometry_msgs
   nav_msgs
@@ -23,9 +21,6 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
-
-cs_add_executable(des_state_generator src/des_state_generator.cpp)
-cs_add_executable(path_sender src/path_sender.cpp)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -84,7 +79,7 @@ cs_add_executable(path_sender src/path_sender.cpp)
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   cwru_msgs#   geometry_msgs#   nav_msgs#   std_msgs
+#   geometry_msgs#   nav_msgs#   std_msgs
 # )
 
 ###################################
@@ -98,8 +93,8 @@ cs_add_executable(path_sender src/path_sender.cpp)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES des_state_generator
-#  CATKIN_DEPENDS catkin_simple cwru_msgs cwru_srv eigen geometry_msgs nav_msgs roscpp std_msgs tf
+#  LIBRARIES steering_algorithm
+#  CATKIN_DEPENDS catkin_simple eigen geometry_msgs nav_msgs roscpp std_msgs tf
 #  DEPENDS system_lib
 )
 
@@ -115,19 +110,19 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(des_state_generator
-#   src/${PROJECT_NAME}/des_state_generator.cpp
+# add_library(steering_algorithm
+#   src/${PROJECT_NAME}/steering_algorithm.cpp
 # )
 
 ## Declare a cpp executable
-# add_executable(des_state_generator_node src/des_state_generator_node.cpp)
+# add_executable(steering_algorithm_node src/steering_algorithm_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(des_state_generator_node des_state_generator_generate_messages_cpp)
+# add_dependencies(steering_algorithm_node steering_algorithm_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(des_state_generator_node
+# target_link_libraries(steering_algorithm_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -146,7 +141,7 @@ include_directories(
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS des_state_generator des_state_generator_node
+# install(TARGETS steering_algorithm steering_algorithm_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -171,13 +166,15 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_des_state_generator.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_steering_algorithm.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+cs_add_executable(steering_algorithm src/steering_algorithm.cpp)
 
 cs_install()
 cs_export()
