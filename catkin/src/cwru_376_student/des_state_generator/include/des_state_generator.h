@@ -1,12 +1,12 @@
-// example_des_state_generator.h header file //
-// wsn; Feb, 2015
-// include this file in "example_des_state_generator.cpp"
+// des_state_generator.h header file //
+// Team Gamma; Feb, 2015
+// include this file in "des_state_generator.cpp"
 
 // here's a good trick--should always do this with header files:
 // create a unique mnemonic for this header file, so it will get included if needed,
 // but will not get included multiple times
-#ifndef EXAMPLE_DES_STATE_GENERATOR_H_
-#define EXAMPLE_DES_STATE_GENERATOR_H_
+#ifndef DES_STATE_GENERATOR_H_
+#define DES_STATE_GENERATOR_H_
 
 const bool DEBUG_MODE=false; // change this for display/break-points
 
@@ -60,6 +60,19 @@ const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
 const double HEADING_TOL = 0.05; // heading tolerance; adjust this
 
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
+
+// compute some properties of trapezoidal velocity profile plan:
+float accelerationTime = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
+float decelerationTime = accelerationTime; //(for same decel as accel); assumes brake to full halt
+float accelerationDistance = 0.5 * MAX_ACCEL * (accelerationTime * accelerationTime); //distance rqd to ramp up to full speed
+float decelerationDistance = 0.5 * MAX_ACCEL * (decelerationTime * decelerationTime); //same as ramp-up distance
+
+// compute properties of rotational trapezoidal velocity profile plan:
+float turnAccelTime = MAX_OMEGA / MAX_ALPHA; //...assumes start from rest
+float turnDecelTime = turnAccelTime; //(for same decel as accel); assumes brake to full halt
+//float turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
+float rotationalAccelerationPhi = 0.5 * MAX_ALPHA * (turnAccelTime * turnAccelTime);
+float rotationalDecelerationPhi = 0.5 * MAX_ALPHA * (turnDecelTime * turnDecelTime);
 
 // define a class, including a constructor, member variables and member functions
 
@@ -182,6 +195,8 @@ private:
     // these should do triangular or trapezoidal velocity profiling
     // they should also be smart enough to recognize E-stops, etc.
     double compute_speed_profile();
+    double trapezoidalSlowDown(double segmentLength);
+    double trapezoidalSpeedUp(double scheduledVelocity);
     double compute_omega_profile();    
     
     // these are "crawler" functions.  Given a current path segment, they update desired state objects

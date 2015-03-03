@@ -261,7 +261,7 @@ void DesStateGenerator::process_new_vertex() {
     // BETTER: if successive line segments in path are nearly colinear, don't need to stop and spin;
     // needs more logic
 
-    std::vector<cwru_msgs::PathSegment> DesStateGenerator::build_spin_then_line_path_segments(geometry_msgs::Pose pose1, geometry_msgs::Pose pose2) {
+std::vector<cwru_msgs::PathSegment> DesStateGenerator::build_spin_then_line_path_segments(geometry_msgs::Pose pose1, geometry_msgs::Pose pose2) {
     cwru_msgs::PathSegment spin_path_segment; // a container for new path segment, spin
     cwru_msgs::PathSegment line_path_segment; // a container for new path segment, line  
     std::vector<cwru_msgs::PathSegment> vec_of_path_segs; //container to hold results
@@ -290,7 +290,7 @@ void DesStateGenerator::process_new_vertex() {
     std::cout<<"vec of pathsegs[0] ="<<vec_of_path_segs[0]<<std::endl;
     std::cout<<"vec of pathsegs[1] ="<<vec_of_path_segs[1]<<std::endl;    
     return vec_of_path_segs;
-    }
+}
  
 // given an x-y point in space and initial and desired heading, return a spin-in-place segment object
 cwru_msgs::PathSegment DesStateGenerator::build_spin_in_place_segment(Eigen::Vector2d v1, double init_heading, double des_heading)  {
@@ -579,7 +579,77 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
 
 //DUMMY--fill this in
 double DesStateGenerator::compute_speed_profile() {
-    return MAX_SPEED;
+    double speedProfile = trapezoidalSlowDown(current_seg_length_);
+    speedProfile = trapezoidalSpeedUp(speedProfile);
+    return speedProfile;
+}
+
+/**
+ * Slows down the robot's forward velocity trapezoidally according to
+ * the segment length distance traveled and distance left to travel as
+ * well as deceleration constants.
+ * 
+ * @param segmentLength - the segment to slow the robot down along
+ * @return the newly scheduled velocity determined by the algorithm
+ */
+double DesStateGenerator::trapezoidalSlowDown(double segmentLength) {
+    //Compute distance traveled thus far on the current segment
+    double deltaX = odom_x_ - current_seg_ref_point_(0);
+    double deltaY = odom_y_ - current_seg_ref_point_(1);
+    double scheduledVelocity = 0.0f;
+    //Calculate the length completed along the current segment thus far
+    double lengthCompleted = sqrt(deltaX * deltaX + deltaY * deltaY);
+    ROS_INFO("dist traveled: %f", lengthCompleted);
+    //Set the distance left to travel on the current segment
+    current_seg_length_to_go_ = segmentLength - lengthCompleted;
+
+    //use segment.distanceLeft to decide what vel should be, as per plan
+    if (current_seg_length_to_go_ <= 0.0) { // at goal, or overshot; stop!
+        scheduledVelocity = 0.0;
+    } else if (current_seg_length_to_go_ <= decelerationDistance) { //possibly should be braking to a halt
+        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
+        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
+        scheduledVelocity = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL);
+        ROS_INFO("braking zone: v_sched = %f", scheduledVelocity);
+    } else {
+        //Not ready to decelerate robot so scheduled velocity will be the max velocity (need to accelerate 
+        //or hold the max velocity
+        scheduledVelocity = MAX_SPEED;
+    }
+    ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
+    return scheduledVelocity;
+}
+
+/**
+ * Speeds up the robot's forward velocity trapezoidally according to the 
+ * scheduled velocity provided from the slow down function and the odom 
+ * callback velocity as well as acceleration constants.
+ * 
+ * @param scheduledVelocity - the velocity provided via the trapezoidal slow down algorithm
+ * @return the new velocity to command
+ */
+double DesStateGenerator::trapezoidalSpeedUp(double scheduledVelocity) {
+    double newVelocityCommand;
+    //how does the current velocity compare to the scheduled vel?
+    if (odom_vel_ < scheduledVelocity) { // maybe we halted, e.g. due to estop or obstacle;
+        // may need to ramp up to v_max; do so within accel limits
+        double testVelocity = odom_vel_ + MAX_ACCEL * dt_; // if callbacks are slow, this could be abrupt
+        // operator:  c = (a>b) ? a : b;
+        newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
+        // this prevents overshooting scheduled_vel
+    } else if (odom_vel_ > scheduledVelocity) { //travelling too fast--this could be trouble
+        // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
+        // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
+        ROS_INFO("odom vel: %f; sched vel: %f", odom_vel_, scheduledVelocity); //debug/analysis output; can comment this out
+
+        double testVelocity = odom_vel_ - 1.2 * MAX_ACCEL * dt_; //moving too fast--try decelerating faster than nominal a_max
+
+        newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; // choose larger of two options...don't overshoot scheduled_vel
+    } else {
+        newVelocityCommand = scheduledVelocity; //silly third case: this is already true, if here.  Issue the scheduled velocity
+    }
+    ROS_INFO("New speedup command is: %f", newVelocityCommand);
+    return newVelocityCommand;
 }
 
 // MAKE THIS BETTER!!
