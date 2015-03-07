@@ -647,10 +647,19 @@ int main(int argc, char **argv) {
 
     ros::Rate rTimer(1 / changeInTime); // frequency corresponding to chosen sample period DT; the main loop will run this fast
     
+    //Move the robot forward 4.75 meters
     moveOnSegment(velocityPublisher, rTimer, 4.75); //4.75
+    
+    //turn the robot nearly 90 degrees
     rotateToPhi(velocityPublisher, rTimer, -1.55);
+    
+    //Move the robot forward 12.3 meters
     moveOnSegment(velocityPublisher, rTimer, 12.3);
+    
+    //turn the robot nearly 90 degrees
     rotateToPhi(velocityPublisher, rTimer, -1.55);
+    
+    //Move the robot forward 8 meters
     moveOnSegment(velocityPublisher, rTimer, 8);
     return 0;
 }
