@@ -195,14 +195,11 @@ private:
     // Compute the forward speed profile with trapezoidal speed profiling
     // These will recognize Estops, lidar alarm, and software halt.
     double compute_speed_profile();
-    double trapezoidalSlowDown(double segmentLength);
-    double trapezoidalSpeedUp(double scheduledVelocity);
     
     // Compute the rotational speed profile with trapezoidal speed profiling
-    // These will recognize Estops, lidar alarm, and software halt.
+    // This will recognize Estops, lidar alarm, and software halt.
     double compute_omega_profile();    
-    double turnSlowDown(bool turnRight);
-    double turnSpeedUp(double scheduledOmega);
+
     
     // these are "crawler" functions.  Given a current path segment, they update desired state objects
     // and publish the resulting desired state;

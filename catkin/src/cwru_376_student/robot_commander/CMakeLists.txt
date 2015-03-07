@@ -171,6 +171,7 @@ include_directories(
 
 # Executables
 cs_add_executable(vel_profiler src/vel_profiler.cpp)
+cs_add_executable(steer_vel_profiler src/steer_vel_profiler.cpp)
 # target_link_library(example my_lib)
  
 cs_install()

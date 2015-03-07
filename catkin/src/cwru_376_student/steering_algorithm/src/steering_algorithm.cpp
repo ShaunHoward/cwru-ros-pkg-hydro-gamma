@@ -192,7 +192,7 @@ void SteeringController::my_clever_steering_algorithm() {
      // do something clever with this information     
     
     //Correct errors in omega if there is heading error or lateral error
-    controller_omega = compute_controller_omega(heading_err, lateral_err);
+    controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
     //Correct errors in speed if there is a trip dist error
     controller_speed = compute_controller_speed(trip_dist_err);
  
@@ -205,6 +205,22 @@ void SteeringController::my_clever_steering_algorithm() {
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header 
     cmd_publisher_.publish(twist_cmd_);  
     cmd_publisher2_.publish(twist_cmd2_);     
+}
+
+//this will compute the controller omega to accommodate the error
+double SteeringController::compute_controller_omega(double trip_dist_err,
+        double heading_err, double lateral_err){
+    double controller_omega = des_state_omega_;
+    double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
+    if (lateral_err > LAT_ERR_TOL){ //Rotate to the left 
+        //heading_err > 0
+        //use heading error to calculate +omega
+    } else if (lateral_err < -LAT_ERR_TOL){
+        //heading_err < 0
+        //use heading error to calculate -omega
+    }
+
+    return controller_omega;
 }
 
 //this will compute the controller speed to accommodate the error but
@@ -220,18 +236,7 @@ double SteeringController::compute_controller_speed(double trip_dist_err){
     return controller_speed;
 }
 
-//this will compute the controller omega to accommodate the error
-double SteeringController::compute_controller_omega(double heading_err, double lateral_err){
-    double controller_omega = des_state_omega_;
-    if(heading_err<0){
-        //rotate -omega
-    }
-    else{
-        //rotate +omega
-    }
 
-    return controller_omega;
-}
 
 int main(int argc, char** argv) 
 {

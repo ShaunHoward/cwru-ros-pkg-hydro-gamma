@@ -550,77 +550,10 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
 //DUMMY--fill this in
 
 double DesStateGenerator::compute_speed_profile() {
-    double speedProfile = trapezoidalSlowDown(current_seg_length_);
-    speedProfile = trapezoidalSpeedUp(speedProfile);
+    //Need to make a steering vel profiler object then call these methods.
+    double speedProfile = 0;//trapezoidalSlowDown(current_seg_length_);
+    //speedProfile = trapezoidalSpeedUp(speedProfile);
     return speedProfile;
-}
-
-/**
- * Slows down the robot's forward velocity trapezoidally according to
- * the segment length distance traveled and distance left to travel as
- * well as deceleration constants.
- * 
- * @param segmentLength - the segment to slow the robot down along
- * @return the newly scheduled velocity determined by the algorithm
- */
-double DesStateGenerator::trapezoidalSlowDown(double segmentLength) {
-    //Compute distance traveled thus far on the current segment
-    double deltaX = odom_x_ - current_seg_ref_point_(0);
-    double deltaY = odom_y_ - current_seg_ref_point_(1);
-    double scheduledVelocity = 0.0f;
-    //Calculate the length completed along the current segment thus far
-    double lengthCompleted = sqrt(deltaX * deltaX + deltaY * deltaY);
-    ROS_INFO("dist traveled: %f", lengthCompleted);
-    //Set the distance left to travel on the current segment
-    //current_seg_length_to_go_ = segmentLength - lengthCompleted;
-
-    //use segment.distanceLeft to decide what vel should be, as per plan
-    if (current_seg_length_to_go_ <= 0.0) { // at goal, or overshot; stop!
-        scheduledVelocity = 0.0;
-    } else if (current_seg_length_to_go_ <= decelerationDistance) { //possibly should be braking to a halt
-        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
-        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-        scheduledVelocity = sqrt(2 * current_seg_length_to_go_ * MAX_ACCEL);
-        ROS_INFO("braking zone: v_sched = %f", scheduledVelocity);
-    } else {
-        //Not ready to decelerate robot so scheduled velocity will be the max velocity (need to accelerate 
-        //or hold the max velocity
-        scheduledVelocity = MAX_SPEED;
-    }
-    ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
-    return scheduledVelocity;
-}
-
-/**
- * Speeds up the robot's forward velocity trapezoidally according to the 
- * scheduled velocity provided from the slow down function and the odom 
- * callback velocity as well as acceleration constants.
- * 
- * @param scheduledVelocity - the velocity provided via the trapezoidal slow down algorithm
- * @return the new velocity to command
- */
-double DesStateGenerator::trapezoidalSpeedUp(double scheduledVelocity) {
-    double newVelocityCommand;
-    //how does the current velocity compare to the scheduled vel?
-    if (odom_vel_ < scheduledVelocity) { // maybe we halted, e.g. due to estop or obstacle;
-        // may need to ramp up to v_max; do so within accel limits
-        double testVelocity = odom_vel_ + MAX_ACCEL * dt_; // if callbacks are slow, this could be abrupt
-        // operator:  c = (a>b) ? a : b;
-        newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
-        // this prevents overshooting scheduled_vel
-    } else if (odom_vel_ > scheduledVelocity) { //travelling too fast--this could be trouble
-        // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
-        // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
-        ROS_INFO("odom vel: %f; sched vel: %f", odom_vel_, scheduledVelocity); //debug/analysis output; can comment this out
-
-        double testVelocity = odom_vel_ - 1.2 * MAX_ACCEL * dt_; //moving too fast--try decelerating faster than nominal a_max
-
-        newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; // choose larger of two options...don't overshoot scheduled_vel
-    } else {
-        newVelocityCommand = scheduledVelocity; //silly third case: this is already true, if here.  Issue the scheduled velocity
-    }
-    ROS_INFO("New speedup command is: %f", newVelocityCommand);
-    return newVelocityCommand;
 }
 
 nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
@@ -666,83 +599,84 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
 // MAKE THIS BETTER!!
 
 double DesStateGenerator::compute_omega_profile() {
-    double turnDirection = sgn(current_seg_curvature_);
-
-    if (turnDirection != 0) {
-        bool turnRight = turnDirection < 0;
-        double omegaProfile = turnSlowDown(turnRight);
-        omegaProfile = turnSpeedUp(omegaProfile);
-        ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
-        return omegaProfile; // spin in direction of closest rotation to target heading
-    }
-
-    ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
+    //need to make object for steer vel profile then call these methods.
+//    double turnDirection = sgn(current_seg_curvature_);
+//
+//    if (turnDirection != 0) {
+//        bool turnRight = turnDirection < 0;
+//        double omegaProfile = turnSlowDown(turnRight);
+//        omegaProfile = turnSpeedUp(omegaProfile);
+//        ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
+//        return omegaProfile; // spin in direction of closest rotation to target heading
+//    }
+//
+//    ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
     return 0.0;
 
 }
 
-/**
- * Slows down the robot's rotational velocity trapezoidally according to
- * the phi left to rotate on the current rotation segment as well as
- * rotational deceleration constants.
- * 
- * @param turnRight - whether the robot is currently turning right
- * @return the scheduled omega for slowing down the robot spin
- */
-double DesStateGenerator::turnSlowDown(bool turnRight) {
-    double scheduledOmega = 0.0f;
-
-    ROS_INFO("rads left: %f", current_seg_length_to_go_);
-
-    //use rotate.phiLeft to decide what omega should be, as per plan
-    if (current_seg_length_to_go_ <= 0.0) { // at goal, or overshot; stop!
-        scheduledOmega = 0.0;
-    } else if (current_seg_length_to_go_ <= rotationalDecelerationPhi) { //possibly should be braking to a halt
-        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
-        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-        scheduledOmega = sqrtf(2 * current_seg_length_to_go_ * MAX_ALPHA);
-        ROS_INFO("braking zone: o_sched = %f", scheduledOmega);
-    } else {
-        //Not ready to decelerate robot so scheduled omega will be the max omega (need to accelerate 
-        //or hold the max omega
-        scheduledOmega = MAX_OMEGA;
-    }
-    ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
-    return scheduledOmega;
-}
-
-/**
- * Speeds up the robot's angular velocity according to the scheduled slow-down 
- * omega and the robot's odom omega as well as rotational accerlation constants.
- * 
- * @param scheduledOmega - the omega scheduled via the turn slow down function
- * @return the new omega spin command to publish to the robot's motors
- */
-double DesStateGenerator::turnSpeedUp(double scheduledOmega) {
-    double newOmegaCommand;
-
-    //how does the current omega compare to the scheduled omega?
-    if (fabs(odom_omega_) < scheduledOmega) { // maybe we halted
-        // may need to ramp up to maxOmega; do so within accel limits
-        double testOmega = fabs(odom_omega_) + MAX_ALPHA * dt_; // if callbacks are slow, this could be abrupt
-        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
-    } else if (fabs(odom_omega_) > scheduledOmega) { //travelling too fast--this could be trouble
-        // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
-        // need to catch up, so ramp down even faster than maxAlpha.  Try 1.2*maxAlpha.
-        ROS_INFO("odom omega: %f; sched omega: %f", fabs(odom_omega_), scheduledOmega);
-
-        //moving too fast decelerating faster than nominal maxAlpha
-        double testOmega = fabs(odom_omega_) - 1.2 * MAX_ALPHA * dt_;
-        // choose larger of two..don't overshoot
-        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega;
-    } else {
-        //Just hold the scheduled omega
-        newOmegaCommand = scheduledOmega;
-    }
-
-    ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
-    return newOmegaCommand;
-}
+///**
+// * Slows down the robot's rotational velocity trapezoidally according to
+// * the phi left to rotate on the current rotation segment as well as
+// * rotational deceleration constants.
+// * 
+// * @param turnRight - whether the robot is currently turning right
+// * @return the scheduled omega for slowing down the robot spin
+// */
+//double DesStateGenerator::turnSlowDown(bool turnRight) {
+//    double scheduledOmega = 0.0f;
+//
+//    ROS_INFO("rads left: %f", current_seg_length_to_go_);
+//
+//    //use rotate.phiLeft to decide what omega should be, as per plan
+//    if (current_seg_length_to_go_ <= 0.0) { // at goal, or overshot; stop!
+//        scheduledOmega = 0.0;
+//    } else if (current_seg_length_to_go_ <= rotationalDecelerationPhi) { //possibly should be braking to a halt
+//        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
+//        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
+//        scheduledOmega = sqrtf(2 * current_seg_length_to_go_ * MAX_ALPHA);
+//        ROS_INFO("braking zone: o_sched = %f", scheduledOmega);
+//    } else {
+//        //Not ready to decelerate robot so scheduled omega will be the max omega (need to accelerate 
+//        //or hold the max omega
+//        scheduledOmega = MAX_OMEGA;
+//    }
+//    ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
+//    return scheduledOmega;
+//}
+//
+///**
+// * Speeds up the robot's angular velocity according to the scheduled slow-down 
+// * omega and the robot's odom omega as well as rotational accerlation constants.
+// * 
+// * @param scheduledOmega - the omega scheduled via the turn slow down function
+// * @return the new omega spin command to publish to the robot's motors
+// */
+//double DesStateGenerator::turnSpeedUp(double scheduledOmega) {
+//    double newOmegaCommand;
+//
+//    //how does the current omega compare to the scheduled omega?
+//    if (fabs(odom_omega_) < scheduledOmega) { // maybe we halted
+//        // may need to ramp up to maxOmega; do so within accel limits
+//        double testOmega = fabs(odom_omega_) + MAX_ALPHA * dt_; // if callbacks are slow, this could be abrupt
+//        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
+//    } else if (fabs(odom_omega_) > scheduledOmega) { //travelling too fast--this could be trouble
+//        // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
+//        // need to catch up, so ramp down even faster than maxAlpha.  Try 1.2*maxAlpha.
+//        ROS_INFO("odom omega: %f; sched omega: %f", fabs(odom_omega_), scheduledOmega);
+//
+//        //moving too fast decelerating faster than nominal maxAlpha
+//        double testOmega = fabs(odom_omega_) - 1.2 * MAX_ALPHA * dt_;
+//        // choose larger of two..don't overshoot
+//        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega;
+//    } else {
+//        //Just hold the scheduled omega
+//        newOmegaCommand = scheduledOmega;
+//    }
+//
+//    ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
+//    return newOmegaCommand;
+//}
 
 int main(int argc, char** argv) {
     // ROS set-ups:

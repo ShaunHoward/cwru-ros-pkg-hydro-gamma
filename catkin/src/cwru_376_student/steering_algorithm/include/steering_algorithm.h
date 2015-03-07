@@ -39,6 +39,8 @@ const double K_TRIP_DIST = 1.0;
 // dynamic limitations:  these apply to the steering controller; they may be larger than the limits on des state generation
 const double MAX_SPEED = 1.0; // m/sec; adjust this
 const double MAX_OMEGA = 1.0; //1.0; // rad/sec; adjust this
+    //The lateral error tolerance value.
+const double LAT_ERR_TOL = 0.05;
 
 
 // define a class, including a constructor, member variables and member functions
@@ -50,7 +52,8 @@ public:
     void my_clever_steering_algorithm(); // here is the heart of it...use odom state and desired state to compute twist command, and publish it
     //this may need to incorporate lateral error as well
     double compute_controller_speed(double trip_dist_err);
-    double compute_controller_omega(double heading_err, double lateral_err);
+    double compute_controller_omega(double trip_dist_err,
+        double heading_err, double lateral_err);
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
     double sat(double x);
