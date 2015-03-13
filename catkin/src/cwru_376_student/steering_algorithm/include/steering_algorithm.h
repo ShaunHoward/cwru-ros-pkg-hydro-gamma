@@ -32,6 +32,9 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 
+//Include the steering vel profiler to control velocity
+//#include "/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/cwru_376_student/robot_commander/include/steer_vel_profiler.h";
+
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
 const double K_PHI= 10.0; // control gains for steering
 const double K_DISP = 3.0;

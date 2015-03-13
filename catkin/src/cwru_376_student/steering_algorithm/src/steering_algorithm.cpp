@@ -47,7 +47,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehan
 
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header  
-    initializeSteeringProfile();
+    initializeSteeringProfiler();
 }
 
 //member helper function to set up subscribers;
@@ -80,7 +80,7 @@ void SteeringController::initializePublishers()
 
 void SteeringController::initializeSteeringProfiler()
 {
-    steeringProfiler = new SteerVelProfiler(maxAlpha, rotationalDecelerationPhi,
+    steeringProfiler(maxAlpha, rotationalDecelerationPhi,
         MAX_ACCEL, decelerationDistance, MAX_SPEED,
         maxOmega);
 }

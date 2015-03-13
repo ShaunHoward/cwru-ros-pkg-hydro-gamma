@@ -98,7 +98,7 @@ void DesStateGenerator::initializePublishers() {
 
 void DesStateGenerator::initializeSteeringProfiler()
 {
-    steeringProfiler = new SteerVelProfiler(maxAlpha, rotationalDecelerationPhi,
+    steeringProfiler(maxAlpha, rotationalDecelerationPhi,
         MAX_ACCEL, decelerationDistance, MAX_SPEED,
         maxOmega);
 }
@@ -107,7 +107,7 @@ void DesStateGenerator::initializeSteeringProfiler()
  * Updates the steering velocity profiler instance with
  * fresh odometry readings.
  */
-void SteeringController::update_steering_profiler(){
+void DesStateGenerator::update_steering_profiler(){
     steeringProfiler.setOdomXYValues(odomX, odomY);
     steeringProfiler.setOdomRotationValues(odomPhi, odomOmega);
     steeringProfiler.setOdomForwardVel(odomVel);
@@ -622,17 +622,21 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
 
 double DesStateGenerator::compute_omega_profile() {
     //need to make object for steer vel profile then call these methods.
-//    double turnDirection = sgn(current_seg_curvature_);
-//
-//    if (turnDirection != 0) {
-//        bool turnRight = turnDirection < 0;
-//        double omegaProfile = turnSlowDown(turnRight);
-//        omegaProfile = turnSpeedUp(omegaProfile);
-//        ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
-//        return omegaProfile; // spin in direction of closest rotation to target heading
-//    }
-//
-//    ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
+    double turnDirection = sgn(current_seg_curvature_);
+
+    if (turnDirection != 0) {
+        bool turnRight = turnDirection < 0;
+        //Update the steering profiler with fresh odom readings.
+        update_steering_proifler();
+        
+        //Compute the steering velocity profile via trapezoidal algorithms.
+        double omegaProfile = steeringProfiler.turnSlowDown(turnRight);
+        omegaProfile = steeringProfiler.turnSpeedUp(omegaProfile);
+        ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
+        return omegaProfile; // spin in direction of closest rotation to target heading
+    }
+
+    ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
     return 0.0;
 
 }
