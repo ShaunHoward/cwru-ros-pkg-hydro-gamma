@@ -58,6 +58,9 @@ public:
     double min_dang(double dang);  
     double sat(double x);
 private:
+    
+    // The steering velocity profiler to move the robot accordingly.
+    SteerVelProfiler steeringProfiler;
     // put private member data here;  "private" data will only be available to member functions of this class;
     ros::NodeHandle nh_; // we will need this, to pass between "main" and constructor
     // some objects to support subscriber, service, and publisher
@@ -105,6 +108,8 @@ private:
     void initializeSubscribers(); // we will define some helper methods to encapsulate the gory details of initializing subscribers, publishers and services
     void initializePublishers();
     void initializeServices();
+    void initializeSteeringProfiler();
+    void update_steering_profiler();
  
     void odomCallback(const nav_msgs::Odometry& odom_rcvd);
     void desStateCallback(const nav_msgs::Odometry& des_state_rcvd);    

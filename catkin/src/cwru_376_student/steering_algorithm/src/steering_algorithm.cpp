@@ -47,7 +47,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehan
 
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header  
-
+    initializeSteeringProfile();
 }
 
 //member helper function to set up subscribers;
@@ -78,6 +78,12 @@ void SteeringController::initializePublishers()
     steering_errs_publisher_ =  nh_.advertise<std_msgs::Float32MultiArray>("steering_errs",1, true);
 }
 
+void SteeringController::initializeSteeringProfiler()
+{
+    steeringProfiler = new SteerVelProfiler(maxAlpha, rotationalDecelerationPhi,
+        MAX_ACCEL, decelerationDistance, MAX_SPEED,
+        maxOmega);
+}
 
 
 void SteeringController::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
@@ -209,7 +215,7 @@ void SteeringController::my_clever_steering_algorithm() {
 
 //this will compute the controller omega to accommodate the error
 double SteeringController::compute_controller_omega(double trip_dist_err,
-        double heading_err, double lateral_err){
+    double heading_err, double lateral_err){
     double controller_omega = des_state_omega_;
     double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
     if (lateral_err > LAT_ERR_TOL){ //Rotate to the left 
@@ -234,6 +240,22 @@ double SteeringController::compute_controller_speed(double trip_dist_err){
         //behind schedule: meaning speedup?
     }
     return controller_speed;
+}
+
+/**
+ * Updates the steering velocity profiler instance with
+ * fresh odometry readings.
+ */
+void SteeringController::update_steering_profiler(){
+    steeringProfiler.setOdomXYValues(odomX, odomY);
+    steeringProfiler.setOdomRotationValues(odomPhi, odomOmega);
+    steeringProfiler.setOdomForwardVel(odomVel);
+    steeringProfiler.setOdomDT(dt);
+}
+
+void SteerVelProfiler::setSegLengthToGo(float segToGo){
+    this->current_seg_length_to_go_ = segToGo;
+}
 }
 
 

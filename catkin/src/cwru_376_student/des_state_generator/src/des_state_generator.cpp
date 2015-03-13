@@ -59,6 +59,7 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle) : nh_(*nodehan
     current_path_seg_done_ = true;
 
     last_map_pose_rcvd_ = odom_to_map_pose(odom_pose_); // treat the current odom pose as the first vertex--cast it into map coords to save
+    initializeSteeringProfile();
 }
 
 
@@ -93,6 +94,24 @@ void DesStateGenerator::initializePublishers() {
     des_state_publisher_ = nh_.advertise<nav_msgs::Odometry>("desState", 1, true); // publish des state in same format as odometry messages
     //add more publishers, as needed
     // note: COULD make minimal_publisher_ a public member function, if want to use it within "main()"
+}
+
+void DesStateGenerator::initializeSteeringProfiler()
+{
+    steeringProfiler = new SteerVelProfiler(maxAlpha, rotationalDecelerationPhi,
+        MAX_ACCEL, decelerationDistance, MAX_SPEED,
+        maxOmega);
+}
+
+/**
+ * Updates the steering velocity profiler instance with
+ * fresh odometry readings.
+ */
+void SteeringController::update_steering_profiler(){
+    steeringProfiler.setOdomXYValues(odomX, odomY);
+    steeringProfiler.setOdomRotationValues(odomPhi, odomOmega);
+    steeringProfiler.setOdomForwardVel(odomVel);
+    steeringProfiler.setOdomDT(dt);
 }
 
 void DesStateGenerator::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
@@ -550,9 +569,12 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
 //DUMMY--fill this in
 
 double DesStateGenerator::compute_speed_profile() {
-    //Need to make a steering vel profiler object then call these methods.
-    double speedProfile = 0;//trapezoidalSlowDown(current_seg_length_);
-    //speedProfile = trapezoidalSpeedUp(speedProfile);
+    //Update the steering profiler with fresh odom readings.
+    update_steering_profiler();
+    
+    //Compute the speed profile from the steering velocity profiler.
+    double speedProfile = steeringProfiler.trapezoidalSlowDown(current_seg_length_);
+    speedProfile = steeringProfiler.trapezoidalSpeedUp(speedProfile);
     return speedProfile;
 }
 
