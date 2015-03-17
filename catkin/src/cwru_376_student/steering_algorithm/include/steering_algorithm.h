@@ -66,7 +66,7 @@ double rotationalDecelerationPhi = 0.5 * MAX_ALPHA * (turnDecelTime * turnDecelT
 class SteeringController
 {
 public:
-    SteeringController(ros::NodeHandle* nodehandle); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
+    SteeringController(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
     // may choose to define public methods or public variables, if desired
     void my_clever_steering_algorithm(); // here is the heart of it...use odom state and desired state to compute twist command, and publish it
     //this may need to incorporate lateral error as well
@@ -79,7 +79,7 @@ public:
 private:
     
     // The steering velocity profiler to move the robot accordingly.
-    SteerVelProfiler steeringProfiler;
+    SteerVelProfiler steeringProfiler_;
     // put private member data here;  "private" data will only be available to member functions of this class;
     ros::NodeHandle nh_; // we will need this, to pass between "main" and constructor
     // some objects to support subscriber, service, and publisher

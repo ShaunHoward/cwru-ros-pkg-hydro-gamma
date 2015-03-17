@@ -104,9 +104,7 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(robot_commander
-#   src/${PROJECT_NAME}/SteerVelProfiler.cpp
- #)
+ add_library(robot_commander src/SteerVelProfiler.cpp)
 
 ## Declare a cpp executablea
 # add_executable(robot_commander_node src/robot_commander_node.cpp)

@@ -12,7 +12,7 @@
 //CONSTRUCTOR:  this will get called whenever an instance of this class is created
 // want to put all dirty work of initializations here
 // odd syntax: have to pass nodehandle pointer into constructor for constructor to build subscribers, etc
-SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehandle)
+SteeringController::SteeringController(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler):nh_(*nodehandle), steeringProfiler_(*steerProfiler) 
 { // constructor
     ROS_INFO("in class constructor of SteeringController");
     initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
@@ -250,17 +250,15 @@ double SteeringController::compute_controller_speed(double trip_dist_err){
  * fresh odometry readings.
  */
 void SteeringController::update_steering_profiler(){
-    steeringProfiler.setOdomXYValues(odom_x_, odom_y_);
-    steeringProfiler.setOdomRotationValues(odom_phi_, odom_omega_);
-    steeringProfiler.setOdomForwardVel(odom_vel_);
-    steeringProfiler.setOdomDT(dt_);
+    steeringProfiler_.setOdomXYValues(odom_x_, odom_y_);
+    steeringProfiler_.setOdomRotationValues(odom_phi_, odom_omega_);
+    steeringProfiler_.setOdomForwardVel(odom_vel_);
+    steeringProfiler_.setOdomDT(dt_);
 }
 
 void SteerVelProfiler::setSegLengthToGo(float segToGo){
     this->current_seg_length_to_go_ = segToGo;
 }
-
-
 
 int main(int argc, char** argv) 
 {
@@ -268,9 +266,12 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "steeringController"); //node name
 
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
+    SteerVelProfiler steeringProfiler(MAX_ALPHA, rotationalDecelerationPhi,
+        MAX_ACCEL, decelerationDistance, MAX_SPEED,
+        MAX_OMEGA);
 
     ROS_INFO("main: instantiating an object of type SteeringController");
-    SteeringController steeringController(&nh);  //instantiate an ExampleRosClass object and pass in pointer to nodehandle for constructor to use
+    SteeringController steeringController(&nh, &steeringProfiler);  //instantiate an ExampleRosClass object and pass in pointer to nodehandle for constructor to use
     ros::Rate sleep_timer(UPDATE_RATE); //a timer for desired rate, e.g. 50Hz
    
     ROS_INFO:("starting steering algorithm");

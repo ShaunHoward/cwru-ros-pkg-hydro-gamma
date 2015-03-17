@@ -23,6 +23,8 @@ find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 
+cs_add_executable(steering_algorithm src/steering_algorithm.cpp)
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -123,9 +125,9 @@ include_directories(
 # add_dependencies(steering_algorithm_node steering_algorithm_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(steering_algorithm_node
-#   ${catkin_LIBRARIES}
-# )
+ target_link_libraries(steering_algorithm
+   ${catkin_LIBRARIES}
+ )
 
 #############
 ## Install ##
@@ -175,7 +177,6 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-cs_add_executable(steering_algorithm src/steering_algorithm.cpp)
 
 cs_install()
 cs_export()

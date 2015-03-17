@@ -13,6 +13,7 @@
 #include <cwru_msgs/PathSegment.h>
 
 #include "des_state_generator.h"
+
 int ans;
 
 //CONSTRUCTOR:  this will get called whenever an instance of this class is created
