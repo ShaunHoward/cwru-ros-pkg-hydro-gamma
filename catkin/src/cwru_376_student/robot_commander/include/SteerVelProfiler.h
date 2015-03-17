@@ -19,12 +19,10 @@
 
 class SteerVelProfiler {
 public:
-    SteerVelProfiler();
     SteerVelProfiler(const SteerVelProfiler& orig);
-    SteerVelProfiler(float maxAlpha, float rotationalDecelerationPhi,
-        float MAX_ACCEL, float decelerationDistance, float MAX_SPEED,
-        float maxOmega);
-    virtual ~SteerVelProfiler();
+    SteerVelProfiler(const double& maxAlpha, double& rotationalDecelerationPhi,
+        const double& MAX_ACCEL, double& decelerationDistance, const double& MAX_SPEED,
+        const double& maxOmega);
     
     // Compute the forward speed profile with trapezoidal speed profiling
     // These will recognize Estops, lidar alarm, and software halt.
@@ -41,7 +39,6 @@ public:
     void setOdomForwardVel(float odomVel);
     void setOdomDT(float dt);
     void setSegLengthToGo(float segToGo);
-private:
     float odomPhi;
     float lastCallbackPhi;
     float odomOmega;

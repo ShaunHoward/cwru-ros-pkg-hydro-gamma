@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   tf
+  robot_commander
 )
 
 find_package(Eigen REQUIRED)
@@ -93,7 +94,7 @@ add_definitions(${EIGEN_DEFINITIONS})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES robot_commander
+#  LIBRARIES robot_commander
 #  CATKIN_DEPENDS catkin_simple eigen geometry_msgs nav_msgs roscpp std_msgs tf
 #  DEPENDS system_lib
 )

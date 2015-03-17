@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(robot_commander)
 
+find_package(catkin_simple REQUIRED)
+
+catkin_simple()
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -9,13 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   roscpp
+  std_msgs
 )
-
-find_package(catkin_simple REQUIRED)
-
-catkin_simple()
-
-
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -88,7 +87,7 @@ catkin_simple()
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES robot_commander
+  LIBRARIES robot_commander
 #  CATKIN_DEPENDS catkin_simple geometry_msgs nav_msgs roscpp
 #  DEPENDS system_lib
 )
@@ -106,8 +105,8 @@ include_directories(
 
 ## Declare a cpp library
 # add_library(robot_commander
-#   src/${PROJECT_NAME}/robot_commander.cpp
-# )
+#   src/${PROJECT_NAME}/SteerVelProfiler.cpp
+ #)
 
 ## Declare a cpp executablea
 # add_executable(robot_commander_node src/robot_commander_node.cpp)
@@ -117,9 +116,9 @@ include_directories(
 # add_dependencies(robot_commander_node robot_commander_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(robot_commander_node
-#   ${catkin_LIBRARIES}
-# )
+ #target_link_libraries(SteerVelProfiler
+ #  ${catkin_LIBRARIES}
+ #)
 
 #############
 ## Install ##
@@ -136,18 +135,18 @@ include_directories(
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS robot_commander robot_commander_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+# install(TARGETS robot_commander
+ #  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+ #  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+ install(DIRECTORY include/${PROJECT_NAME}/
+   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+   FILES_MATCHING PATTERN "*.h"
+   PATTERN ".svn" EXCLUDE
+ )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
@@ -171,7 +170,6 @@ include_directories(
 
 # Executables
 cs_add_executable(vel_profiler src/vel_profiler.cpp)
-cs_add_executable(steer_vel_profiler src/steer_vel_profiler.cpp)
 # target_link_library(example my_lib)
  
 cs_install()

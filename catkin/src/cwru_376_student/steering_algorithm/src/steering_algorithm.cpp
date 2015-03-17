@@ -28,6 +28,8 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehan
     }
     ROS_INFO("constructor: got an odom message");    
     
+    dt_ = 1/UPDATE_RATE;
+    
     //initialize desired state, in case this is not yet being published adequately
     des_state_ = current_odom_;  // use the current odom state
     // but make sure the speed/spin commands are set to zero
@@ -47,7 +49,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehan
 
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header  
-    initializeSteeringProfiler();
+//    initializeSteeringProfiler();
 }
 
 //member helper function to set up subscribers;
@@ -78,12 +80,13 @@ void SteeringController::initializePublishers()
     steering_errs_publisher_ =  nh_.advertise<std_msgs::Float32MultiArray>("steering_errs",1, true);
 }
 
-void SteeringController::initializeSteeringProfiler()
-{
-    steeringProfiler(maxAlpha, rotationalDecelerationPhi,
-        MAX_ACCEL, decelerationDistance, MAX_SPEED,
-        maxOmega);
-}
+//void SteeringController::initializeSteeringProfiler()
+//{
+//    steeringProfiler = SteerVelProfiler(MAX_ALPHA, rotationalDecelerationPhi,
+//        MAX_ACCEL, decelerationDistance, MAX_SPEED,
+//        MAX_OMEGA);
+//    
+//}
 
 
 void SteeringController::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
@@ -247,15 +250,14 @@ double SteeringController::compute_controller_speed(double trip_dist_err){
  * fresh odometry readings.
  */
 void SteeringController::update_steering_profiler(){
-    steeringProfiler.setOdomXYValues(odomX, odomY);
-    steeringProfiler.setOdomRotationValues(odomPhi, odomOmega);
-    steeringProfiler.setOdomForwardVel(odomVel);
-    steeringProfiler.setOdomDT(dt);
+    steeringProfiler.setOdomXYValues(odom_x_, odom_y_);
+    steeringProfiler.setOdomRotationValues(odom_phi_, odom_omega_);
+    steeringProfiler.setOdomForwardVel(odom_vel_);
+    steeringProfiler.setOdomDT(dt_);
 }
 
 void SteerVelProfiler::setSegLengthToGo(float segToGo){
     this->current_seg_length_to_go_ = segToGo;
-}
 }
 
 

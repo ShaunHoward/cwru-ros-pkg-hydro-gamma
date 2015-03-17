@@ -19,7 +19,7 @@ int ans;
 // want to put all dirty work of initializations here
 // odd syntax: have to pass nodehandle pointer into constructor for constructor to build subscribers, etc
 
-DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle) : nh_(*nodehandle) { // constructor
+DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler) : nh_(*nodehandle), steeringProfiler_(*steerProfiler) { // constructor
     ROS_INFO("in class constructor of DesStateGenerator");
     initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
     initializePublishers();
@@ -59,7 +59,7 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle) : nh_(*nodehan
     current_path_seg_done_ = true;
 
     last_map_pose_rcvd_ = odom_to_map_pose(odom_pose_); // treat the current odom pose as the first vertex--cast it into map coords to save
-    initializeSteeringProfile();
+  //  initializeSteeringProfiler();
 }
 
 
@@ -96,22 +96,22 @@ void DesStateGenerator::initializePublishers() {
     // note: COULD make minimal_publisher_ a public member function, if want to use it within "main()"
 }
 
-void DesStateGenerator::initializeSteeringProfiler()
-{
-    steeringProfiler(maxAlpha, rotationalDecelerationPhi,
-        MAX_ACCEL, decelerationDistance, MAX_SPEED,
-        maxOmega);
-}
+//void DesStateGenerator::initializeSteeringProfiler()
+//{
+//    steeringProfiler_.setMAX_ALPHA, rotationalDecelerationPhi,
+//        MAX_ACCEL, decelerationDistance, MAX_SPEED,
+//        MAX_OMEGA);
+//}
 
 /**
  * Updates the steering velocity profiler instance with
  * fresh odometry readings.
  */
 void DesStateGenerator::update_steering_profiler(){
-    steeringProfiler.setOdomXYValues(odomX, odomY);
-    steeringProfiler.setOdomRotationValues(odomPhi, odomOmega);
-    steeringProfiler.setOdomForwardVel(odomVel);
-    steeringProfiler.setOdomDT(dt);
+    steeringProfiler_.setOdomXYValues(odom_x_, odom_y_);
+    steeringProfiler_.setOdomRotationValues(odom_phi_, odom_omega_);
+    steeringProfiler_.setOdomForwardVel(odom_vel_);
+    steeringProfiler_.setOdomDT(dt_);
 }
 
 void DesStateGenerator::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
@@ -573,8 +573,8 @@ double DesStateGenerator::compute_speed_profile() {
     update_steering_profiler();
     
     //Compute the speed profile from the steering velocity profiler.
-    double speedProfile = steeringProfiler.trapezoidalSlowDown(current_seg_length_);
-    speedProfile = steeringProfiler.trapezoidalSpeedUp(speedProfile);
+    double speedProfile = steeringProfiler_.trapezoidalSlowDown(current_seg_length_);
+    speedProfile = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
     return speedProfile;
 }
 
@@ -627,11 +627,11 @@ double DesStateGenerator::compute_omega_profile() {
     if (turnDirection != 0) {
         bool turnRight = turnDirection < 0;
         //Update the steering profiler with fresh odom readings.
-        update_steering_proifler();
+        update_steering_profiler();
         
         //Compute the steering velocity profile via trapezoidal algorithms.
-        double omegaProfile = steeringProfiler.turnSlowDown(turnRight);
-        omegaProfile = steeringProfiler.turnSpeedUp(omegaProfile);
+        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, current_seg_length_to_go_);
+        omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
         ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
         return omegaProfile; // spin in direction of closest rotation to target heading
     }
@@ -708,9 +708,11 @@ int main(int argc, char** argv) {
     // ROS set-ups:
     ros::init(argc, argv, "desStateGenerator"); //node name
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
-
+    SteerVelProfiler steeringProfiler(MAX_ALPHA, rotationalDecelerationPhi,
+        MAX_ACCEL, decelerationDistance, MAX_SPEED,
+        MAX_OMEGA);
     ROS_INFO("main: instantiating a DesStateGenerator");
-    DesStateGenerator desStateGenerator(&nh); //instantiate a DesStateGenerator object and pass in pointer to nodehandle for constructor to use
+    DesStateGenerator desStateGenerator(&nh, &steeringProfiler); //instantiate a DesStateGenerator object and pass in pointer to nodehandle for constructor to use
     ros::Rate sleep_timer(UPDATE_RATE); //a timer for desired rate, e.g. 50Hz
 
 

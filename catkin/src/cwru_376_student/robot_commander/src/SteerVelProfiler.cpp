@@ -5,17 +5,24 @@
  * Created on March 6, 2015, 5:08 PM
  */
 
-#include "steer_vel_profiler.h"
+#include "SteerVelProfiler.h"
 
-SteerVelProfiler::SteerVelProfiler() {
-}
+//SteerVelProfiler::SteerVelProfiler() {
+//}
+//
 
 SteerVelProfiler::SteerVelProfiler(const SteerVelProfiler& orig) {
+    this->maxAlpha = orig.maxAlpha;
+    this->rotationalDecelerationPhi = orig.rotationalDecelerationPhi;
+    this->MAX_ACCEL = orig.MAX_ACCEL;
+    this->decelerationDistance = orig.decelerationDistance;
+    this->MAX_SPEED = orig.MAX_SPEED;
+    this->maxOmega = orig.maxOmega;
 }
 
-SteerVelProfiler::SteerVelProfiler(float maxAlpha, float rotationalDecelerationPhi,
-        float MAX_ACCEL, float decelerationDistance, float MAX_SPEED,
-        float maxOmega) {
+SteerVelProfiler::SteerVelProfiler(const double& maxAlpha, double& rotationalDecelerationPhi,
+        const double& MAX_ACCEL, double& decelerationDistance, const double& MAX_SPEED,
+        const double& maxOmega) {
     this->maxAlpha = maxAlpha;
     this->rotationalDecelerationPhi = rotationalDecelerationPhi;
     this->MAX_ACCEL = MAX_ACCEL;

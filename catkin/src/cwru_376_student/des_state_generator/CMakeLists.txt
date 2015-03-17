@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   tf
+  robot_commander
 )
 
 find_package(Eigen REQUIRED)
@@ -127,9 +128,9 @@ include_directories(
 # add_dependencies(des_state_generator_node des_state_generator_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(des_state_generator_node
-#   ${catkin_LIBRARIES}
-# )
+ target_link_libraries(des_state_generator
+   ${catkin_LIBRARIES}
+ )
 
 #############
 ## Install ##

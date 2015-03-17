@@ -42,6 +42,8 @@ const bool DEBUG_MODE=false; // change this for display/break-points
 #include <Eigen/Core>
 #include <Eigen/LU>
 
+#include <SteerVelProfiler.h>
+
 #include <tf/transform_listener.h> //for transforms
 
 //Segment types 
@@ -62,24 +64,26 @@ const double HEADING_TOL = 0.05; // heading tolerance; adjust this
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
 
 // compute some properties of trapezoidal velocity profile plan:
-float accelerationTime = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
-float decelerationTime = accelerationTime; //(for same decel as accel); assumes brake to full halt
-float accelerationDistance = 0.5 * MAX_ACCEL * (accelerationTime * accelerationTime); //distance rqd to ramp up to full speed
-float decelerationDistance = 0.5 * MAX_ACCEL * (decelerationTime * decelerationTime); //same as ramp-up distance
+double accelerationTime = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
+double decelerationTime = accelerationTime; //(for same decel as accel); assumes brake to full halt
+double accelerationDistance = 0.5 * MAX_ACCEL * (accelerationTime * accelerationTime); //distance rqd to ramp up to full speed
+double decelerationDistance = 0.5 * MAX_ACCEL * (decelerationTime * decelerationTime); //same as ramp-up distance
 
 // compute properties of rotational trapezoidal velocity profile plan:
-float turnAccelTime = MAX_OMEGA / MAX_ALPHA; //...assumes start from rest
-float turnDecelTime = turnAccelTime; //(for same decel as accel); assumes brake to full halt
-//float turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
-float rotationalAccelerationPhi = 0.5 * MAX_ALPHA * (turnAccelTime * turnAccelTime);
-float rotationalDecelerationPhi = 0.5 * MAX_ALPHA * (turnDecelTime * turnDecelTime);
+double turnAccelTime = MAX_OMEGA / MAX_ALPHA; //...assumes start from rest
+double turnDecelTime = turnAccelTime; //(for same decel as accel); assumes brake to full halt
+//double turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
+double rotationalAccelerationPhi = 0.5 * MAX_ALPHA * (turnAccelTime * turnAccelTime);
+double rotationalDecelerationPhi = 0.5 * MAX_ALPHA * (turnDecelTime * turnDecelTime);
+
+//class SteerVelProfiler;
 
 // define a class, including a constructor, member variables and member functions
 
 class DesStateGenerator {
 public:
     // PUBLIC MEMBER FUNCTIONS:
-    DesStateGenerator(ros::NodeHandle* nodehandle); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
+    DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
 
     // some utilities:
     //signum function: define this one in-line
@@ -112,7 +116,7 @@ private:
     //PRIVATE DATA:
     // put private member data here;  "private" data will only be available to member functions of this class;
     // The steering velocity profiler to move the robot accordingly.
-    SteerVelProfiler steeringProfiler;
+    SteerVelProfiler steeringProfiler_;
     ros::NodeHandle nh_; // we will need this, to pass between "main" and constructor
     // some objects to support subscriber, service, and publisher
     ros::Subscriber odom_subscriber_; //these will be set up within the class constructor, hiding these ugly details
