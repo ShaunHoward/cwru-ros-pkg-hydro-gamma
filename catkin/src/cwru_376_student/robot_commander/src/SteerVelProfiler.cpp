@@ -338,9 +338,9 @@ bool SteerVelProfiler::initializeRotation(float endPhi) {
 SteerVelProfiler::~SteerVelProfiler() {
 }
 
-int main(int argc, char** argv) {
-    while (ros::ok()){
-    }
-    return 0;
-}
+//int main(int argc, char** argv) {
+//    while (ros::ok()){
+//    }
+//    return 0;
+//}
 

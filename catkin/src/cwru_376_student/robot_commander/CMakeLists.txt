@@ -104,7 +104,7 @@ include_directories(
 )
 
 ## Declare a cpp library
- add_library(robot_commander src/SteerVelProfiler.cpp)
+ add_library(steer_vel_profiler src/SteerVelProfiler.cpp)
 
 ## Declare a cpp executablea
 # add_executable(robot_commander_node src/robot_commander_node.cpp)
@@ -140,11 +140,11 @@ include_directories(
 # )
 
 ## Mark cpp header files for installation
- install(DIRECTORY include/${PROJECT_NAME}/
-   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-   FILES_MATCHING PATTERN "*.h"
-   PATTERN ".svn" EXCLUDE
- )
+# install(DIRECTORY include/${PROJECT_NAME}/
+#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+#   FILES_MATCHING PATTERN "*.h"
+#   PATTERN ".svn" EXCLUDE
+# )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
@@ -167,7 +167,7 @@ include_directories(
 # catkin_add_nosetests(test)
 
 # Executables
-cs_add_executable(vel_profiler src/vel_profiler.cpp)
+cs_add_executable(vel_profiler src/vel_profiler.cpp src/SteerVelProfiler.cpp)
 # target_link_library(example my_lib)
  
 cs_install()

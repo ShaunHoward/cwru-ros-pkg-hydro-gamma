@@ -25,9 +25,6 @@ find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 
-cs_add_executable(des_state_generator src/des_state_generator.cpp)
-cs_add_executable(path_sender src/path_sender.cpp)
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -116,21 +113,21 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(des_state_generator
-#   src/${PROJECT_NAME}/des_state_generator.cpp
+# add_library(steer_vel_profiler
+#   src/SteerVelProfiler.cpp
 # )
 
 ## Declare a cpp executable
 # add_executable(des_state_generator_node src/des_state_generator_node.cpp)
+cs_add_executable(des_state_generator src/des_state_generator.cpp)
+cs_add_executable(path_sender src/path_sender.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(des_state_generator_node des_state_generator_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(des_state_generator
-   ${catkin_LIBRARIES}
- )
+ target_link_libraries(des_state_generator steer_vel_profiler)
 
 #############
 ## Install ##

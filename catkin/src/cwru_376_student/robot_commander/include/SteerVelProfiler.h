@@ -23,6 +23,7 @@ public:
     SteerVelProfiler(const double& maxAlpha, double& rotationalDecelerationPhi,
         const double& MAX_ACCEL, double& decelerationDistance, const double& MAX_SPEED,
         const double& maxOmega);
+    virtual ~SteerVelProfiler();
     
     // Compute the forward speed profile with trapezoidal speed profiling
     // These will recognize Estops, lidar alarm, and software halt.

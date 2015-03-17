@@ -23,8 +23,6 @@ find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
 
-cs_add_executable(steering_algorithm src/steering_algorithm.cpp)
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -113,21 +111,20 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(steering_algorithm
-#   src/${PROJECT_NAME}/steering_algorithm.cpp
+# add_library(steer_vel_profiler_1
+#   src/SteerVelProfiler.cpp
 # )
 
 ## Declare a cpp executable
 # add_executable(steering_algorithm_node src/steering_algorithm_node.cpp)
+cs_add_executable(steering_algorithm src/steering_algorithm.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(steering_algorithm_node steering_algorithm_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(steering_algorithm
-   ${catkin_LIBRARIES}
- )
+ target_link_libraries(steering_algorithm steer_vel_profiler)
 
 #############
 ## Install ##
