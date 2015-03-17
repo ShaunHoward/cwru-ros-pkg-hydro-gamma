@@ -12,7 +12,6 @@
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <math.h>
-#include <float.h>
 
 #ifndef STEER_VEL_PROFILER_H
 #define	STEER_VEL_PROFILER_H
@@ -21,7 +20,7 @@ class SteerVelProfiler {
 public:
     SteerVelProfiler(const SteerVelProfiler& orig);
     SteerVelProfiler(const double& maxAlpha, double& rotationalDecelerationPhi,
-        const double& MAX_ACCEL, double& decelerationDistance, const double& MAX_SPEED,
+        const double& maxAccel, double& decelerationDistance, const double& maxSpeed,
         const double& maxOmega);
     virtual ~SteerVelProfiler();
     
@@ -33,32 +32,31 @@ public:
     
     // Compute the rotational speed profile with trapezoidal speed profiling
     // These will recognize Estops, lidar alarm, and software halt.
-    float turnSlowDown(bool turnRight, float desiredPhi);
-    float turnSpeedUp(float scheduledOmega);
-    void setOdomXYValues(float odomX, float odomY);
-    void setOdomRotationValues(float odomPhi, float odomOmega);
-    void setOdomForwardVel(float odomVel);
-    void setOdomDT(float dt);
-    void setSegLengthToGo(float segToGo);
-    float odomPhi;
-    float lastCallbackPhi;
-    float odomOmega;
-    float dt_;
-    float maxAlpha;
-    float maxOmega;
-    float rotationalDecelerationPhi;
-    float MAX_ACCEL;
-    float odom_x_;
-    float odom_y_;
-    float current_seg_ref_point_0;
-    float current_seg_ref_point_1;
-    float decelerationDistance;
-    float MAX_SPEED;
-    float odom_vel_;
-    float current_seg_length_to_go_;
-    float getDeltaPhi(bool turnRight);
-    bool initializeRotation(float endPhi); 
-
+    double turnSlowDown(bool turnRight, double desiredPhi);
+    double turnSpeedUp(double scheduledOmega);
+    void setOdomXYValues(double odomX, double odomY);
+    void setOdomRotationValues(double odomPhi, double odomOmega);
+    void setOdomForwardVel(double odomVel);
+    void setOdomDT(double dt);
+    void setSegLengthToGo(double segToGo);
+    double odomPhi;
+    double lastCallbackPhi;
+    double odomOmega;
+    double dt;
+    double maxAlpha;
+    double maxOmega;
+    double rotationalDecelerationPhi;
+    double maxAccel;
+    double odomX;
+    double odomY;
+    double current_seg_ref_point_0;
+    double current_seg_ref_point_1;
+    double decelerationDistance;
+    double maxSpeed;
+    double odomVel;
+    double currSegLengthToGo;
+    double getDeltaPhi(bool turnRight);
+    bool initializeRotation(double endPhi); 
 };
 
 #endif	/* STEER_VEL_PROFILER_H */

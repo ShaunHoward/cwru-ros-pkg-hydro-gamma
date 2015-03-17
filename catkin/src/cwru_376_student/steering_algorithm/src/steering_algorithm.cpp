@@ -49,7 +49,6 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle, SteerVelProf
 
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header  
-//    initializeSteeringProfiler();
 }
 
 //member helper function to set up subscribers;
@@ -79,15 +78,6 @@ void SteeringController::initializePublishers()
     cmd_publisher2_ = nh_.advertise<geometry_msgs::TwistStamped>("cmd_vel_stamped",1, true); //alt topic, includes time stamp
     steering_errs_publisher_ =  nh_.advertise<std_msgs::Float32MultiArray>("steering_errs",1, true);
 }
-
-//void SteeringController::initializeSteeringProfiler()
-//{
-//    steeringProfiler = SteerVelProfiler(MAX_ALPHA, rotationalDecelerationPhi,
-//        MAX_ACCEL, decelerationDistance, MAX_SPEED,
-//        MAX_OMEGA);
-//    
-//}
-
 
 void SteeringController::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     // copy some of the components of the received message into member vars
@@ -254,10 +244,12 @@ void SteeringController::update_steering_profiler(){
     steeringProfiler_.setOdomRotationValues(odom_phi_, odom_omega_);
     steeringProfiler_.setOdomForwardVel(odom_vel_);
     steeringProfiler_.setOdomDT(dt_);
-}
-
-void SteerVelProfiler::setSegLengthToGo(float segToGo){
-    this->current_seg_length_to_go_ = segToGo;
+    //This can be the trip distance error
+    //steeringProfiler_.setSegLengthToGo(current_seg_length_to_go_);
+    ROS_INFO("Steering profile: x: %f, y: %f, phi: %f, omega: %f, vel: %f, dt: %f, "
+        "seg length to go: %f", steeringProfiler_.odomX, steeringProfiler_.odomY,
+        steeringProfiler_.odomPhi, steeringProfiler_.odomOmega, steeringProfiler_.odomVel,
+        steeringProfiler_.dt, steeringProfiler_.currSegLengthToGo);
 }
 
 int main(int argc, char** argv) 

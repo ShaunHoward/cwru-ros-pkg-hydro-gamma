@@ -60,7 +60,6 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
     current_path_seg_done_ = true;
 
     last_map_pose_rcvd_ = odom_to_map_pose(odom_pose_); // treat the current odom pose as the first vertex--cast it into map coords to save
-  //  initializeSteeringProfiler();
 }
 
 
@@ -97,13 +96,6 @@ void DesStateGenerator::initializePublishers() {
     // note: COULD make minimal_publisher_ a public member function, if want to use it within "main()"
 }
 
-//void DesStateGenerator::initializeSteeringProfiler()
-//{
-//    steeringProfiler_.setMAX_ALPHA, rotationalDecelerationPhi,
-//        MAX_ACCEL, decelerationDistance, MAX_SPEED,
-//        MAX_OMEGA);
-//}
-
 /**
  * Updates the steering velocity profiler instance with
  * fresh odometry readings.
@@ -113,6 +105,11 @@ void DesStateGenerator::update_steering_profiler(){
     steeringProfiler_.setOdomRotationValues(odom_phi_, odom_omega_);
     steeringProfiler_.setOdomForwardVel(odom_vel_);
     steeringProfiler_.setOdomDT(dt_);
+    steeringProfiler_.setSegLengthToGo(current_seg_length_to_go_);
+    ROS_INFO("Steering profile: x: %f, y: %f, phi: %f, omega: %f, vel: %f, dt: %f, "
+            "seg length to go: %f", steeringProfiler_.odomX, steeringProfiler_.odomY,
+            steeringProfiler_.odomPhi, steeringProfiler_.odomOmega, steeringProfiler_.odomVel,
+            steeringProfiler_.dt, steeringProfiler_.currSegLengthToGo);
 }
 
 void DesStateGenerator::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
@@ -193,16 +190,13 @@ geometry_msgs::Quaternion DesStateGenerator::convertPlanarPhi2Quaternion(double 
 }
 
 //utility fnc to compute min dang, accounting for periodicity
-
 double DesStateGenerator::min_dang(double dang) {
     if (dang > M_PI) dang -= 2.0 * M_PI;
     if (dang<-M_PI) dang += 2.0 * M_PI;
     return dang;
 }
 
-
 //given points v1 and v2 in a plane, compute the corresponding heading from v1 to v2
-
 double DesStateGenerator::compute_heading_from_v1_v2(Eigen::Vector2d v1, Eigen::Vector2d v2) {
     Eigen::Vector2d dv = v2 - v1; //vector from v1 to v2 
     double heading_v1_to_v2 = atan2(dv(1), dv(0)); //heading from v1 to v2= target heading; head here incrementally  
@@ -210,13 +204,11 @@ double DesStateGenerator::compute_heading_from_v1_v2(Eigen::Vector2d v1, Eigen::
 }
 
 //DUMMY...
-
 geometry_msgs::Pose DesStateGenerator::map_to_odom_pose(geometry_msgs::Pose map_pose) {
     return map_pose; // dummy--no conversion; when AMCL is running, use base-frame transform to convert from map to odom coords
 }
 
 //DUMMY...
-
 geometry_msgs::Pose DesStateGenerator::odom_to_map_pose(geometry_msgs::Pose odom_pose) {
     return odom_pose; // dummy--no conversion; when AMCL is running, use base-frame transform to convert from map to odom coords
 }
@@ -228,7 +220,6 @@ geometry_msgs::Pose DesStateGenerator::odom_to_map_pose(geometry_msgs::Pose odom
 // put these path segments in a queue
 // for this version, each new path subgoal generates exactly 2 path segments: a spin-in-place and a line-segment
 // should extend this to include blended circular arc path segments
-
 void DesStateGenerator::process_new_vertex() {
     if (path_queue_.empty()) { // do nothing
         waiting_for_vertex_ = true;
@@ -278,7 +269,6 @@ void DesStateGenerator::process_new_vertex() {
     // we have now updated the segment queue; these segments should get processed before they get "stale"
 }
 
-
 // build_spin_then_line_path_segments: given two poses, p1 and p2 (in consistent reference frame),
 // construct a vector of path segments consistent with those poses;
 // for just two poses, command spin segment to reorient along path from p1 to p2, 
@@ -288,7 +278,6 @@ void DesStateGenerator::process_new_vertex() {
 
 // BETTER: if successive line segments in path are nearly colinear, don't need to stop and spin;
 // needs more logic
-
 std::vector<cwru_msgs::PathSegment> DesStateGenerator::build_spin_then_line_path_segments(geometry_msgs::Pose pose1, geometry_msgs::Pose pose2) {
     cwru_msgs::PathSegment spin_path_segment; // a container for new path segment, spin
     cwru_msgs::PathSegment line_path_segment; // a container for new path segment, line  
@@ -321,7 +310,6 @@ std::vector<cwru_msgs::PathSegment> DesStateGenerator::build_spin_then_line_path
 }
 
 // given an x-y point in space and initial and desired heading, return a spin-in-place segment object
-
 cwru_msgs::PathSegment DesStateGenerator::build_spin_in_place_segment(Eigen::Vector2d v1, double init_heading, double des_heading) {
     //orient towards desired heading
     ROS_INFO("build_spin_in_place_segment");
@@ -346,7 +334,6 @@ cwru_msgs::PathSegment DesStateGenerator::build_spin_in_place_segment(Eigen::Vec
 
 // INTENDED FOR EXTENSION TO INCLUDE CIRCULAR ARCS...
 // not ready for prime time
-
 cwru_msgs::PathSegment DesStateGenerator::build_arc_segment(Eigen::Vector2d arc_center, double init_heading, double final_heading, double curvature) {
     cwru_msgs::PathSegment arc_path_segment; // a container for new path segment    
     double delta_phi;
@@ -372,7 +359,6 @@ cwru_msgs::PathSegment DesStateGenerator::build_arc_segment(Eigen::Vector2d arc_
 }
 
 //given two x-y vertices, define and return a line path segment object
-
 cwru_msgs::PathSegment DesStateGenerator::build_line_segment(Eigen::Vector2d v1, Eigen::Vector2d v2) {
     ROS_INFO("build_line_segment");
 
@@ -402,7 +388,6 @@ cwru_msgs::PathSegment DesStateGenerator::build_line_segment(Eigen::Vector2d v1,
 
 // this function takes a path_segment object and fills in member variables, for
 //  iterative re-use by "update_des_state"
-
 void DesStateGenerator::unpack_next_path_segment() {
     cwru_msgs::PathSegment path_segment;
     ROS_INFO("unpack_next_path_segment: ");
@@ -469,12 +454,13 @@ void DesStateGenerator::unpack_next_path_segment() {
         default:
             ROS_WARN("segment type not defined");
             current_seg_type_ = HALT;
-
     }
+    
     if (DEBUG_MODE) {
         std::cout << "enter 1: ";
         std::cin>>ans;
     }
+    
     // we are ready to execute this new segment, so enable it:
     current_path_seg_done_ = false;
 }
@@ -490,7 +476,6 @@ void DesStateGenerator::unpack_next_path_segment() {
 //  these will get used to populate des_state_, which will get published on topic "desState"
 
 // no arguments--uses values in member variables 
-
 void DesStateGenerator::update_des_state() {
     switch (current_seg_type_) {
         case LINE:
@@ -506,13 +491,11 @@ void DesStateGenerator::update_des_state() {
     des_state_publisher_.publish(des_state_); //send out our message
 }
 
-
 // NEED TO WRITE THESE... means to update the desired state incrementally, given path segment params
 // and dynamic limits on vel and accel
 // need to identify when current segment is complete
 
 //update translational desired state along a line segment from v1 to v2
-
 nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     nav_msgs::Odometry desired_state; // fill in this message and return it
     // but we will also update member variables:
@@ -568,7 +551,6 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
 }
 
 //DUMMY--fill this in
-
 double DesStateGenerator::compute_speed_profile() {
     //Update the steering profiler with fresh odom readings.
     update_steering_profiler();
@@ -620,7 +602,6 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
 }
 
 // MAKE THIS BETTER!!
-
 double DesStateGenerator::compute_omega_profile() {
     //need to make object for steer vel profile then call these methods.
     double turnDirection = sgn(current_seg_curvature_);
@@ -639,7 +620,6 @@ double DesStateGenerator::compute_omega_profile() {
 
     ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
     return 0.0;
-
 }
 
 ///**
