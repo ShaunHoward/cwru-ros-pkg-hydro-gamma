@@ -54,7 +54,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle, SteerVelProf
 //member helper function to set up subscribers;
 void SteeringController::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers: odom and desState");
-    odom_subscriber_ = nh_.subscribe("/odom", 1, &SteeringController::odomCallback, this); //subscribe to odom messages
+    odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &SteeringController::odomCallback, this); //subscribe to odom messages
     // add more subscribers here, as needed
     des_state_subscriber_ = nh_.subscribe("/desState", 1, &SteeringController::desStateCallback, this); // for desired state messages
 }
@@ -74,7 +74,7 @@ void SteeringController::initializeServices()
 void SteeringController::initializePublishers()
 {
     ROS_INFO("Initializing Publishers: cmd_vel and cmd_vel_stamped");
-    cmd_publisher_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1, true); // talks to the robot!
+    cmd_publisher_ = nh_.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1, true); // talks to the robot!
     cmd_publisher2_ = nh_.advertise<geometry_msgs::TwistStamped>("cmd_vel_stamped",1, true); //alt topic, includes time stamp
     steering_errs_publisher_ =  nh_.advertise<std_msgs::Float32MultiArray>("steering_errs",1, true);
 }
@@ -174,11 +174,11 @@ void SteeringController::my_clever_steering_algorithm() {
     
     
     // DEBUG OUTPUT...
-    ROS_INFO("des_state_phi, odom_phi, heading err = %f, %f, %f", des_state_phi_,odom_phi_,heading_err);
-    ROS_INFO("lateral err, trip dist err = %f, %f",lateral_err,trip_dist_err);
+    ROS_INFO("des_state_phi = %f, odom_phi = %f, heading err = %f", des_state_phi_,odom_phi_,heading_err);
+    ROS_INFO("lateral err = %f, trip dist err = %f",lateral_err,trip_dist_err);
     // DEFINITELY COMMENT OUT ALL cout<< OPERATIONS FOR REAL-TIME CODE
-    std::cout<<des_xy_vec_<<std::endl;
-    std::cout<<odom_xy_vec_<<std::endl;
+    //std::cout<<des_xy_vec_<<std::endl;
+    //std::cout<<odom_xy_vec_<<std::endl;
     // let's put these in a message to publish, for rqt_plot to display
     steering_errs_.data.clear();
     steering_errs_.data.push_back(lateral_err);
