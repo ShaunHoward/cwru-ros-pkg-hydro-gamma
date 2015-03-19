@@ -69,7 +69,7 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
 
 void DesStateGenerator::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers");
-    odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
+    odom_subscriber_ = nh_.subscribe("odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
     // add more subscribers here, as needed
 }
 
@@ -552,6 +552,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
 
 //DUMMY--fill this in
 double DesStateGenerator::compute_speed_profile() {
+   // return MAX_SPEED;
     //Update the steering profiler with fresh odom readings.
     update_steering_profiler();
     
@@ -620,6 +621,9 @@ double DesStateGenerator::compute_omega_profile() {
 
     ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
     return 0.0;
+//    double des_omega = sgn(current_seg_curvature_) * MAX_OMEGA;
+//    ROS_INFO("compute_omega_profile: des_omega = %f", des_omega);
+//    return des_omega; // spin in direction of closest rotation to target heading
 }
 
 ///**
