@@ -58,6 +58,7 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
 
     waiting_for_vertex_ = true;
     current_path_seg_done_ = true;
+    lastCallbackTime = ros::Time::now();
 
     last_map_pose_rcvd_ = odom_to_map_pose(odom_pose_); // treat the current odom pose as the first vertex--cast it into map coords to save
 }
@@ -105,14 +106,26 @@ void DesStateGenerator::update_steering_profiler(){
     steeringProfiler_.setOdomRotationValues(odom_phi_, odom_omega_);
     steeringProfiler_.setOdomForwardVel(odom_vel_);
     steeringProfiler_.setOdomDT(dt_);
-    steeringProfiler_.setSegLengthToGo(current_seg_length_to_go_);
+    steeringProfiler_.current_seg_ref_point_0 = current_seg_ref_point_(0);
+    steeringProfiler_.current_seg_ref_point_1 = current_seg_ref_point_(1);
+    //steeringProfiler_.setSegLengthToGo(current_seg_length_to_go_);
     ROS_INFO("Steering profile: x: %f, y: %f, phi: %f, omega: %f, vel: %f, dt: %f, "
-            "seg length to go: %f", steeringProfiler_.odomX, steeringProfiler_.odomY,
+            "distance left: %f", steeringProfiler_.odomX, steeringProfiler_.odomY,
             steeringProfiler_.odomPhi, steeringProfiler_.odomOmega, steeringProfiler_.odomVel,
-            steeringProfiler_.dt, steeringProfiler_.currSegLengthToGo);
+            steeringProfiler_.dt, steeringProfiler_.distanceLeft);
 }
 
 void DesStateGenerator::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
+    
+    //compute time since last callback
+    dt_ = (ros::Time::now() - lastCallbackTime).toSec();
+    lastCallbackTime = ros::Time::now(); // let's remember the current time, and use it next iteration
+
+    if (dt_ > 0.15) { // on start-up, and with occasional hiccups, this delta-time can be unexpectedly large
+        dt_ = 0.1; // can choose to clamp a max value on this, if dt_callback is used for computations elsewhere
+        ROS_WARN("large dt; dt = %lf", dt_); // let's complain whenever this happens
+    }
+    
     // copy some of the components of the received message into member vars
     // we care about speed and spin, as well as position estimates x,y and heading
     current_odom_ = odom_rcvd; // save the entire message
@@ -436,6 +449,7 @@ void DesStateGenerator::unpack_next_path_segment() {
 
     //initialize these values, which will evolve while traveling the segment
     current_seg_length_to_go_ = current_seg_length_;
+    steeringProfiler_.resetSegValues();
     current_seg_phi_des_ = current_seg_init_tan_angle_;
     Eigen::Vector2d current_seg_xy_des_ = current_seg_ref_point_;
 
@@ -443,12 +457,16 @@ void DesStateGenerator::unpack_next_path_segment() {
     switch (current_seg_type_) {
         case LINE:
             ROS_INFO("unpacking a lineseg segment");
-            current_seg_phi_goal_ = current_seg_init_tan_angle_; // this will remain constant over lineseg           
+            current_seg_phi_goal_ = current_seg_init_tan_angle_; // this will remain constant over lineseg     
+            steeringProfiler_.distanceLeft = current_seg_length_;
             break;
         case SPIN_IN_PLACE:
             //compute goal heading:
             ROS_INFO("unpacking a spin-in-place segment");
             current_seg_phi_goal_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_) * current_seg_length_;
+            steeringProfiler_.desiredPhi = current_seg_length_;
+            steeringProfiler_.phiLeft = current_seg_length_;
+            steeringProfiler_.lastCallbackPhi = odom_phi_;
             break;
         case ARC: // not implemented; set segment type to HALT
         default:
@@ -516,9 +534,10 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
 
     //incremental forward move distance; a scalar
     //use distance formula from point????
-    double delta_s = current_speed_des_*dt_;
-    current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
+   // double delta_s = current_speed_des_*dt_;
+   // current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
     //current_seg_length_to_go_ -= manhattan_distance();
+    current_seg_length_to_go_ = steeringProfiler_.distanceLeft;
     
     ROS_INFO("update_des_state_lineseg: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
     if (current_seg_length_to_go_ < LENGTH_TOL) { // check if done with this move
@@ -543,12 +562,12 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     desired_state.header.stamp = ros::Time::now();
     return desired_state;
 }
-
-double DesStateGenerator::manhattan_distance(){
-    double xDiff = abs(odom_x_ - current_seg_xy_des_(0));
-    double yDiff = abs(odom_y_ - current_seg_xy_des_(1));
-    return xDiff + yDiff;
-}
+//
+//double DesStateGenerator::manhattan_distance(){
+//    double xDiff = abs(odom_x_ - current_seg_xy_des_(0));
+//    double yDiff = abs(odom_y_ - current_seg_xy_des_(1));
+//    return xDiff + yDiff;
+//}
 
 nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     nav_msgs::Odometry desired_state; // fill in this message and return it
@@ -596,10 +615,11 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
 
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
 
-    double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
-    ROS_INFO("update_des_state_spin: delta_phi = %f", delta_phi);
-    current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
-    ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
+    //double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
+    //ROS_INFO("update_des_state_spin: delta_phi = %f", delta_phi);
+    //current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
+    //ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
+    current_seg_length_to_go_ = steeringProfiler_.phiLeft;
 
     if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
         current_seg_type_ = HALT;
@@ -648,7 +668,7 @@ double DesStateGenerator::compute_omega_profile() {
         update_steering_profiler();
         
         //Compute the steering omega velocity profile via trapezoidal algorithms.
-        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, current_seg_length_to_go_);
+        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight);
         omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
         ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
         return omegaProfile; // spin in direction of closest rotation to target heading
@@ -671,12 +691,8 @@ int main(int argc, char** argv) {
     DesStateGenerator desStateGenerator(&nh, &steeringProfiler); //instantiate a DesStateGenerator object and pass in pointer to nodehandle for constructor to use
     ros::Rate sleep_timer(UPDATE_RATE); //a timer for desired rate, e.g. 50Hz
 
-
     //constructor will wait for a valid odom message; let's use this for our first vertex;
-
-
     ROS_INFO("main: going into main loop");
-
 
     while (ros::ok()) {
         if (desStateGenerator.get_current_path_seg_done()) {

@@ -76,6 +76,9 @@ private:
     double current_speed_des_;
     double current_omega_des_;
     double dt_;
+   
+    //Last time odom callback took place
+    ros::Time lastCallbackTime;
     
 
     //state values from odometry; these will get filled in by odom callback

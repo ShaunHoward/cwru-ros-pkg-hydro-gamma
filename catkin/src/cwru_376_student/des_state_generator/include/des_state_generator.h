@@ -134,6 +134,8 @@ private:
     double current_speed_des_;
     double current_omega_des_;
     bool current_path_seg_done_;
+    //Last time odom callback took place
+    ros::Time lastCallbackTime;
     
     
     bool waiting_for_vertex_;

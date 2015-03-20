@@ -46,6 +46,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle, SteerVelProf
     twist_cmd_.angular.x = 0.0;
     twist_cmd_.angular.y = 0.0;
     twist_cmd_.angular.z = 0.0;
+    lastCallbackTime = ros::Time::now();
 
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header  
@@ -80,6 +81,15 @@ void SteeringController::initializePublishers()
 }
 
 void SteeringController::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
+    //compute time since last callback
+    dt_ = (ros::Time::now() - lastCallbackTime).toSec();
+    lastCallbackTime = ros::Time::now(); // let's remember the current time, and use it next iteration
+
+    if (dt_ > 0.15) { // on start-up, and with occasional hiccups, this delta-time can be unexpectedly large
+        dt_ = 0.1; // can choose to clamp a max value on this, if dt_callback is used for computations elsewhere
+        ROS_WARN("large dt; dt = %lf", dt_); // let's complain whenever this happens
+    }
+    
     // copy some of the components of the received message into member vars
     // we care about speed and spin, as well as position estimates x,y and heading
     current_odom_ = odom_rcvd; // save the entire message
@@ -172,7 +182,6 @@ void SteeringController::my_clever_steering_algorithm() {
     trip_dist_err = t_vec.dot(pos_err_xy_vec_); // progress error: if positive, then we are behind schedule
     heading_err = min_dang(des_state_phi_ - odom_phi_); // if positive, should rotate +omega to align with desired heading
     
-    
     // DEBUG OUTPUT...
     ROS_INFO("des_state_phi = %f, odom_phi = %f, heading err = %f", des_state_phi_,odom_phi_,heading_err);
     ROS_INFO("lateral err = %f, trip dist err = %f",lateral_err,trip_dist_err);
@@ -218,57 +227,57 @@ double SteeringController::compute_controller_omega(double trip_dist_err,
     double heading_err, double lateral_err){
     double controller_omega = des_state_omega_;
     double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
-    ROS_INFO("New phi from steering alg is: %f", newPhi);
-    if (lateral_err > LAT_ERR_TOL){ //Rotate to the left 
-        //heading_err > 0
-        //use heading error to calculate +omega
-        controller_omega = compute_omega_profile(newPhi);
-    } else if (lateral_err < -LAT_ERR_TOL){
-        //heading_err < 0
-        //use heading error to calculate -omega
-        controller_omega = compute_omega_profile(newPhi);
-    }
+    //ROS_INFO("New phi from steering alg is: %f", newPhi);
+//    if (lateral_err > LAT_ERR_TOL){ //Rotate to the left 
+//        //heading_err > 0
+//        //use heading error to calculate +omega
+//        controller_omega = compute_omega_profile(newPhi);
+//    } else if (lateral_err < -LAT_ERR_TOL){
+//        //heading_err < 0
+//        //use heading error to calculate -omega
+//        controller_omega = compute_omega_profile(newPhi);
+//    }
 
     return controller_omega;
 }
 
-double SteeringController::compute_omega_profile(double newPhi) {
-    //need to make object for steer vel profile then call these methods.
-            //Turning right (clockwise) if negative end phi
-   double turnDirection = sgn(newPhi);
-
-    if (turnDirection != 0) {
-        bool turnRight = turnDirection < 0;
-        //Update the steering profiler with fresh odom readings.
-        update_steering_profiler();
-        
-        //Compute the steering velocity profile via trapezoidal algorithms.
-        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, newPhi);
-        omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
-        ROS_INFO("compute_omega_profile: modified_omega = %f", omegaProfile);
-        return omegaProfile; // spin in direction of closest rotation to target heading
-    }
-
-    ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
-    return 0.0;
-}
+//double SteeringController::compute_omega_profile(double newPhi) {
+//    //need to make object for steer vel profile then call these methods.
+//            //Turning right (clockwise) if negative end phi
+//   double turnDirection = sgn(newPhi);
+//
+//    if (turnDirection != 0) {
+//        bool turnRight = turnDirection < 0;
+//        //Update the steering profiler with fresh odom readings.
+//        update_steering_profiler();
+//        
+//        //Compute the steering velocity profile via trapezoidal algorithms.
+//        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, newPhi);
+//        omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
+//        ROS_INFO("compute_omega_profile: modified_omega = %f", omegaProfile);
+//        return omegaProfile; // spin in direction of closest rotation to target heading
+//    }
+//
+//    ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
+//    return 0.0;
+//}
 
 //this will compute the controller speed to accommodate the error but
 //might need to take into account of lateral error
 double SteeringController::compute_controller_speed(double trip_dist_err){
     double controller_speed = des_state_vel_;
     
-    if(trip_dist_err<0){
-        //ahead of schedule, slow down!
-        //controller_speed = steeringProfiler_.reverseSlowDown(trip_dist_err);
-        controller_speed = 0;
-    }
-    else if (trip_dist_err > 0){
-        //behind schedule, speed up!
-        //compute a trapezoidal speed
-        controller_speed = steeringProfiler_.trapezoidalSlowDown(3 * trip_dist_err);
-        controller_speed = steeringProfiler_.trapezoidalSpeedUp(controller_speed);
-    }
+//    if(trip_dist_err<0){
+//        //ahead of schedule, slow down!
+//        //controller_speed = steeringProfiler_.reverseSlowDown(trip_dist_err);
+//        controller_speed = 0;
+//    }
+//    else if (trip_dist_err > 0){
+//        //behind schedule, speed up!
+//        //compute a trapezoidal speed
+//        controller_speed = steeringProfiler_.trapezoidalSlowDown(3 * trip_dist_err);
+//        controller_speed = steeringProfiler_.trapezoidalSpeedUp(controller_speed);
+//    }
     
     //Otherwise we are perfectly adjusted, stop!
     return controller_speed;
@@ -283,12 +292,14 @@ void SteeringController::update_steering_profiler(){
     steeringProfiler_.setOdomRotationValues(odom_phi_, odom_omega_);
     steeringProfiler_.setOdomForwardVel(odom_vel_);
     steeringProfiler_.setOdomDT(dt_);
+    steeringProfiler_.current_seg_ref_point_0 = des_xy_vec_(0);
+    steeringProfiler_.current_seg_ref_point_1 = des_xy_vec_(1);
     //This can be the trip distance error
     //steeringProfiler_.setSegLengthToGo(current_seg_length_to_go_);
     ROS_INFO("Steering profile: x: %f, y: %f, phi: %f, omega: %f, vel: %f, dt: %f, "
-        "seg length to go: %f", steeringProfiler_.odomX, steeringProfiler_.odomY,
+        "distance left: %f", steeringProfiler_.odomX, steeringProfiler_.odomY,
         steeringProfiler_.odomPhi, steeringProfiler_.odomOmega, steeringProfiler_.odomVel,
-        steeringProfiler_.dt, steeringProfiler_.currSegLengthToGo);
+        steeringProfiler_.dt, steeringProfiler_.distanceLeft);
 }
 
 int main(int argc, char** argv) 

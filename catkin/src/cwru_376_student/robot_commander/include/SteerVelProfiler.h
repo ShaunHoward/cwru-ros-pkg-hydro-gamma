@@ -56,14 +56,18 @@ public:
     
     // Compute the rotational speed profile with trapezoidal speed profiling
     // These will recognize Estops, lidar alarm, and software halt.
-    double turnSlowDown(bool turnRight, double desiredPhi);
+    double turnSlowDown(bool turnRight);
     double turnSpeedUp(double scheduledOmega);
     void setOdomXYValues(double odomX, double odomY);
     void setOdomRotationValues(double odomPhi, double odomOmega);
     void setOdomForwardVel(double odomVel);
     void setOdomDT(double dt);
-    void setSegLengthToGo(double segToGo);
+    void setDistanceLeft(double distanceLeft);
+    void resetSegValues();
+    double desiredPhi;
     double odomPhi;
+    double phiCompleted;
+    double phiLeft;
     double lastCallbackPhi;
     double odomOmega;
     double dt;
@@ -72,7 +76,8 @@ public:
     double current_seg_ref_point_0;
     double current_seg_ref_point_1;
     double odomVel;
-    double currSegLengthToGo;
+    double distanceLeft;
+    double lengthCompleted;
     double getDeltaPhi(bool turnRight);
     bool initializeRotation(double endPhi); 
     double reverseSlowDown(double segment_error);

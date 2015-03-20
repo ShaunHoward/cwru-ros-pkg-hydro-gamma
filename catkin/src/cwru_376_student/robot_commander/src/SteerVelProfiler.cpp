@@ -18,7 +18,9 @@ SteerVelProfiler::SteerVelProfiler(const SteerVelProfiler& orig) {
     this->odomOmega = orig.odomOmega;
     this->odomVel = orig.odomVel;
     this->dt = 1 / UPDATE_RATE;
-    this->currSegLengthToGo = orig.currSegLengthToGo;
+    this->distanceLeft = orig.distanceLeft;
+    this->phiCompleted = orig.phiCompleted;
+    this->phiLeft = orig.phiLeft;
 }
 
 SteerVelProfiler::SteerVelProfiler() {
@@ -28,7 +30,9 @@ SteerVelProfiler::SteerVelProfiler() {
     this->odomOmega = 0;
     this->odomVel = 0;
     this->dt = 1 / UPDATE_RATE;
-    this->currSegLengthToGo = 0;
+    this->distanceLeft = 0;
+    this->phiCompleted = 0;
+    this->phiLeft = 0;
 }
 
 void SteerVelProfiler::setOdomXYValues(double odomX, double odomY){
@@ -49,8 +53,8 @@ void SteerVelProfiler::setOdomDT(double dt){
     this->dt = dt;
 }
 
-void SteerVelProfiler::setSegLengthToGo(double segToGo){
-    this->currSegLengthToGo = segToGo;
+void SteerVelProfiler::setDistanceLeft(double distanceLeft){
+    this->distanceLeft = distanceLeft;
 }
 
 ///**
@@ -104,18 +108,18 @@ double SteerVelProfiler::trapezoidalSlowDown(double segmentLength) {
     double deltaY = odomY - current_seg_ref_point_1;
     double scheduledVelocity = 0.0f;
     //Calculate the length completed along the current segment thus far
-    double lengthCompleted = sqrt(deltaX * deltaX + deltaY * deltaY);
+    lengthCompleted = sqrt(deltaX * deltaX + deltaY * deltaY);
     ROS_INFO("dist traveled: %f", lengthCompleted);
     //Set the distance left to travel on the current segment
-    //currSegLengthToGo = segmentLength - lengthCompleted;
+    distanceLeft = segmentLength - lengthCompleted;
 
     //use segment.distanceLeft to decide what vel should be, as per plan
-    if (currSegLengthToGo <= 0.0) { // at goal, or overshot; stop!
+    if (distanceLeft <= 0.0) { // at goal, or overshot; stop!
         scheduledVelocity = 0.0;
-    } else if (currSegLengthToGo <= DECEL_DIST) { //possibly should be braking to a halt
+    } else if (distanceLeft <= DECEL_DIST) { //possibly should be braking to a halt
         // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
         // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-        scheduledVelocity = sqrt(2 * currSegLengthToGo * MAX_ACCEL);
+        scheduledVelocity = sqrt(2 * distanceLeft * MAX_ACCEL);
         ROS_INFO("braking zone: v_sched = %f", scheduledVelocity);
     } else {
         //Not ready to decelerate robot so scheduled velocity will be the max velocity (need to accelerate 
@@ -166,17 +170,17 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
  * @param turnRight - whether the robot is currently turning right
  * @return the scheduled omega for slowing down the robot spin
  */
-double SteerVelProfiler::turnSlowDown(bool turnRight, double desiredPhi) {
+double SteerVelProfiler::turnSlowDown(bool turnRight) {
     double scheduledOmega = 0.0f;
 
-//    //Set the phi (angle) turned thus far in the current rotation segment
-//    rotate.setPhiCompleted(rotate.phiCompleted + getDeltaPhi(turnRight));
-//    ROS_INFO("Phi rotated: %f", rotate.phiCompleted);
-//
-//    //Set the phi left to rotate on the current rotation segment
-//    rotate.setPhiLeft(fabs(rotate.phi) - rotate.phiCompleted);
-//    ROS_INFO("rads left: %f", rotate.phiLeft);
-    double phiLeft = desiredPhi;
+    //Set the phi (angle) turned thus far in the current rotation segment
+    phiCompleted = phiCompleted + getDeltaPhi(turnRight);
+    ROS_INFO("Phi rotated: %f", phiCompleted);
+
+    //Set the phi left to rotate on the current rotation segment
+    phiLeft = fabs(desiredPhi) - phiCompleted;
+    ROS_INFO("rads left: %f", phiLeft);
+    //double phiLeft = desiredPhi;
 
     //use rotate.phiLeft to decide what omega should be, as per plan
     if (phiLeft <= 0.0) { // at goal, or overshot; stop!
@@ -282,6 +286,13 @@ double SteerVelProfiler::getDeltaPhi(bool turnRight){
     //We now have the last callback phi
     lastCallbackPhi = callbackPhi;
     return dPhi;
+}
+
+void SteerVelProfiler::resetSegValues(){
+    phiLeft = 0;
+    phiCompleted = 0;
+    distanceLeft = 0;
+    lengthCompleted = 0;
 }
 
 /**
