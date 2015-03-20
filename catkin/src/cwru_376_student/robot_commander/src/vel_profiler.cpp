@@ -651,16 +651,22 @@ int main(int argc, char **argv) {
     moveOnSegment(velocityPublisher, rTimer, 4.75); //4.75
     
     //turn the robot nearly 90 degrees
-    rotateToPhi(velocityPublisher, rTimer, -1.55);
+    //turn the robot nearly 180 degrees
+    rotateToPhi(velocityPublisher, rTimer, -3.13);
     
-    //Move the robot forward 12.3 meters
-    moveOnSegment(velocityPublisher, rTimer, 12.3);
+    moveOnSegment(velocityPublisher, rTimer, 4.75);
     
-    //turn the robot nearly 90 degrees
-    rotateToPhi(velocityPublisher, rTimer, -1.55);
+    //turn the robot nearly 180 degrees
+    rotateToPhi(velocityPublisher, rTimer, -3.13);
     
-    //Move the robot forward 8 meters
-    moveOnSegment(velocityPublisher, rTimer, 8);
+//    //Move the robot forward 12.3 meters
+//    moveOnSegment(velocityPublisher, rTimer, 12.3);
+//    
+//    //turn the robot nearly 90 degrees
+//    rotateToPhi(velocityPublisher, rTimer, -1.55);
+//    
+//    //Move the robot forward 8 meters
+//    moveOnSegment(velocityPublisher, rTimer, 8);
     return 0;
 }
 
