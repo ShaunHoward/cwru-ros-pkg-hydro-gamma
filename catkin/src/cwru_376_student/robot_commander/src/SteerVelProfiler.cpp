@@ -12,23 +12,23 @@
 //
 
 SteerVelProfiler::SteerVelProfiler(const SteerVelProfiler& orig) {
-    this->maxAlpha = orig.maxAlpha;
-    this->rotationalDecelerationPhi = orig.rotationalDecelerationPhi;
-    this->maxAccel = orig.maxAccel;
-    this->decelerationDistance = orig.decelerationDistance;
-    this->maxSpeed = orig.maxSpeed;
-    this->maxOmega = orig.maxOmega;
+    this->odomX = orig.odomX;
+    this->odomY = orig.odomY;
+    this->odomPhi = orig.odomPhi;
+    this->odomOmega = orig.odomOmega;
+    this->odomVel = orig.odomVel;
+    this->dt = 1 / UPDATE_RATE;
+    this->currSegLengthToGo = orig.currSegLengthToGo;
 }
 
-SteerVelProfiler::SteerVelProfiler(const double& maxAlpha, double& rotationalDecelerationPhi,
-        const double& maxAccel, double& decelerationDistance, const double& maxSpeed,
-        const double& maxOmega) {
-    this->maxAlpha = maxAlpha;
-    this->rotationalDecelerationPhi = rotationalDecelerationPhi;
-    this->maxAccel = maxAccel;
-    this->decelerationDistance = decelerationDistance;
-    this->maxSpeed = maxSpeed;
-    this->maxOmega = maxOmega;
+SteerVelProfiler::SteerVelProfiler() {
+    this->odomX = 0;
+    this->odomY = 0;
+    this->odomPhi = 0;
+    this->odomOmega = 0;
+    this->odomVel = 0;
+    this->dt = 1 / UPDATE_RATE;
+    this->currSegLengthToGo = 0;
 }
 
 void SteerVelProfiler::setOdomXYValues(double odomX, double odomY){
@@ -54,100 +54,41 @@ void SteerVelProfiler::setSegLengthToGo(double segToGo){
 }
 
 ///**
-// * Receives the pose and velocity estimates from the simulator (or the physical robot),
-// * copies the relevant values to global variables, for use by "main"
-// * Note: stdr updates odom only at 10Hz; Jinx is 50Hz (?).
+// * Slows down the robot's forward velocity trapezoidally according to
+// * the segment length distance traveled and distance left to travel as
+// * well as deceleration constants.
 // * 
-// * @param odom_rcvd - the odom message from the robot
+// * @param segmentLength - the segment to slow the robot down along
+// * @return the newly scheduled velocity determined by the algorithm
 // */
-//void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
-//    //compute time since last callback
-//    callback.dt = (ros::Time::now() - callback.lastCallbackTime).toSec();
-//    callback.lastCallbackTime = ros::Time::now(); // let's remember the current time, and use it next iteration
+//double SteerVelProfiler::reverseSlowDown(double segment_error) {
+//    //Compute distance traveled thus far on the current segment
+//    double deltaX = odomX - current_seg_ref_point_0;
+//    double deltaY = odomY - current_seg_ref_point_1;
+//    double scheduledVelocity = 0.0f;
+//    //Calculate the length completed along the current segment thus far
+//    double lengthCompleted = sqrt(deltaX * deltaX + deltaY * deltaY);
+//    ROS_INFO("dist traveled: %f", lengthCompleted);
+//    //Set the distance left to travel on the current segment
+//    //currSegLengthToGo = segmentLength - lengthCompleted;
 //
-//    if (callback.dt > 0.15) { // on start-up, and with occasional hiccups, this delta-time can be unexpectedly large
-//        callback.dt = 0.1; // can choose to clamp a max value on this, if dt_callback is used for computations elsewhere
-//        ROS_WARN("large dt; dt = %lf", callback.dt); // let's complain whenever this happens
+//    //use segment.distanceLeft to decide what vel should be, as per plan
+//    if (currSegLengthToGo > -.05 && currSegLengthToGo <= 0.0) { // at goal, or overshot; stop!
+//       //take this out and replace with slow down in reverse distance.
+//        scheduledVelocity = 0.0;
+//    } else if (currSegLengthToGo <= decelerationDistance) { //possibly should be braking to a halt
+//        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
+//        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
+//        scheduledVelocity = sqrt(2 * currSegLengthToGo * maxAccel);
+//        ROS_INFO("braking zone: v_sched = %f", scheduledVelocity);
+//    } else {
+//        //Not ready to decelerate robot so scheduled velocity will be the max velocity (need to accelerate 
+//        //or hold the max velocity
+//        scheduledVelocity = maxSpeed;
 //    }
-//
-//    //Copy some of the components of the received message into global vars, for use by "main()"
-//    //We care about speed and spin, as well as position estimates x,y and heading
-//    callback.setOdomVelocity(odom_rcvd.twist.twist.linear.x);
-//    callback.setOdomOmega(odom_rcvd.twist.twist.angular.z);
-//    callback.setOdomX(odom_rcvd.pose.pose.position.x);
-//    callback.setOdomY(odom_rcvd.pose.pose.position.y);
-//
-//    //Odom publishes orientation as a quaternion. Must be converted to similar heading.
-//    callback.setQuaternionZ(odom_rcvd.pose.pose.orientation.z);
-//    callback.setQuaternionW(odom_rcvd.pose.pose.orientation.w);
-//    callback.setOdomPhi();
-//
-//    //Print the callback values to console
-//    callback.printValues();
+//    ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
+//    return scheduledVelocity;
 //}
-
-///**
-// * Resets all relevant velocities in the velocity command.
-// */
-//void resetVelocityCommand() {
-//    velocityCommand.linear.x = 0.0; // initialize these values to zero
-//    velocityCommand.linear.y = 0.0;
-//    velocityCommand.linear.z = 0.0;
-//    velocityCommand.angular.x = 0.0;
-//    velocityCommand.angular.y = 0.0;
-//    velocityCommand.angular.z = 0.0;
-//}
-//
-///**
-// * Resets the velocity of the robot in an effort to stop the robot immediately.
-// */
-//void eStop() {
-//    velocityCommand.linear.x = 0.0; // initialize these values to zero
-//    velocityCommand.linear.y = 0.0;
-//    velocityCommand.linear.z = 0.0;
-//    velocityCommand.angular.x = 0.0;
-//    velocityCommand.angular.y = 0.0;
-//    velocityCommand.angular.z = 0.0;
-//    velocityPublisher.publish(velocityCommand);
-//    ROS_INFO("ESTOP function executed.");
-//}
-
-/**
- * Slows down the robot's forward velocity trapezoidally according to
- * the segment length distance traveled and distance left to travel as
- * well as deceleration constants.
- * 
- * @param segmentLength - the segment to slow the robot down along
- * @return the newly scheduled velocity determined by the algorithm
- */
-double SteerVelProfiler::reverseSlowDown(double segment_error) {
-    //Compute distance traveled thus far on the current segment
-    double deltaX = odomX - current_seg_ref_point_0;
-    double deltaY = odomY - current_seg_ref_point_1;
-    double scheduledVelocity = 0.0f;
-    //Calculate the length completed along the current segment thus far
-    double lengthCompleted = sqrt(deltaX * deltaX + deltaY * deltaY);
-    ROS_INFO("dist traveled: %f", lengthCompleted);
-    //Set the distance left to travel on the current segment
-    //currSegLengthToGo = segmentLength - lengthCompleted;
-
-    //use segment.distanceLeft to decide what vel should be, as per plan
-    if (currSegLengthToGo > -.05 && currSegLengthToGo <= 0.0) { // at goal, or overshot; stop!
-       //take this out and replace with slow down in reverse distance.
-        scheduledVelocity = 0.0;
-    } else if (currSegLengthToGo <= decelerationDistance) { //possibly should be braking to a halt
-        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
-        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-        scheduledVelocity = sqrt(2 * currSegLengthToGo * maxAccel);
-        ROS_INFO("braking zone: v_sched = %f", scheduledVelocity);
-    } else {
-        //Not ready to decelerate robot so scheduled velocity will be the max velocity (need to accelerate 
-        //or hold the max velocity
-        scheduledVelocity = maxSpeed;
-    }
-    ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
-    return scheduledVelocity;
-}
 
 /**
  * Slows down the robot's forward velocity trapezoidally according to
@@ -171,15 +112,15 @@ double SteerVelProfiler::trapezoidalSlowDown(double segmentLength) {
     //use segment.distanceLeft to decide what vel should be, as per plan
     if (currSegLengthToGo <= 0.0) { // at goal, or overshot; stop!
         scheduledVelocity = 0.0;
-    } else if (currSegLengthToGo <= decelerationDistance) { //possibly should be braking to a halt
+    } else if (currSegLengthToGo <= DECEL_DIST) { //possibly should be braking to a halt
         // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
         // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-        scheduledVelocity = sqrt(2 * currSegLengthToGo * maxAccel);
+        scheduledVelocity = sqrt(2 * currSegLengthToGo * MAX_ACCEL);
         ROS_INFO("braking zone: v_sched = %f", scheduledVelocity);
     } else {
         //Not ready to decelerate robot so scheduled velocity will be the max velocity (need to accelerate 
         //or hold the max velocity
-        scheduledVelocity = maxSpeed;
+        scheduledVelocity = MAX_SPEED;
     }
     ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
     return scheduledVelocity;
@@ -198,7 +139,7 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
     //how does the current velocity compare to the scheduled vel?
     if (odomVel < scheduledVelocity) { // maybe we halted, e.g. due to estop or obstacle;
         // may need to ramp up to v_max; do so within accel limits
-        double testVelocity = odomVel + maxAccel * dt; // if callbacks are slow, this could be abrupt
+        double testVelocity = odomVel + MAX_ACCEL * dt; // if callbacks are slow, this could be abrupt
         // operator:  c = (a>b) ? a : b;
         newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
         // this prevents overshooting scheduled_vel
@@ -207,7 +148,7 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
         // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
         ROS_INFO("odom vel: %f; sched vel: %f", odomVel, scheduledVelocity); //debug/analysis output; can comment this out
 
-        double testVelocity = odomVel - 1.2 * maxAccel * dt; //moving too fast--try decelerating faster than nominal a_max
+        double testVelocity = odomVel - 1.2 * MAX_ACCEL * dt; //moving too fast--try decelerating faster than nominal a_max
 
         newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; // choose larger of two options...don't overshoot scheduled_vel
     } else {
@@ -240,15 +181,15 @@ double SteerVelProfiler::turnSlowDown(bool turnRight, double desiredPhi) {
     //use rotate.phiLeft to decide what omega should be, as per plan
     if (phiLeft <= 0.0) { // at goal, or overshot; stop!
         scheduledOmega = 0.0;
-    } else if (phiLeft <= rotationalDecelerationPhi) { //possibly should be braking to a halt
+    } else if (phiLeft <= ROT_DECEL_PHI) { //possibly should be braking to a halt
         // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
         // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-        scheduledOmega = sqrtf(2 * phiLeft * maxAlpha);
+        scheduledOmega = sqrtf(2 * phiLeft * MAX_ALPHA);
         ROS_INFO("braking zone: o_sched = %f", scheduledOmega);
     } else {
         //Not ready to decelerate robot so scheduled omega will be the max omega (need to accelerate 
         //or hold the max omega
-        scheduledOmega = maxOmega;
+        scheduledOmega = MAX_OMEGA;
     }
     ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
     return scheduledOmega;
@@ -267,7 +208,7 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
     //how does the current omega compare to the scheduled omega?
     if (fabs(odomOmega) < scheduledOmega) { // maybe we halted
         // may need to ramp up to maxOmega; do so within accel limits
-        double testOmega = fabs(odomOmega) + maxAlpha * dt; // if callbacks are slow, this could be abrupt
+        double testOmega = fabs(odomOmega) + MAX_ALPHA * dt; // if callbacks are slow, this could be abrupt
         newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
     } else if (fabs(odomOmega) > scheduledOmega) { //travelling too fast--this could be trouble
         // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
@@ -275,7 +216,7 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
         ROS_INFO("odom omega: %f; sched omega: %f", fabs(odomOmega), scheduledOmega);
 
         //moving too fast decelerating faster than nominal maxAlpha
-        double testOmega = fabs(odomOmega) - 1.2 * maxAlpha * dt;
+        double testOmega = fabs(odomOmega) - 1.2 * MAX_ALPHA * dt;
         // choose larger of two..don't overshoot
         newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega;
     } else {

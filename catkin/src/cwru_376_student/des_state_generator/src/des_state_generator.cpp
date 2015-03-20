@@ -666,9 +666,7 @@ int main(int argc, char** argv) {
     // ROS set-ups:
     ros::init(argc, argv, "desStateGenerator"); //node name
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
-    SteerVelProfiler steeringProfiler(MAX_ALPHA, rotationalDecelerationPhi,
-        MAX_ACCEL, decelerationDistance, MAX_SPEED,
-        MAX_OMEGA);
+    SteerVelProfiler steeringProfiler;
     ROS_INFO("main: instantiating a DesStateGenerator");
     DesStateGenerator desStateGenerator(&nh, &steeringProfiler); //instantiate a DesStateGenerator object and pass in pointer to nodehandle for constructor to use
     ros::Rate sleep_timer(UPDATE_RATE); //a timer for desired rate, e.g. 50Hz

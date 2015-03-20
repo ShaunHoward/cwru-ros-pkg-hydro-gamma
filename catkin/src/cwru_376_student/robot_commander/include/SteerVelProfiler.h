@@ -16,12 +16,36 @@
 #ifndef STEER_VEL_PROFILER_H
 #define	STEER_VEL_PROFILER_H
 
+// dynamic limitations
+const double MAX_SPEED = 1; // m/sec; adjust this
+const double MAX_OMEGA = 0.5; //1.0; // rad/sec; adjust this
+const double MAX_ACCEL = 1.0; // m/sec^2; adjust this
+const double MAX_ALPHA = 1.0; // rad/sec^2; adjust this
+
+const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
+const double HEADING_TOL = 0.05; // heading tolerance; adjust this
+
+const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
+//The lateral error tolerance value.
+const double LAT_ERR_TOL = 0.05;
+
+// compute some properties of trapezoidal velocity profile plan:
+double ACCEL_TIME = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
+double DECEL_TIME = ACCEL_TIME; //(for same decel as accel); assumes brake to full halt
+double ACCEL_DIST = 0.5 * MAX_ACCEL * (ACCEL_TIME * ACCEL_TIME); //distance rqd to ramp up to full speed
+double DECEL_DIST = 0.5 * MAX_ACCEL * (DECEL_TIME * DECEL_TIME); //same as ramp-up distance
+
+// compute properties of rotational trapezoidal velocity profile plan:
+double TURN_ACCEL_TIME = MAX_OMEGA / MAX_ALPHA; //...assumes start from rest
+double TURN_DECEL_TIME = TURN_ACCEL_TIME; //(for same decel as accel); assumes brake to full halt
+//double turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
+double ROT_ACCEL_PHI = 0.5 * MAX_ALPHA * (TURN_ACCEL_TIME * TURN_ACCEL_TIME);
+double ROT_DECEL_PHI = 0.5 * MAX_ALPHA * (TURN_DECEL_TIME * TURN_DECEL_TIME);
+
 class SteerVelProfiler {
 public:
     SteerVelProfiler(const SteerVelProfiler& orig);
-    SteerVelProfiler(const double& maxAlpha, double& rotationalDecelerationPhi,
-        const double& maxAccel, double& decelerationDistance, const double& maxSpeed,
-        const double& maxOmega);
+    SteerVelProfiler();
     virtual ~SteerVelProfiler();
     
     // Compute the forward speed profile with trapezoidal speed profiling
@@ -43,16 +67,10 @@ public:
     double lastCallbackPhi;
     double odomOmega;
     double dt;
-    double maxAlpha;
-    double maxOmega;
-    double rotationalDecelerationPhi;
-    double maxAccel;
     double odomX;
     double odomY;
     double current_seg_ref_point_0;
     double current_seg_ref_point_1;
-    double decelerationDistance;
-    double maxSpeed;
     double odomVel;
     double currSegLengthToGo;
     double getDeltaPhi(bool turnRight);

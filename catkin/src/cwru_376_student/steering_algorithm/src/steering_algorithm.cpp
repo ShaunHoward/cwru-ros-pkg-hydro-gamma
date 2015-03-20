@@ -297,9 +297,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "steeringController"); //node name
 
     ros::NodeHandle nh; // create a node handle; need to pass this to the class constructor
-    SteerVelProfiler steeringProfiler(MAX_ALPHA, rotationalDecelerationPhi,
-        MAX_ACCEL, decelerationDistance, MAX_SPEED,
-        MAX_OMEGA);
+    SteerVelProfiler steeringProfiler;
 
     ROS_INFO("main: instantiating an object of type SteeringController");
     SteeringController steeringController(&nh, &steeringProfiler);  //instantiate an ExampleRosClass object and pass in pointer to nodehandle for constructor to use

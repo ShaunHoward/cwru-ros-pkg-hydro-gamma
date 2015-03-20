@@ -52,30 +52,6 @@ const int LINE = cwru_msgs::PathSegment::LINE;
 const int ARC = cwru_msgs::PathSegment::ARC;
 const int SPIN_IN_PLACE = cwru_msgs::PathSegment::SPIN_IN_PLACE;
 
-// dynamic limitations
-const double MAX_SPEED = 1; // m/sec; adjust this
-const double MAX_OMEGA = 0.5; //1.0; // rad/sec; adjust this
-const double MAX_ACCEL = 1.0; // m/sec^2; adjust this
-const double MAX_ALPHA = 1.0; // rad/sec^2; adjust this
-
-const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
-const double HEADING_TOL = 0.05; // heading tolerance; adjust this
-
-const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
-
-// compute some properties of trapezoidal velocity profile plan:
-double accelerationTime = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
-double decelerationTime = accelerationTime; //(for same decel as accel); assumes brake to full halt
-double accelerationDistance = 0.5 * MAX_ACCEL * (accelerationTime * accelerationTime); //distance rqd to ramp up to full speed
-double decelerationDistance = 0.5 * MAX_ACCEL * (decelerationTime * decelerationTime); //same as ramp-up distance
-
-// compute properties of rotational trapezoidal velocity profile plan:
-double turnAccelTime = MAX_OMEGA / MAX_ALPHA; //...assumes start from rest
-double turnDecelTime = turnAccelTime; //(for same decel as accel); assumes brake to full halt
-//double turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
-double rotationalAccelerationPhi = 0.5 * MAX_ALPHA * (turnAccelTime * turnAccelTime);
-double rotationalDecelerationPhi = 0.5 * MAX_ALPHA * (turnDecelTime * turnDecelTime);
-
 //class SteerVelProfiler;
 
 // define a class, including a constructor, member variables and member functions
@@ -104,8 +80,7 @@ public:
 
     geometry_msgs::Pose map_to_odom_pose(geometry_msgs::Pose map_pose); // convert a pose from map frame to odom frame
     geometry_msgs::Pose odom_to_map_pose(geometry_msgs::Pose odom_pose); // convert a pose from odom frame to map frame   
-
-
+    
     //the interesting functions: how to get a new path segment and how to update the desired state
     void update_des_state();
     void unpack_next_path_segment();

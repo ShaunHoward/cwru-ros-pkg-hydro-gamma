@@ -35,33 +35,6 @@
 //Include the steering vel profiler to control velocity
 #include <SteerVelProfiler.h>
 
-const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
-const double K_PHI= 10.0; // control gains for steering
-const double K_DISP = 3.0;
-const double K_TRIP_DIST = 1.0;
-// dynamic limitations:  these apply to the steering controller; they may be larger than the limits on des state generation
-const double MAX_SPEED = 1.0; // m/sec; adjust this
-const double MAX_ACCEL = 1.0; // m/sec^2; adjust this
-const double MAX_OMEGA = 1.0; //1.0; // rad/sec; adjust this
-    //The lateral error tolerance value.
-const double LAT_ERR_TOL = 0.05;
-const double MAX_ALPHA = 1.0;
-
-// compute some properties of trapezoidal velocity profile plan:
-double accelerationTime = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
-double decelerationTime = accelerationTime; //(for same decel as accel); assumes brake to full halt
-double accelerationDistance = 0.5 * MAX_ACCEL * (accelerationTime * accelerationTime); //distance rqd to ramp up to full speed
-double decelerationDistance = 0.5 * MAX_ACCEL * (decelerationTime * decelerationTime); //same as ramp-up distance
-
-// compute properties of rotational trapezoidal velocity profile plan:
-double turnAccelTime = MAX_OMEGA / MAX_ALPHA; //...assumes start from rest
-double turnDecelTime = turnAccelTime; //(for same decel as accel); assumes brake to full halt
-//double turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
-double rotationalAccelerationPhi = 0.5 * MAX_ALPHA * (turnAccelTime * turnAccelTime);
-double rotationalDecelerationPhi = 0.5 * MAX_ALPHA * (turnDecelTime * turnDecelTime);
-
-//class SteerVelProfiler;
-
 // define a class, including a constructor, member variables and member functions
 class SteeringController
 {
