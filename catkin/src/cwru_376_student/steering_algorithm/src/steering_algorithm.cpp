@@ -188,18 +188,19 @@ void SteeringController::my_clever_steering_algorithm() {
     steering_errs_publisher_.publish(steering_errs_); // suitable for plotting w/ rqt_plot
     //END OF DEBUG STUFF
     
-     //currently, we are turning, so probably in the wrong direction
-    if (des_state_phi_ != 0){
+     //currently, we are turning, so we must adjust turning
+    if (des_state_omega_ != 0){
         //Correct errors in omega if there is heading error or lateral error
         controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
         controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
         twist_cmd_.angular.z = controller_omega;
         twist_cmd_.linear.x = 0;
-    }else if (controller_speed != 0){
+    } else if (des_state_vel_ != 0){
+        //currently, we are moving forward, so we must adjust forward velocity
         //Correct errors in speed if there is a trip dist error
         controller_speed = compute_controller_speed(trip_dist_err);
             // send out our very clever speed/spin commands:
-    twist_cmd_.linear.x = controller_speed;
+        twist_cmd_.linear.x = controller_speed;
         twist_cmd_.angular.z = 0;
     }
     //this is currently zero always..

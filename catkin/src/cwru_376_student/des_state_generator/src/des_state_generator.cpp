@@ -648,7 +648,7 @@ double DesStateGenerator::compute_omega_profile() {
         update_steering_profiler();
         
         //Compute the steering omega velocity profile via trapezoidal algorithms.
-        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, current_seg_phi_goal_);
+        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, current_seg_length_to_go_);
         omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
         ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
         return omegaProfile; // spin in direction of closest rotation to target heading
