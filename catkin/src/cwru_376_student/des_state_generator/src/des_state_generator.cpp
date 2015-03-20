@@ -480,9 +480,11 @@ void DesStateGenerator::update_des_state() {
     switch (current_seg_type_) {
         case LINE:
             des_state_ = update_des_state_lineseg();
+            ROS_INFO("Segment type is a line");
             break;
         case SPIN_IN_PLACE:
             des_state_ = update_des_state_spin();
+            ROS_INFO("Segment type is a spin");
             break;
         case ARC: // not implemented; set segment type to HALT
         default:
@@ -646,7 +648,7 @@ double DesStateGenerator::compute_omega_profile() {
         update_steering_profiler();
         
         //Compute the steering omega velocity profile via trapezoidal algorithms.
-        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, current_seg_length_to_go_);
+        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, current_seg_phi_goal_);
         omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
         ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
         return omegaProfile; // spin in direction of closest rotation to target heading

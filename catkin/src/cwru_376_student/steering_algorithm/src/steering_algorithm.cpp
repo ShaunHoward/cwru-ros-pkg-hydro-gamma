@@ -188,18 +188,24 @@ void SteeringController::my_clever_steering_algorithm() {
     steering_errs_publisher_.publish(steering_errs_); // suitable for plotting w/ rqt_plot
     //END OF DEBUG STUFF
     
-     // do something clever with this information     
-    
-    //Correct errors in omega if there is heading error or lateral error
-    controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
-    //Correct errors in speed if there is a trip dist error
-    controller_speed = compute_controller_speed(trip_dist_err);
- 
-    controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
-    
-    // send out our very clever speed/spin commands:
+     //currently, we are turning, so probably in the wrong direction
+    if (des_state_phi_ != 0){
+        //Correct errors in omega if there is heading error or lateral error
+        controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
+        controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+        twist_cmd_.angular.z = controller_omega;
+        twist_cmd_.linear.x = 0;
+    }else if (controller_speed != 0){
+        //Correct errors in speed if there is a trip dist error
+        controller_speed = compute_controller_speed(trip_dist_err);
+            // send out our very clever speed/spin commands:
     twist_cmd_.linear.x = controller_speed;
-    twist_cmd_.angular.z = controller_omega;
+        twist_cmd_.angular.z = 0;
+    }
+    //this is currently zero always..
+    ROS_INFO("New steering controller speed: %f", controller_speed);
+    ROS_INFO("New steering controller omega: %f", controller_omega);
+ 
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header 
     cmd_publisher_.publish(twist_cmd_);  
@@ -252,17 +258,18 @@ double SteeringController::compute_controller_speed(double trip_dist_err){
     
     if(trip_dist_err<0){
         //ahead of schedule, slow down!
-        controller_speed = steeringProfiler_.reverseSlowDown(trip_dist_err);
+        //controller_speed = steeringProfiler_.reverseSlowDown(trip_dist_err);
+        controller_speed = 0;
     }
     else if (trip_dist_err > 0){
         //behind schedule, speed up!
         //compute a trapezoidal speed
-        controller_speed = steeringProfiler_.trapezoidalSlowDown(trip_dist_err);
+        controller_speed = steeringProfiler_.trapezoidalSlowDown(3 * trip_dist_err);
         controller_speed = steeringProfiler_.trapezoidalSpeedUp(controller_speed);
     }
     
     //Otherwise we are perfectly adjusted, stop!
-    return 0;
+    return controller_speed;
 }
 
 /**
