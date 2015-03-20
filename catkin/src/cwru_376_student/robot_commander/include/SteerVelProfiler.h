@@ -63,6 +63,7 @@ public:
     void setOdomForwardVel(double odomVel);
     void setOdomDT(double dt);
     void setDistanceLeft(double distanceLeft);
+    void setCurrSegLength(double currSegLength);
     void resetSegValues();
     double desiredPhi;
     double odomPhi;
@@ -78,6 +79,7 @@ public:
     double odomVel;
     double distanceLeft;
     double lengthCompleted;
+    double currSegLength;
     double getDeltaPhi(bool turnRight);
     bool initializeRotation(double endPhi); 
     double reverseSlowDown(double segment_error);

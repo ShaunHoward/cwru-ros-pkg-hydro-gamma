@@ -21,6 +21,7 @@ SteerVelProfiler::SteerVelProfiler(const SteerVelProfiler& orig) {
     this->distanceLeft = orig.distanceLeft;
     this->phiCompleted = orig.phiCompleted;
     this->phiLeft = orig.phiLeft;
+    this->currSegLength = currSegLength;
 }
 
 SteerVelProfiler::SteerVelProfiler() {
@@ -33,6 +34,7 @@ SteerVelProfiler::SteerVelProfiler() {
     this->distanceLeft = 0;
     this->phiCompleted = 0;
     this->phiLeft = 0;
+    this->currSegLength = 0;
 }
 
 void SteerVelProfiler::setOdomXYValues(double odomX, double odomY){
@@ -55,6 +57,10 @@ void SteerVelProfiler::setOdomDT(double dt){
 
 void SteerVelProfiler::setDistanceLeft(double distanceLeft){
     this->distanceLeft = distanceLeft;
+}
+
+void SteerVelProfiler::setCurrSegLength(double currSegLength){
+    this->currSegLength = currSegLength;
 }
 
 ///**

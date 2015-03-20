@@ -459,6 +459,7 @@ void DesStateGenerator::unpack_next_path_segment() {
             ROS_INFO("unpacking a lineseg segment");
             current_seg_phi_goal_ = current_seg_init_tan_angle_; // this will remain constant over lineseg     
             steeringProfiler_.distanceLeft = current_seg_length_;
+            steeringProfiler_.currSegLength = current_seg_length_;
             break;
         case SPIN_IN_PLACE:
             //compute goal heading:
@@ -545,7 +546,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
         current_seg_type_ = HALT;
         current_seg_xy_des_ = current_seg_ref_point_ + current_seg_tangent_vec_*current_seg_length_; // specify destination vertex as exact, current goal
         current_seg_length_to_go_ = 0.0;
-        current_speed_des_ = 0.0; // 
+        current_speed_des_ = 0.0;
         current_path_seg_done_ = true;
         ROS_INFO("update_des_state_lineseg: done with translational motion commands");
     } else { // not done with translational move yet--step forward
@@ -575,7 +576,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     //desired_state = current_odom_; //OPTIONAL: CAN SIMPLY RETAIN LAST COMPUTED DESIRED STATE
     desired_state = des_state_; // OPTION:  NOT USING ODOMETRY
 
-    current_speed_des_ = 0.0; // 
+    current_speed_des_ = 0.0; 
     current_omega_des_ = 0.0;
     desired_state.twist.twist.linear.x = current_speed_des_; // but specified desired twist = 0.0
     desired_state.twist.twist.angular.z = current_omega_des_;
@@ -599,9 +600,10 @@ double DesStateGenerator::compute_speed_profile() {
     update_steering_profiler();
     
     //Compute the speed profile from the steering velocity profiler.
-    double speedProfile = steeringProfiler_.trapezoidalSlowDown(current_seg_length_);
-    speedProfile = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
-    return speedProfile;
+    double speedProfile = steeringProfiler_.trapezoidalSlowDown(steeringProfiler_.currSegLength);
+    double commandSpeed = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
+    ROS_INFO("compute_speed_profile: cmd_speed = %f", commandSpeed);
+    return commandSpeed;
      // return MAX_SPEED;
 }
 
@@ -625,7 +627,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
         current_seg_type_ = HALT;
         current_seg_xy_des_ = current_seg_ref_point_; // specify destination vertex as exact, current goal
         current_seg_length_to_go_ = 0.0;
-        current_speed_des_ = 0.0; // 
+        current_speed_des_ = 0.0; 
         current_omega_des_ = 0.0;
         current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_) * current_seg_length_;
         current_path_seg_done_ = true;
@@ -669,9 +671,9 @@ double DesStateGenerator::compute_omega_profile() {
         
         //Compute the steering omega velocity profile via trapezoidal algorithms.
         double omegaProfile = steeringProfiler_.turnSlowDown(turnRight);
-        omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
-        ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
-        return omegaProfile; // spin in direction of closest rotation to target heading
+        double commandOmega = steeringProfiler_.turnSpeedUp(omegaProfile);
+        ROS_INFO("compute_omega_profile: cmd_omega = %f", commandOmega);
+        return commandOmega; // spin in direction of closest rotation to target heading
     }
 
     //otherwise, omega will be zero because the robot is not turning
