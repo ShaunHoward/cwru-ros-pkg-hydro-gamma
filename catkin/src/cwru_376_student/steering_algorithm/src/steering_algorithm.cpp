@@ -192,7 +192,7 @@ void SteeringController::my_clever_steering_algorithm() {
     if (des_state_omega_ != 0){
         //Correct errors in omega if there is heading error or lateral error
         controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
-        controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+        //controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
         twist_cmd_.angular.z = controller_omega;
         twist_cmd_.linear.x = 0;
     } else if (des_state_vel_ != 0){
@@ -218,6 +218,7 @@ double SteeringController::compute_controller_omega(double trip_dist_err,
     double heading_err, double lateral_err){
     double controller_omega = des_state_omega_;
     double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
+    ROS_INFO("New phi from steering alg is: %f", newPhi);
     if (lateral_err > LAT_ERR_TOL){ //Rotate to the left 
         //heading_err > 0
         //use heading error to calculate +omega
