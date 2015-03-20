@@ -57,6 +57,7 @@ public:
     double currSegLengthToGo;
     double getDeltaPhi(bool turnRight);
     bool initializeRotation(double endPhi); 
+    double reverseSlowDown(double segment_error);
 };
 
 #endif	/* STEER_VEL_PROFILER_H */

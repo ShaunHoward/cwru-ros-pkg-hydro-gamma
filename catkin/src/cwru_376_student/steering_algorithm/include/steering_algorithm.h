@@ -76,6 +76,12 @@ public:
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
     double sat(double x);
+    // some utilities:
+    //signum function: define this one in-line
+    double sgn(double x) { if (x>0.0) {return 1.0; }
+    else if (x<0.0) {return -1.0;}
+    else {return 0.0;}
+    }
 private:
     
     // The steering velocity profiler to move the robot accordingly.
@@ -130,6 +136,7 @@ private:
     void initializeServices();
     void initializeSteeringProfiler();
     void update_steering_profiler();
+    double compute_omega_profile(double newPhi);
  
     void odomCallback(const nav_msgs::Odometry& odom_rcvd);
     void desStateCallback(const nav_msgs::Odometry& des_state_rcvd);    

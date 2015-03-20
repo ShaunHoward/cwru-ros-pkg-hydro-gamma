@@ -214,25 +214,55 @@ double SteeringController::compute_controller_omega(double trip_dist_err,
     if (lateral_err > LAT_ERR_TOL){ //Rotate to the left 
         //heading_err > 0
         //use heading error to calculate +omega
+        controller_omega = compute_omega_profile(newPhi);
     } else if (lateral_err < -LAT_ERR_TOL){
         //heading_err < 0
         //use heading error to calculate -omega
+        controller_omega = compute_omega_profile(newPhi);
     }
 
     return controller_omega;
+}
+
+double SteeringController::compute_omega_profile(double newPhi) {
+    //need to make object for steer vel profile then call these methods.
+            //Turning right (clockwise) if negative end phi
+   double turnDirection = sgn(newPhi);
+
+    if (turnDirection != 0) {
+        bool turnRight = turnDirection < 0;
+        //Update the steering profiler with fresh odom readings.
+        update_steering_profiler();
+        
+        //Compute the steering velocity profile via trapezoidal algorithms.
+        double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, newPhi);
+        omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
+        ROS_INFO("compute_omega_profile: modified_omega = %f", omegaProfile);
+        return omegaProfile; // spin in direction of closest rotation to target heading
+    }
+
+    ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
+    return 0.0;
 }
 
 //this will compute the controller speed to accommodate the error but
 //might need to take into account of lateral error
 double SteeringController::compute_controller_speed(double trip_dist_err){
     double controller_speed = des_state_vel_;
+    
     if(trip_dist_err<0){
-        //ahead of schedule: meaning slowdown?
+        //ahead of schedule, slow down!
+        controller_speed = steeringProfiler_.reverseSlowDown(trip_dist_err);
     }
-    else{
-        //behind schedule: meaning speedup?
+    else if (trip_dist_err > 0){
+        //behind schedule, speed up!
+        //compute a trapezoidal speed
+        controller_speed = steeringProfiler_.trapezoidalSlowDown(trip_dist_err);
+        controller_speed = steeringProfiler_.trapezoidalSpeedUp(controller_speed);
     }
-    return controller_speed;
+    
+    //Otherwise we are perfectly adjusted, stop!
+    return 0;
 }
 
 /**

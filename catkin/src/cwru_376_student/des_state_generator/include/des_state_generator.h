@@ -169,6 +169,7 @@ private:
     void initializeServices();
     void initializeSteeringProfiler();
     void update_steering_profiler();
+    double manhattan_distance();
 
     //prototypes for subscription callbacks
     void odomCallback(const nav_msgs::Odometry& odom_rcvd);

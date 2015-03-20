@@ -503,13 +503,21 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     //    current_seg_length_to_go_, current_seg_phi_des_, current_seg_xy_des_ 
     //    current_speed_des_, current_omega_des_
 
-    current_speed_des_ = compute_speed_profile(); //USE VEL PROFILING
+    //calls the steering velocity profiler class to find the current desired speed
+    current_speed_des_ = compute_speed_profile();
+    
+    //omega is fixed at zero for a straight line segment
     current_omega_des_ = 0.0;
-    current_seg_phi_des_ = current_seg_init_tan_angle_; // this value will not change during lineseg motion
+    
+    // this value will not change during lineseg motion
+    current_seg_phi_des_ = current_seg_init_tan_angle_; 
 
-    double delta_s = current_speed_des_*dt_; //incremental forward move distance; a scalar
-
+    //incremental forward move distance; a scalar
+    //use distance formula from point????
+    double delta_s = current_speed_des_*dt_;
     current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
+    //current_seg_length_to_go_ -= manhattan_distance();
+    
     ROS_INFO("update_des_state_lineseg: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
     if (current_seg_length_to_go_ < LENGTH_TOL) { // check if done with this move
         // done with line segment;
@@ -534,6 +542,12 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     return desired_state;
 }
 
+double DesStateGenerator::manhattan_distance(){
+    double xDiff = abs(odom_x_ - current_seg_xy_des_(0));
+    double yDiff = abs(odom_y_ - current_seg_xy_des_(1));
+    return xDiff + yDiff;
+}
+
 nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     nav_msgs::Odometry desired_state; // fill in this message and return it
     // fill in components of desired-state message from most recent odom message
@@ -550,9 +564,16 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     return desired_state;
 }
 
-//DUMMY--fill this in
+/**
+ * Computes the desired speed profile based on the current segment length (in meters)
+ * in order to reach the desired goal coordinate. This uses trapezoidal forward
+ * slow down and speed up algorithms from the steering velocity profiler class.
+ * This method will produce a state where the robot will speed up or slow down
+ * to approach the target heading as close as possible.
+ * 
+ * @return the desired speed for the next state in order to reach the goal coordinate 
+ */
 double DesStateGenerator::compute_speed_profile() {
-   // return MAX_SPEED;
     //Update the steering profiler with fresh odom readings.
     update_steering_profiler();
     
@@ -560,6 +581,7 @@ double DesStateGenerator::compute_speed_profile() {
     double speedProfile = steeringProfiler_.trapezoidalSlowDown(current_seg_length_);
     speedProfile = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
     return speedProfile;
+     // return MAX_SPEED;
 }
 
 nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
@@ -602,92 +624,41 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     return desired_state;
 }
 
-// MAKE THIS BETTER!!
+/**
+ * Computes the desired omega profile based on the current segment length left to go (as phi)
+ * in order to reach the desired goal coordinate. This uses trapezoidal turn
+ * slow down and speed up algorithms from the steering velocity profiler class.
+ * This method will produce a state where the robot will spin in the direction
+ * of closest rotation to the target heading.
+ * 
+ * @return the desired omega for the next state in order to reach the goal coordinate 
+ */
 double DesStateGenerator::compute_omega_profile() {
-    //need to make object for steer vel profile then call these methods.
+    //determine the direction of the turn
     double turnDirection = sgn(current_seg_curvature_);
 
+    //if turning, run trapezoidal omega profiler based on the turn direction and
+    //the current segment length left to travel
     if (turnDirection != 0) {
         bool turnRight = turnDirection < 0;
+        
         //Update the steering profiler with fresh odom readings.
         update_steering_profiler();
         
-        //Compute the steering velocity profile via trapezoidal algorithms.
+        //Compute the steering omega velocity profile via trapezoidal algorithms.
         double omegaProfile = steeringProfiler_.turnSlowDown(turnRight, current_seg_length_to_go_);
         omegaProfile = steeringProfiler_.turnSpeedUp(omegaProfile);
         ROS_INFO("compute_omega_profile: des_omega = %f", omegaProfile);
         return omegaProfile; // spin in direction of closest rotation to target heading
     }
 
+    //otherwise, omega will be zero because the robot is not turning
     ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
     return 0.0;
 //    double des_omega = sgn(current_seg_curvature_) * MAX_OMEGA;
 //    ROS_INFO("compute_omega_profile: des_omega = %f", des_omega);
 //    return des_omega; // spin in direction of closest rotation to target heading
 }
-
-///**
-// * Slows down the robot's rotational velocity trapezoidally according to
-// * the phi left to rotate on the current rotation segment as well as
-// * rotational deceleration constants.
-// * 
-// * @param turnRight - whether the robot is currently turning right
-// * @return the scheduled omega for slowing down the robot spin
-// */
-//double DesStateGenerator::turnSlowDown(bool turnRight) {
-//    double scheduledOmega = 0.0f;
-//
-//    ROS_INFO("rads left: %f", current_seg_length_to_go_);
-//
-//    //use rotate.phiLeft to decide what omega should be, as per plan
-//    if (current_seg_length_to_go_ <= 0.0) { // at goal, or overshot; stop!
-//        scheduledOmega = 0.0;
-//    } else if (current_seg_length_to_go_ <= rotationalDecelerationPhi) { //possibly should be braking to a halt
-//        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
-//        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-//        scheduledOmega = sqrtf(2 * current_seg_length_to_go_ * MAX_ALPHA);
-//        ROS_INFO("braking zone: o_sched = %f", scheduledOmega);
-//    } else {
-//        //Not ready to decelerate robot so scheduled omega will be the max omega (need to accelerate 
-//        //or hold the max omega
-//        scheduledOmega = MAX_OMEGA;
-//    }
-//    ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
-//    return scheduledOmega;
-//}
-//
-///**
-// * Speeds up the robot's angular velocity according to the scheduled slow-down 
-// * omega and the robot's odom omega as well as rotational accerlation constants.
-// * 
-// * @param scheduledOmega - the omega scheduled via the turn slow down function
-// * @return the new omega spin command to publish to the robot's motors
-// */
-//double DesStateGenerator::turnSpeedUp(double scheduledOmega) {
-//    double newOmegaCommand;
-//
-//    //how does the current omega compare to the scheduled omega?
-//    if (fabs(odom_omega_) < scheduledOmega) { // maybe we halted
-//        // may need to ramp up to maxOmega; do so within accel limits
-//        double testOmega = fabs(odom_omega_) + MAX_ALPHA * dt_; // if callbacks are slow, this could be abrupt
-//        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
-//    } else if (fabs(odom_omega_) > scheduledOmega) { //travelling too fast--this could be trouble
-//        // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
-//        // need to catch up, so ramp down even faster than maxAlpha.  Try 1.2*maxAlpha.
-//        ROS_INFO("odom omega: %f; sched omega: %f", fabs(odom_omega_), scheduledOmega);
-//
-//        //moving too fast decelerating faster than nominal maxAlpha
-//        double testOmega = fabs(odom_omega_) - 1.2 * MAX_ALPHA * dt_;
-//        // choose larger of two..don't overshoot
-//        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega;
-//    } else {
-//        //Just hold the scheduled omega
-//        newOmegaCommand = scheduledOmega;
-//    }
-//
-//    ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
-//    return newOmegaCommand;
-//}
 
 int main(int argc, char** argv) {
     // ROS set-ups:

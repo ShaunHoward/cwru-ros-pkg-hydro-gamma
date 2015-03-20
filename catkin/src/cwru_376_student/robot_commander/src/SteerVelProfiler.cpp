@@ -120,6 +120,43 @@ void SteerVelProfiler::setSegLengthToGo(double segToGo){
  * @param segmentLength - the segment to slow the robot down along
  * @return the newly scheduled velocity determined by the algorithm
  */
+double SteerVelProfiler::reverseSlowDown(double segment_error) {
+    //Compute distance traveled thus far on the current segment
+    double deltaX = odomX - current_seg_ref_point_0;
+    double deltaY = odomY - current_seg_ref_point_1;
+    double scheduledVelocity = 0.0f;
+    //Calculate the length completed along the current segment thus far
+    double lengthCompleted = sqrt(deltaX * deltaX + deltaY * deltaY);
+    ROS_INFO("dist traveled: %f", lengthCompleted);
+    //Set the distance left to travel on the current segment
+    //currSegLengthToGo = segmentLength - lengthCompleted;
+
+    //use segment.distanceLeft to decide what vel should be, as per plan
+    if (currSegLengthToGo > -.05 && currSegLengthToGo <= 0.0) { // at goal, or overshot; stop!
+       //take this out and replace with slow down in reverse distance.
+        scheduledVelocity = 0.0;
+    } else if (currSegLengthToGo <= decelerationDistance) { //possibly should be braking to a halt
+        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
+        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
+        scheduledVelocity = sqrt(2 * currSegLengthToGo * maxAccel);
+        ROS_INFO("braking zone: v_sched = %f", scheduledVelocity);
+    } else {
+        //Not ready to decelerate robot so scheduled velocity will be the max velocity (need to accelerate 
+        //or hold the max velocity
+        scheduledVelocity = maxSpeed;
+    }
+    ROS_INFO("Slow down scheduled velocity is: %f", scheduledVelocity);
+    return scheduledVelocity;
+}
+
+/**
+ * Slows down the robot's forward velocity trapezoidally according to
+ * the segment length distance traveled and distance left to travel as
+ * well as deceleration constants.
+ * 
+ * @param segmentLength - the segment to slow the robot down along
+ * @return the newly scheduled velocity determined by the algorithm
+ */
 double SteerVelProfiler::trapezoidalSlowDown(double segmentLength) {
     //Compute distance traveled thus far on the current segment
     double deltaX = odomX - current_seg_ref_point_0;
