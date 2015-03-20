@@ -21,7 +21,8 @@ SteerVelProfiler::SteerVelProfiler(const SteerVelProfiler& orig) {
     this->distanceLeft = orig.distanceLeft;
     this->phiCompleted = orig.phiCompleted;
     this->phiLeft = orig.phiLeft;
-    this->currSegLength = currSegLength;
+    this->currSegLength = orig.currSegLength;
+    this->turnRight = orig.turnRight;
 }
 
 SteerVelProfiler::SteerVelProfiler() {
@@ -35,6 +36,7 @@ SteerVelProfiler::SteerVelProfiler() {
     this->phiCompleted = 0;
     this->phiLeft = 0;
     this->currSegLength = 0;
+    this->turnRight = false;
 }
 
 void SteerVelProfiler::setOdomXYValues(double odomX, double odomY){
@@ -176,8 +178,9 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
  * @param turnRight - whether the robot is currently turning right
  * @return the scheduled omega for slowing down the robot spin
  */
-double SteerVelProfiler::turnSlowDown(bool turnRight) {
+double SteerVelProfiler::turnSlowDown(bool turnRight_) {
     double scheduledOmega = 0.0f;
+    turnRight = turnRight_;
 
     //Set the phi (angle) turned thus far in the current rotation segment
     phiCompleted = phiCompleted + getDeltaPhi(turnRight);
@@ -235,6 +238,11 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
     }
 
     ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
+    
+    //change the sign based on the direction we turn in
+    if (turnRight) {
+        newOmegaCommand = -1.0 * (newOmegaCommand);
+    }
     return newOmegaCommand;
 }
 

@@ -23,6 +23,8 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     callback.setOdomOmega(odom_rcvd.twist.twist.angular.z);
     callback.setOdomX(odom_rcvd.pose.pose.position.x);
     callback.setOdomY(odom_rcvd.pose.pose.position.y);
+    
+    ROS_INFO("Odom x: %f y: %f", callback.odomX, callback.odomY);
 
     //Odom publishes orientation as a quaternion. Must be converted to similar heading.
     callback.setQuaternionZ(odom_rcvd.pose.pose.orientation.z);
@@ -635,9 +637,9 @@ int main(int argc, char **argv) {
     ros::NodeHandle nodeHandle; // get a ros nodehandle; standard yadda-yadda
     //create a publisher object that can talk to ROS and issue twist messages on named topic;
     // note: this is customized for stdr robot; would need to change the topic to talk to jinx, etc.
-    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);
     //velocityPublisher = nodeHandle.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);
-    ros::Subscriber sub = nodeHandle.subscribe("odom", 1, odomCallback);
+    ros::Subscriber sub = nodeHandle.subscribe("/robot0/odom", 1, odomCallback);
     //ros::Subscriber sub = nodeHandle.subscribe("/robot0/odom", 4, odomCallback);
 
     ros::Subscriber ping_dist_subscriber = nodeHandle.subscribe("lidar_dist", 1, pingDistanceCallback);
@@ -652,21 +654,21 @@ int main(int argc, char **argv) {
     
     //turn the robot nearly 90 degrees
     //turn the robot nearly 180 degrees
-    rotateToPhi(velocityPublisher, rTimer, -3.13);
+    rotateToPhi(velocityPublisher, rTimer, -1.55);
     
-    moveOnSegment(velocityPublisher, rTimer, 4.75);
+    moveOnSegment(velocityPublisher, rTimer, 12.3);
     
     //turn the robot nearly 180 degrees
-    rotateToPhi(velocityPublisher, rTimer, -3.13);
+  //  rotateToPhi(velocityPublisher, rTimer, -3.13);
     
 //    //Move the robot forward 12.3 meters
 //    moveOnSegment(velocityPublisher, rTimer, 12.3);
-//    
-//    //turn the robot nearly 90 degrees
-//    rotateToPhi(velocityPublisher, rTimer, -1.55);
-//    
-//    //Move the robot forward 8 meters
-//    moveOnSegment(velocityPublisher, rTimer, 8);
+   
+    //turn the robot nearly 90 degrees
+    rotateToPhi(velocityPublisher, rTimer, -1.55);
+   
+    //Move the robot forward 8 meters
+    moveOnSegment(velocityPublisher, rTimer, 8);
     return 0;
 }
 

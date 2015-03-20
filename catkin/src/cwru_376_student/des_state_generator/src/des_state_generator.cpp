@@ -70,7 +70,7 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
 
 void DesStateGenerator::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers");
-    odom_subscriber_ = nh_.subscribe("odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
+    odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
     // add more subscribers here, as needed
 }
 
@@ -664,7 +664,10 @@ double DesStateGenerator::compute_omega_profile() {
     //if turning, run trapezoidal omega profiler based on the turn direction and
     //the current segment length left to travel
     if (turnDirection != 0) {
-        bool turnRight = turnDirection < 0;
+        bool turnRight = false;
+        if (turnDirection < 0) {
+            turnRight = true;
+        }
         
         //Update the steering profiler with fresh odom readings.
         update_steering_profiler();

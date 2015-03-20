@@ -55,7 +55,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle, SteerVelProf
 //member helper function to set up subscribers;
 void SteeringController::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers: odom and desState");
-    odom_subscriber_ = nh_.subscribe("odom", 1, &SteeringController::odomCallback, this); //subscribe to odom messages
+    odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &SteeringController::odomCallback, this); //subscribe to odom messages
     // add more subscribers here, as needed
     des_state_subscriber_ = nh_.subscribe("/desState", 1, &SteeringController::desStateCallback, this); // for desired state messages
 }
@@ -75,8 +75,8 @@ void SteeringController::initializeServices()
 void SteeringController::initializePublishers()
 {
     ROS_INFO("Initializing Publishers: cmd_vel and cmd_vel_stamped");
-    cmd_publisher_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1, true); // talks to the robot!
-    cmd_publisher2_ = nh_.advertise<geometry_msgs::TwistStamped>("cmd_vel_stamped",1, true); //alt topic, includes time stamp
+    cmd_publisher_ = nh_.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1, true); // talks to the robot!
+    cmd_publisher2_ = nh_.advertise<geometry_msgs::TwistStamped>("/robot0/cmd_vel_stamped",1, true); //alt topic, includes time stamp
     steering_errs_publisher_ =  nh_.advertise<std_msgs::Float32MultiArray>("steering_errs",1, true);
 }
 
@@ -99,6 +99,7 @@ void SteeringController::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     odom_omega_ = odom_rcvd.twist.twist.angular.z;
     odom_x_ = odom_rcvd.pose.pose.position.x;
     odom_y_ = odom_rcvd.pose.pose.position.y;
+     ROS_INFO("odom x: %f, y: %f, vel: %f, omega: %f", odom_x_, odom_y_, odom_vel_, odom_omega_);
     odom_quat_ = odom_rcvd.pose.pose.orientation;
     //odom publishes orientation as a quaternion.  Convert this to a simple heading
     odom_phi_ = convertPlanarQuat2Phi(odom_quat_); // cheap conversion from quaternion to heading for planar motion
@@ -117,6 +118,7 @@ void SteeringController::desStateCallback(const nav_msgs::Odometry& des_state_rc
     des_state_omega_ = des_state_rcvd.twist.twist.angular.z;
     des_state_x_ = des_state_rcvd.pose.pose.position.x;
     des_state_y_ = des_state_rcvd.pose.pose.position.y;
+    ROS_INFO("des state x: %f, y: %f", des_state_x_, des_state_y_);
     des_state_quat_ = des_state_rcvd.pose.pose.orientation;
     //odom publishes orientation as a quaternion.  Convert this to a simple heading
     des_state_phi_ = convertPlanarQuat2Phi(des_state_quat_); // cheap conversion from quaternion to heading for planar motion
@@ -202,7 +204,7 @@ void SteeringController::my_clever_steering_algorithm() {
     
     //Correct errors in speed if there is a trip dist error
     controller_speed = compute_controller_speed(trip_dist_err);
-    controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+    //controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
     
     // send out our very clever speed/spin commands:
     twist_cmd_.linear.x = controller_speed;

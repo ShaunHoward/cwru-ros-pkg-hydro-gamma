@@ -81,7 +81,8 @@ public:
     double lengthCompleted;
     double currSegLength;
     double getDeltaPhi(bool turnRight);
-    bool initializeRotation(double endPhi); 
+    bool initializeRotation(double endPhi);
+    bool turnRight;
     double reverseSlowDown(double segment_error);
 };
 

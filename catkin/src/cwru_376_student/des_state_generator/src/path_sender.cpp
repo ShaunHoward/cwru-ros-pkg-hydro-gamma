@@ -62,24 +62,24 @@ int main(int argc, char **argv) {
 
     // fill in the interesting data: (x,y) and phi = location and heading
     //vertex 1:
-    x = 1.0;
-    y = 2.0;
-    phi = 0.0; //this is just the end rotation we want
+    x = 23.547907;
+    y = 17.729401;
+    phi = -1.5; //this is just the end rotation we want
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 
     //vertex 2:
-    x = 3.0;
-    y = 4.0;
-    phi = 0.567;
+    x = 15;
+    y = 26;
+    phi = -1.5;
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
     path_message.request.path.poses.push_back(vertex);
 
     //vertex 3:
-    x = 5.0;
-    y = 6.0;
+    x = 21.034620;
+    y = 32.313902;
     phi = 0.0;
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
