@@ -28,6 +28,8 @@ const double HEADING_TOL = 0.05; // heading tolerance; adjust this
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
 //The lateral error tolerance value.
 const double LAT_ERR_TOL = 0.05;
+const double HEAD_ERR_TOL = 0.05;
+const double TRIP_ERR_TOL = 0.25;
 
 // compute some properties of trapezoidal velocity profile plan:
 double ACCEL_TIME = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
@@ -58,6 +60,9 @@ public:
     // These will recognize Estops, lidar alarm, and software halt.
     double turnSlowDown(bool turnRight);
     double turnSpeedUp(double scheduledOmega);
+    void rotateToPhi(ros::Publisher velocityPublisher, geometry_msgs::Twist velocityCommand,
+        float endPhi);
+    bool isDoneRotating();
     void setOdomXYValues(double odomX, double odomY);
     void setOdomRotationValues(double odomPhi, double odomOmega);
     void setOdomForwardVel(double odomVel);

@@ -302,6 +302,102 @@ double SteerVelProfiler::getDeltaPhi(bool turnRight){
     return dPhi;
 }
 
+/**
+ * Rotates the robot with a trapezoidal speed up and speed down profile in order to reach the
+ * desired end phi. When lidar alarm or estop is on, the rotation will stop but the function will not return.
+ * This means that the function will loop until either lidar alarm or estop is turned off. Once
+ * these are both off, the rotation will resume and continue until it meets the desired end phi.
+ * When software halt is enabled, the function will have the same behavior as in it will continually publish
+ * a command omega of zero until it is disabled. Once disabled, the rotation will continue until the end phi.
+ * 
+ * @param velocityPublisher - the publisher to publish the new velocity to
+ * @param rTimer - the timer of the rotation movement
+ * @param z - the spin rate desired for the robot
+ * @param endPhi - the desired end rotation of the robot
+ */
+void SteerVelProfiler::rotateToPhi(ros::Publisher velocityPublisher, geometry_msgs::Twist velocityCommand,
+        float endPhi) {
+
+    ros::Rate rTimer(UPDATE_RATE);
+    //Initialize the rotation of the robot according to the given end phi
+    bool turnRight = initializeRotation(endPhi);
+    bool firstCall = true;
+    float scheduledOmega = 0.0;
+    float newOmegaCommand = 0.1;
+    lastCallbackPhi = odomPhi;
+
+    //Rotate to the given end phi while the robot is OK.
+    //Hold rotation if any stop commands were given via estop, lidar, or halt
+    while (ros::ok()) {
+        ros::spinOnce();
+
+        //Only rotation when estop, lidar alarm, and halt are off
+ //       if (!(estop.on || lidar.alarm || halt)) {
+            //Handle setting up timer for rotation since beginning of method call.
+            if (endPhi == 0.0) {
+                return;
+            }
+
+            //calculates the new omega with trapezoidal velocity profiling
+            scheduledOmega = turnSlowDown(turnRight);
+            newOmegaCommand = turnSpeedUp(scheduledOmega);
+
+            //assigns the sign to omega
+            if (turnRight) {
+                newOmegaCommand = -1.0 * (newOmegaCommand);
+            }
+            
+            ROS_INFO("New steering controller omega: %f", newOmegaCommand);
+
+            //ROS_INFO("omega cmd vel: %f", newOmegaCommand); // debug output
+
+            //Issue latest angular velocity command
+            velocityCommand.angular.z = newOmegaCommand;
+
+            //currTime = ros::Time::now().toSec();
+
+            //Determine if the robot has met it's end phi rotation
+            bool doneRotating = isDoneRotating();
+
+            //Set angular z velocity to 0 when done rotating
+            if (doneRotating) {
+                velocityCommand.angular.z = 0.0;
+            }
+
+            //Publish latest velocity command
+            velocityPublisher.publish(velocityCommand);
+
+            // sleep for remainder of timed iteration
+            rTimer.sleep();
+
+            //Break from rotation loop if done rotating
+            if (doneRotating) {
+                break;
+            }
+//        } else if (halt) {
+//            //We want to halt when software halt is enabled, so we constantly update velocity rotation command to zero.
+//            velocityCommand.linear.z = 0.0;
+//            velocityPublisher.publish(velocityCommand);
+//            ROS_INFO("Software halt enabled. Robot is static.");
+//        }
+    }
+}
+
+/**
+ * Determines if the robot has rotated successfully to the desired end rotation.
+ *
+ * @return whether the robot rotated to its desired phi 
+ */
+bool SteerVelProfiler::isDoneRotating() {
+    //for degrees do: currRotation = currRotation + (new_cmd_omega) * (currTime - startTime);
+    ROS_INFO("The current rotation in rads is: %f", phiCompleted);
+
+    if (phiCompleted >= fabs(desiredPhi)){
+        return true;
+    }
+    return false;
+}
+
 void SteerVelProfiler::resetSegValues(){
     phiLeft = 0;
     phiCompleted = 0;
@@ -321,6 +417,7 @@ void SteerVelProfiler::resetSegValues(){
  */
 bool SteerVelProfiler::initializeRotation(double endPhi) {
     bool turnRight;
+    desiredPhi = endPhi;
         //Turning right (clockwise) if negative end phi
         if (endPhi < 0) {
             turnRight = true;

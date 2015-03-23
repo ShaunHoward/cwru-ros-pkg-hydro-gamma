@@ -203,15 +203,26 @@ void SteeringController::my_clever_steering_algorithm() {
     //END OF DEBUG STUFF
     
     //Correct errors in omega if there is heading error or lateral error
-    controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
+    //controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
+    if (heading_err > HEAD_ERR_TOL){
+        minimizeHeadingError(heading_err, lateral_err);
+        controller_omega = 0;
+    } else {
+        controller_omega = des_state_omega_;
+    }
     
     //Correct errors in speed if there is a trip dist error
-    controller_speed = compute_controller_speed(trip_dist_err);
-    //controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+    if (trip_dist_err > TRIP_ERR_TOL){
+        controller_speed = compute_controller_speed(trip_dist_err);
+    } else {
+        controller_speed = des_state_vel_;
+    }
     
+    //controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits   
+        
     // send out our very clever speed/spin commands:
     twist_cmd_.linear.x = controller_speed;
-    twist_cmd_.angular.z = controller_omega;
+    twist_cmd_.angular.z = 0.0;
 
     //this is currently zero always..
     ROS_INFO("New steering controller speed: %f", controller_speed);
@@ -220,7 +231,7 @@ void SteeringController::my_clever_steering_algorithm() {
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header 
     cmd_publisher_.publish(twist_cmd_);  
-    cmd_publisher2_.publish(twist_cmd2_);     
+    cmd_publisher2_.publish(twist_cmd2_);  
 }
 
 //this will compute the controller omega to accommodate the error
@@ -240,6 +251,11 @@ double SteeringController::compute_controller_omega(double trip_dist_err,
 //    }
 
     return controller_omega;
+}
+
+void SteeringController::minimizeHeadingError(double heading_err, double lateral_err){
+    //Rotates to minimize the heading error
+    steeringProfiler_.rotateToPhi(cmd_publisher_, twist_cmd_, des_state_phi_);
 }
 
 //double SteeringController::compute_omega_profile(double newPhi) {

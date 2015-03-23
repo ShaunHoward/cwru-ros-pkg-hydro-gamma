@@ -113,6 +113,7 @@ private:
     void initializeSteeringProfiler();
     void update_steering_profiler();
     double compute_omega_profile(double newPhi);
+    void minimizeHeadingError(double heading_err, double lateral_err);
  
     void odomCallback(const nav_msgs::Odometry& odom_rcvd);
     void desStateCallback(const nav_msgs::Odometry& des_state_rcvd);    
