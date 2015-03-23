@@ -205,7 +205,7 @@ void SteeringController::my_clever_steering_algorithm() {
     //Correct errors in omega if there is heading error or lateral error
     //controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
     if (heading_err > HEAD_ERR_TOL){
-        minimizeHeadingError(heading_err, lateral_err);
+        minimizeHeadingError(heading_err, lateral_err, trip_dist_err);
         controller_omega = 0;
     } else {
         controller_omega = des_state_omega_;
@@ -253,9 +253,12 @@ double SteeringController::compute_controller_omega(double trip_dist_err,
     return controller_omega;
 }
 
-void SteeringController::minimizeHeadingError(double heading_err, double lateral_err){
+void SteeringController::minimizeHeadingError(double heading_err, double lateral_err, double trip_dist_err){
+    
+    double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
+    
     //Rotates to minimize the heading error
-    steeringProfiler_.rotateToPhi(cmd_publisher_, twist_cmd_, des_state_phi_);
+    steeringProfiler_.rotateToPhi(cmd_publisher_, twist_cmd_, newPhi);
 }
 
 //double SteeringController::compute_omega_profile(double newPhi) {
