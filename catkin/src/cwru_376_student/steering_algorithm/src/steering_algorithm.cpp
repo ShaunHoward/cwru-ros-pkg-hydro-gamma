@@ -200,7 +200,8 @@ void SteeringController::my_clever_steering_algorithm() {
         //This case doesn't work, delta phi is sometimes not calculated properly.
         //Keeps turning to the right
         ROS_INFO("Minimizing heading error");
-        minimizeHeadingError(heading_err, lateral_err, trip_dist_err);
+   //     minimizeHeadingError(heading_err, lateral_err, trip_dist_err);
+        controller_speed = des_state_vel_;
         controller_omega = 0;
     } else if (des_state_omega_ > 0 && des_state_vel_ == 0.0) { //Turning case, this case works
         ROS_INFO("Turning the robot");
