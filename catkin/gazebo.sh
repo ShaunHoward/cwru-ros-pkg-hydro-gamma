@@ -9,8 +9,10 @@ function clean_up {
 }
 echo "Running roscore"
 roscore &
+sleep 1
 echo "Running gazebo"
 rosrun gazebo_ros gazebo &
+sleep 3
 echo "Running cwrubot"
 roslaunch cwru_urdf cwruBot.launch &
 wait
