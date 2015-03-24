@@ -48,7 +48,7 @@ public:
         double heading_err, double lateral_err);
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
-    double sat(double x);
+    
     // some utilities:
     //signum function: define this one in-line
     double sgn(double x) { if (x>0.0) {return 1.0; }

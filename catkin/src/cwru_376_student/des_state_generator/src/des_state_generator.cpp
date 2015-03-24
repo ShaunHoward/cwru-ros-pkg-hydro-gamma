@@ -457,12 +457,14 @@ void DesStateGenerator::unpack_next_path_segment() {
     // interpretation of goal heading depends on segment type:
     switch (current_seg_type_) {
         case LINE:
+         //   current_state = State.LINE_;
             ROS_INFO("unpacking a lineseg segment");
             current_seg_phi_goal_ = current_seg_init_tan_angle_; // this will remain constant over lineseg     
             steeringProfiler_.distanceLeft = current_seg_length_;
             steeringProfiler_.currSegLength = current_seg_length_;
             break;
         case SPIN_IN_PLACE:
+           // current_state = State.SPIN_IN_PLACE_;
             //compute goal heading:
             ROS_INFO("unpacking a spin-in-place segment");
             current_seg_phi_goal_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_) * current_seg_length_;
@@ -471,7 +473,9 @@ void DesStateGenerator::unpack_next_path_segment() {
             steeringProfiler_.lastCallbackPhi = odom_phi_;
             break;
         case ARC: // not implemented; set segment type to HALT
+            //current_state = State.ARC_;
         default:
+            //current_state = State.HALT_;
             ROS_WARN("segment type not defined");
             current_seg_type_ = HALT;
     }

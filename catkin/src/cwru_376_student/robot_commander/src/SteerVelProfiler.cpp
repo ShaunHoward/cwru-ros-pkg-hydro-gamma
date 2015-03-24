@@ -7,6 +7,17 @@
 
 #include "SteerVelProfiler.h"
 
+// saturation function, values -1 to 1
+double sat(double x) {
+    if (x>1.0) {
+        return 1.0;
+    }
+    if (x< -1.0) {
+        return -1.0;
+    }
+    return x;
+}
+
 //SteerVelProfiler::SteerVelProfiler() {
 //}
 //
@@ -153,7 +164,7 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
         // may need to ramp up to v_max; do so within accel limits
         double testVelocity = odomVel + MAX_ACCEL * dt; // if callbacks are slow, this could be abrupt
         // operator:  c = (a>b) ? a : b;
-        newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
+        newVelocityCommand = (testVelocity > scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
         // this prevents overshooting scheduled_vel
     } else if (odomVel > scheduledVelocity) { //travelling too fast--this could be trouble
         // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
@@ -237,12 +248,17 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
         newOmegaCommand = scheduledOmega;
     }
 
-    ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
+   // ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
     
     //change the sign based on the direction we turn in
     if (turnRight) {
         newOmegaCommand = -1.0 * (newOmegaCommand);
     }
+    
+    //Apply gain and saturate the new omega command value
+    newOmegaCommand = OMEGA_GAIN*newOmegaCommand;
+  //  newOmegaCommand = MAX_OMEGA*sat(newOmegaCommand/MAX_OMEGA); // saturate omega command at specified limits   
+    ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
     return newOmegaCommand;
 }
 
@@ -299,6 +315,7 @@ double SteerVelProfiler::getDeltaPhi(bool turnRight){
     
     //We now have the last callback phi
     lastCallbackPhi = callbackPhi;
+    ROS_INFO("The delta phi is: %f", dPhi);
     return dPhi;
 }
 
@@ -323,7 +340,7 @@ void SteerVelProfiler::rotateToPhi(ros::Publisher velocityPublisher, geometry_ms
     bool turnRight = initializeRotation(endPhi);
     bool firstCall = true;
     float scheduledOmega = 0.0;
-    float newOmegaCommand = 0.1;
+    float newOmegaCommand = 0.0;
     lastCallbackPhi = odomPhi;
 
     //Rotate to the given end phi while the robot is OK.
@@ -343,14 +360,17 @@ void SteerVelProfiler::rotateToPhi(ros::Publisher velocityPublisher, geometry_ms
             newOmegaCommand = turnSpeedUp(scheduledOmega);
 
             //assigns the sign to omega
-            if (turnRight) {
-                newOmegaCommand = -1.0 * (newOmegaCommand);
-            }
+//            if (turnRight) {
+//                newOmegaCommand = -1.0 * (newOmegaCommand);
+//            }
             
             ROS_INFO("New steering controller omega: %f", newOmegaCommand);
 
             //ROS_INFO("omega cmd vel: %f", newOmegaCommand); // debug output
 
+            //Freeze forward motion of robot
+            velocityCommand.linear.x = 0.0;
+            
             //Issue latest angular velocity command
             velocityCommand.angular.z = newOmegaCommand;
 
@@ -391,10 +411,13 @@ void SteerVelProfiler::rotateToPhi(ros::Publisher velocityPublisher, geometry_ms
 bool SteerVelProfiler::isDoneRotating() {
     //for degrees do: currRotation = currRotation + (new_cmd_omega) * (currTime - startTime);
     ROS_INFO("The current rotation in rads is: %f", phiCompleted);
-
     if (phiCompleted >= fabs(desiredPhi)){
         return true;
     }
+    if (-HEAD_ERR_TOL < headingError && headingError < HEAD_ERR_TOL){
+        return true;
+    }
+
     return false;
 }
 
@@ -418,6 +441,7 @@ void SteerVelProfiler::resetSegValues(){
 bool SteerVelProfiler::initializeRotation(double endPhi) {
     bool turnRight;
     desiredPhi = endPhi;
+    resetSegValues();
         //Turning right (clockwise) if negative end phi
         if (endPhi < 0) {
             turnRight = true;

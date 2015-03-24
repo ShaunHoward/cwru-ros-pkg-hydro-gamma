@@ -28,8 +28,9 @@ const double HEADING_TOL = 0.05; // heading tolerance; adjust this
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
 //The lateral error tolerance value.
 const double LAT_ERR_TOL = 0.05;
-const double HEAD_ERR_TOL = 0.05;
+const double HEAD_ERR_TOL = 0.1;
 const double TRIP_ERR_TOL = 0.25;
+const double OMEGA_GAIN = 5;
 
 // compute some properties of trapezoidal velocity profile plan:
 double ACCEL_TIME = MAX_SPEED / MAX_ACCEL; //...assumes start from rest
@@ -85,6 +86,9 @@ public:
     double distanceLeft;
     double lengthCompleted;
     double currSegLength;
+    double headingError;
+    double lateralError;
+    double tripDistError;
     double getDeltaPhi(bool turnRight);
     bool initializeRotation(double endPhi);
     bool turnRight;

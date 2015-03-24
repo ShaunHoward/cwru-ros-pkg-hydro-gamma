@@ -52,6 +52,10 @@ const int LINE = cwru_msgs::PathSegment::LINE;
 const int ARC = cwru_msgs::PathSegment::ARC;
 const int SPIN_IN_PLACE = cwru_msgs::PathSegment::SPIN_IN_PLACE;
 
+enum State {
+    HALT_, LINE_, ARC_, SPIN_IN_PLACE_
+};
+
 //class SteerVelProfiler;
 
 // define a class, including a constructor, member variables and member functions
@@ -84,8 +88,9 @@ public:
     //the interesting functions: how to get a new path segment and how to update the desired state
     void update_des_state();
     void unpack_next_path_segment();
- 
     
+    State current_state;
+ 
 private:
     
     //PRIVATE DATA:
