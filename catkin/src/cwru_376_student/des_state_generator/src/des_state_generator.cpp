@@ -70,8 +70,8 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
 
 void DesStateGenerator::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers");
- //   odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
-    odom_subscriber_ = nh_.subscribe("odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
+    odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
+ //   odom_subscriber_ = nh_.subscribe("odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
     // add more subscribers here, as needed
 }
 

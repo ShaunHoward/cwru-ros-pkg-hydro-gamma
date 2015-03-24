@@ -257,7 +257,7 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
     
     //Apply gain and saturate the new omega command value
     newOmegaCommand = OMEGA_GAIN*newOmegaCommand;
-  //  newOmegaCommand = MAX_OMEGA*sat(newOmegaCommand/MAX_OMEGA); // saturate omega command at specified limits   
+    newOmegaCommand = MAX_OMEGA*sat(newOmegaCommand/MAX_OMEGA); // saturate omega command at specified limits   
     ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
     return newOmegaCommand;
 }
