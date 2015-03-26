@@ -62,7 +62,7 @@ public:
     double turnSlowDown(bool turnRight);
     double turnSpeedUp(double scheduledOmega);
     void rotateToPhi(ros::Publisher velocityPublisher, geometry_msgs::Twist velocityCommand,
-        float endPhi);
+        float endPhi, bool turnRight);
     bool isDoneRotating();
     void setOdomXYValues(double odomX, double odomY);
     void setOdomRotationValues(double odomPhi, double odomOmega);

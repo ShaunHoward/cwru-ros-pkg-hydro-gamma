@@ -35,6 +35,9 @@
 //Include the steering vel profiler to control velocity
 #include <SteerVelProfiler.h>
 
+static const double ADJUST_SPEED = 1;
+static const double ADJUST_OMEGA = 1;
+
 // define a class, including a constructor, member variables and member functions
 class SteeringController
 {
@@ -48,6 +51,7 @@ public:
         double heading_err, double lateral_err);
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
+    double sat(double x);
     
     // some utilities:
     //signum function: define this one in-line

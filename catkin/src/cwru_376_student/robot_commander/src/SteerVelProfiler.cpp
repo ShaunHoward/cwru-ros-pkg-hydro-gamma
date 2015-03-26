@@ -251,9 +251,9 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
    // ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
     
     //change the sign based on the direction we turn in
-    if (turnRight) {
-        newOmegaCommand = -1.0 * (newOmegaCommand);
-    }
+//    if (turnRight) {
+//        newOmegaCommand = -1.0 * (newOmegaCommand);
+//    }
     
     //Apply gain and saturate the new omega command value
     newOmegaCommand = OMEGA_GAIN*newOmegaCommand;
@@ -333,15 +333,17 @@ double SteerVelProfiler::getDeltaPhi(bool turnRight){
  * @param endPhi - the desired end rotation of the robot
  */
 void SteerVelProfiler::rotateToPhi(ros::Publisher velocityPublisher, geometry_msgs::Twist velocityCommand,
-        float endPhi) {
+        float endPhi, bool turnRight) {
 
     ros::Rate rTimer(UPDATE_RATE);
     //Initialize the rotation of the robot according to the given end phi
-    bool turnRight = initializeRotation(endPhi);
+   // bool turnRight = initializeRotation(endPhi);
     bool firstCall = true;
     float scheduledOmega = 0.0;
     float newOmegaCommand = 0.0;
+    resetSegValues();
     lastCallbackPhi = odomPhi;
+    desiredPhi = endPhi;
 
     //Rotate to the given end phi while the robot is OK.
     //Hold rotation if any stop commands were given via estop, lidar, or halt
@@ -414,9 +416,9 @@ bool SteerVelProfiler::isDoneRotating() {
     if (phiCompleted >= fabs(desiredPhi)){
         return true;
     }
-    if (-HEAD_ERR_TOL < headingError && headingError < HEAD_ERR_TOL){
-        return true;
-    }
+//    if (-HEAD_ERR_TOL < headingError && headingError < HEAD_ERR_TOL){
+//        return true;
+//    }
 
     return false;
 }

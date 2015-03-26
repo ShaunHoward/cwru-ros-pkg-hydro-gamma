@@ -70,8 +70,8 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
 
 void DesStateGenerator::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers");
-    odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
- //   odom_subscriber_ = nh_.subscribe("odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
+ ///   odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
+    odom_subscriber_ = nh_.subscribe("odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
     // add more subscribers here, as needed
 }
 
@@ -681,7 +681,7 @@ double DesStateGenerator::compute_omega_profile() {
         double omegaProfile = steeringProfiler_.turnSlowDown(turnRight);
         double commandOmega = steeringProfiler_.turnSpeedUp(omegaProfile);
         ROS_INFO("compute_omega_profile: cmd_omega = %f", commandOmega);
-        return commandOmega; // spin in direction of closest rotation to target heading
+        return turnDirection * commandOmega; // spin in direction of closest rotation to target heading
     }
 
     //otherwise, omega will be zero because the robot is not turning
