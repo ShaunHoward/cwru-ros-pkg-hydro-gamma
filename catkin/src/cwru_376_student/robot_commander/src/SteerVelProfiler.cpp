@@ -181,6 +181,12 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
     return newVelocityCommand;
 }
 
+double SteerVelProfiler::min_dang(double dang) {
+    if (dang > M_PI) dang -= 2.0 * M_PI;
+    if (dang<-M_PI) dang += 2.0 * M_PI;
+    return dang;
+}
+
 /**
  * Slows down the robot's rotational velocity trapezoidally according to
  * the phi left to rotate on the current rotation segment as well as
@@ -192,13 +198,20 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
 double SteerVelProfiler::turnSlowDown(bool turnRight_) {
     double scheduledOmega = 0.0f;
     turnRight = turnRight_;
+    
+    if(firstCall){
+        firstCall = false;
+        initOdomPhi = odomPhi;
+    }
 
     //Set the phi (angle) turned thus far in the current rotation segment
-    phiCompleted = phiCompleted + getDeltaPhi(turnRight);
+    //phiCompleted = phiCompleted + getDeltaPhi(turnRight);
+    phiCompleted = min_dang(odomPhi - initOdomPhi);
     ROS_INFO("Phi rotated: %f", phiCompleted);
 
     //Set the phi left to rotate on the current rotation segment
-    phiLeft = fabs(desiredPhi) - phiCompleted;
+    //phiLeft = fabs(desiredPhi) - phiCompleted;
+    phiLeft = min_dang(desiredPhi - odomPhi);
     ROS_INFO("rads left: %f", phiLeft);
     //double phiLeft = desiredPhi;
 
@@ -255,9 +268,7 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
 //        newOmegaCommand = -1.0 * (newOmegaCommand);
 //    }
     
-    //Apply gain and saturate the new omega command value
-    newOmegaCommand = OMEGA_GAIN*newOmegaCommand;
-    newOmegaCommand = MAX_OMEGA*sat(newOmegaCommand/MAX_OMEGA); // saturate omega command at specified limits   
+    //Apply gain and saturate the new omega command value  
     ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
     return newOmegaCommand;
 }
@@ -428,6 +439,8 @@ void SteerVelProfiler::resetSegValues(){
     phiCompleted = 0;
     distanceLeft = 0;
     lengthCompleted = 0;
+    firstCall = true;
+    initOdomPhi = 0;
 }
 
 /**

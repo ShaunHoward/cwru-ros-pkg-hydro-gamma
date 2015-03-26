@@ -70,12 +70,14 @@ public:
     void setOdomDT(double dt);
     void setDistanceLeft(double distanceLeft);
     void setCurrSegLength(double currSegLength);
+    double min_dang(double dang);
     void resetSegValues();
     double desiredPhi;
     double odomPhi;
     double phiCompleted;
     double phiLeft;
     double lastCallbackPhi;
+    double initOdomPhi;
     double odomOmega;
     double dt;
     double odomX;
@@ -93,6 +95,7 @@ public:
     bool initializeRotation(double endPhi);
     bool turnRight;
     double reverseSlowDown(double segment_error);
+    bool firstCall;
 };
 
 #endif	/* STEER_VEL_PROFILER_H */

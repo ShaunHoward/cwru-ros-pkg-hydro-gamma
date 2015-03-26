@@ -35,8 +35,9 @@
 //Include the steering vel profiler to control velocity
 #include <SteerVelProfiler.h>
 
-static const double ADJUST_SPEED = 1;
-static const double ADJUST_OMEGA = 1;
+const double K_PHI = 10.0; // control gains for steering
+const double K_DISP = 3.0;
+const double K_TRIP_DIST = 1.0;
 
 // define a class, including a constructor, member variables and member functions
 class SteeringController
