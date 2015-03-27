@@ -59,6 +59,31 @@ int main(int argc, char **argv) {
     double x, y, phi;
 
     vertex.header.stamp = ros::Time::now(); // look up the time and put it in the header; use same time stamp for all vertices in this path
+    
+    vertex.header.frame_id = "map"; // specify this, so tf will know how to transform it
+    // fill in the interesting data: (x,y) and phi = location and heading
+    //vertex 1:
+    x=1.0;
+    y=2.0;
+    phi=0.123;
+    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
+    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+    //vertex 2:
+    x=3.0;
+    y=4.0;
+    phi=0.567;
+    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
+    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+    //vertex 3:
+    x=5.0;
+    y=6.0;
+    phi=2.345;
+    ROS_INFO("vertex: x,y,phi = %f, %f %f",x,y,phi);
+    vertex.pose = xyPhi2Pose(x,y,phi); //x,y,phi
+    path_message.request.path.poses.push_back(vertex);
+
 
     // fill in the interesting data: (x,y) and phi = location and heading
 //    //vertex 1:
@@ -85,13 +110,13 @@ int main(int argc, char **argv) {
 //    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
 //    path_message.request.path.poses.push_back(vertex);
     
-     //vertex 1:
-    x = 3;
-    y = 3;
-    phi = 0; //this is just the end rotation we want
-    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
-    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
-    path_message.request.path.poses.push_back(vertex);
+//     //vertex 1:
+//    x = 3;
+//    y = 3;
+//    phi = 0; //this is just the end rotation we want
+//    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+//    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+//    path_message.request.path.poses.push_back(vertex);
 
 //    //vertex 2:
 //    x = 5;
