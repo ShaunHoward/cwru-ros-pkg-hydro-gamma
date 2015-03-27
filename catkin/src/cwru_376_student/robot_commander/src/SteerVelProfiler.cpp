@@ -211,7 +211,7 @@ double SteerVelProfiler::turnSlowDown(bool turnRight_) {
 
     //Set the phi left to rotate on the current rotation segment
     //phiLeft = fabs(desiredPhi) - phiCompleted;
-    phiLeft = min_dang(desiredPhi - odomPhi);
+   // phiLeft = min_dang(desiredPhi - odomPhi);
     ROS_INFO("rads left: %f", phiLeft);
     //double phiLeft = desiredPhi;
 
@@ -254,7 +254,7 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
 
         //moving too fast decelerating faster than nominal maxAlpha
         double testOmega = fabs(odomOmega) - 1.2 * MAX_ALPHA * dt;
-        // choose larger of two..don't overshoot
+        // we want to decrease speed here
         newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega;
     } else {
         //Just hold the scheduled omega

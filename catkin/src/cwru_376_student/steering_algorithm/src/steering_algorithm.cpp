@@ -207,8 +207,10 @@ void SteeringController::my_clever_steering_algorithm() {
         controller_speed += trip_dist_err;
     }
     controller_omega = des_state_omega_;
-    controller_omega += K_PHI * heading_err;
-    controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+//    if (heading_err < - HEAD_TOL || heading_err > HEAD_TOL){
+        controller_omega += K_PHI * heading_err;
+        controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+ //   }
     
     //END OF DEBUG STUFF
 //    steeringProfiler_.headingError = heading_err;

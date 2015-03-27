@@ -22,6 +22,29 @@ int ans;
 
 DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler) : nh_(*nodehandle), steeringProfiler_(*steerProfiler) { // constructor
     ROS_INFO("in class constructor of DesStateGenerator");
+        
+//    tfListener_ = new tf::TransformListener;  //create a transform listener
+//    
+//    // wait to start receiving valid tf transforms between map and odom:
+//    bool tferr=true;
+//    ROS_INFO("waiting for tf between map and odom...");
+//    while (tferr) {
+//        tferr=false;
+//        try {
+//                //try to lookup transform from target frame "odom" to source frame "map"
+//            //The direction of the transform returned will be from the target_frame to the source_frame. 
+//             //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+//                tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+//            } catch(tf::TransformException &exception) {
+//                ROS_ERROR("%s", exception.what());
+//                tferr=true;
+//                ros::Duration(0.5).sleep(); // sleep for half a second
+//                ros::spinOnce();                
+//            }   
+//    }
+//    ROS_INFO("tf is good");
+//    // from now on, tfListener will keep track of transforms
+    
     initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
     initializePublishers();
     initializeServices();

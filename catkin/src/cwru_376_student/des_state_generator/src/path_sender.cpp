@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
     //y = -3.270599;
     x = 4.75539;
     y = 0;
-    phi = -1.5; //this is just the end rotation we want
+    phi = -1.57; //this is just the end rotation we want
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
     //y = 5;
     x = 4.75539;
     y = -12.069;
-    phi = 0; //this is just the end rotation we want
+    phi = -3.14; //this is just the end rotation we want
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
     //y = 11.313902;
     x = -3.97857;
     y = -12.069;
-    phi = 0; //this is just the end rotation we want
+    phi = -3.14; //this is just the end rotation we want
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
