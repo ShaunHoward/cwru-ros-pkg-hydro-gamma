@@ -109,7 +109,32 @@ int main(int argc, char **argv) {
 //    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
 //    path_message.request.path.poses.push_back(vertex);
 
+    //path for gazebo since gazebo starts at odom x:0 y:0
+    //vertex 1
+    //x = -3.452093;
+    //y = -3.270599;
+    //phi = -1.5; //this is just the end rotation we want
+    //ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    //vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    //path_message.request.path.poses.push_back(vertex);
+
+    //vertex 2
+    //x = -12;
+    //y = 5;
+    //phi = -1.5; //this is just the end rotation we want
+    //ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    //vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    //path_message.request.path.poses.push_back(vertex);
     //transmit this path message:
+
+    //vetex 3 
+    //x = -5.96538;
+    //y = 11.313902;
+    //phi = -1.5; //this is just the end rotation we want
+    //ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+    //vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+    //path_message.request.path.poses.push_back(vertex);
+
     if (client.call(path_message)) {
         ROS_INFO("got ack from server");
     } else {
