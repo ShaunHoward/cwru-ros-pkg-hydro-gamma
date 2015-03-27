@@ -60,7 +60,7 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
     current_path_seg_done_ = true;
     lastCallbackTime = ros::Time::now();
 
-    last_map_pose_rcvd_ = odom_to_map_pose(odom_pose_); // treat the current odom pose as the first vertex--cast it into map coords to save
+    last_map_pose_rcvd_ = odom_to_map_pose(odom_pose_stamped_); // treat the current odom pose as the first vertex--cast it into map coords to save
 }
 
 
@@ -131,6 +131,7 @@ void DesStateGenerator::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     // we care about speed and spin, as well as position estimates x,y and heading
     current_odom_ = odom_rcvd; // save the entire message
     // but also pick apart pieces, for ease of use
+    odom_pose_stamped_.header = odom_rcvd.header;
     odom_pose_ = odom_rcvd.pose.pose;
     odom_vel_ = odom_rcvd.twist.twist.linear.x;
     odom_omega_ = odom_rcvd.twist.twist.angular.z;
@@ -218,12 +219,40 @@ double DesStateGenerator::compute_heading_from_v1_v2(Eigen::Vector2d v1, Eigen::
 }
 
 //DUMMY...
-geometry_msgs::Pose DesStateGenerator::map_to_odom_pose(geometry_msgs::Pose map_pose) {
-    return map_pose; // dummy--no conversion; when AMCL is running, use base-frame transform to convert from map to odom coords
+geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::PoseStamped map_pose) {
+    // to use tf, need to convert coords from a geometry_msgs::Pose into a tf::Point
+    tf::Point tf_map_goal;
+    tf_map_goal.setX(map_pose.pose.position.x); //fill in the data members of this tf::Point
+    tf_map_goal.setY(map_pose.pose.position.y);
+    tf_map_goal.setZ(map_pose.pose.position.z);
+    tf::Point tf_odom_goal; //another tf::Point for result
+    geometry_msgs::PoseStamped odom_pose; // and we'll convert back to a geometry_msgs::Pose to return our result
+    const geometry_msgs::PoseStamped c_map_pose = map_pose;
+    ROS_INFO("new subgoal: goal in map pose is (x,y) = (%f, %f)",map_pose.pose.position.x,map_pose.pose.position.y);
+    
+    //now, use the tf listener to find the transform from map coords to odom coords:
+    tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+    tf_odom_goal = mapToOdom_*tf_map_goal; //here's one way to transform: operator "*" defined for class tf::Transform
+    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",tf_odom_goal.x(),tf_odom_goal.y());
+    //let's transform the map_pose goal point into the odom frame:
+    tfListener_->transformPose("odom", map_pose, odom_pose);
+    //tf::TransformListener tfl;
+    //tfl.transformPoint("odom",c_map_pose,odom_pose);
+    //tfl.transformPose()
+    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",odom_pose.pose.position.x,odom_pose.pose.position.y);
+    ROS_INFO("odom_pose frame id: ");
+    
+    std::cout<<odom_pose.header.frame_id<<std::endl;
+    if (true) {
+        std::cout<<"DEBUG: enter 1: ";
+        std::cin>>ans;
+    }
+    return odom_pose; // dummy--no conversion; when AMCL is running, use base-frame transform to convert from map to odom coords
+
 }
 
 //DUMMY...
-geometry_msgs::Pose DesStateGenerator::odom_to_map_pose(geometry_msgs::Pose odom_pose) {
+geometry_msgs::PoseStamped DesStateGenerator::odom_to_map_pose(geometry_msgs::PoseStamped odom_pose) {
     return odom_pose; // dummy--no conversion; when AMCL is running, use base-frame transform to convert from map to odom coords
 }
 
@@ -253,10 +282,10 @@ void DesStateGenerator::process_new_vertex() {
     // we want to build path segments to take us from the current pose to the new goal pose
     // the goal pose is transformed to odom coordinates at the last moment, to minimize odom drift issues
     geometry_msgs::Pose map_pose = map_pose_stamped.pose; //strip off the header to simplify notation
-    geometry_msgs::Pose goal_pose_wrt_odom = map_to_odom_pose(map_pose); // convert new subgoal pose from map to odom coords    
+    geometry_msgs::PoseStamped goal_pose_wrt_odom = map_to_odom_pose(map_pose_stamped); // convert new subgoal pose from map to odom coords    
     geometry_msgs::Pose start_pose_wrt_odom; // this should be the starting point for our next journey segment
 
-    last_map_pose_rcvd_ = map_pose; // save a copy of this subgoal in memory, in case we need it later
+    last_map_pose_rcvd_ = map_pose_stamped; // save a copy of this subgoal in memory, in case we need it later
 
     // we get a choice here: for starting pose, use the previous desired state, or use the current odometry feedback pose
     // ideally, these are identical, if the robot successfully achieves the desired state precisely
@@ -271,7 +300,7 @@ void DesStateGenerator::process_new_vertex() {
     std::vector<cwru_msgs::PathSegment> vec_of_path_segs; // container for path segments to be built
 
     // the following will construct two path segments: spin to reorient, then lineseg to reach goal point
-    vec_of_path_segs = build_spin_then_line_path_segments(start_pose_wrt_odom, goal_pose_wrt_odom);
+    vec_of_path_segs = build_spin_then_line_path_segments(start_pose_wrt_odom, goal_pose_wrt_odom.pose);
 
     // more generally, could replace the above with a segment builder that included circular arcs, etc,
     // potentially generating more path segments in the list.  
@@ -450,8 +479,10 @@ void DesStateGenerator::unpack_next_path_segment() {
 
     //initialize these values, which will evolve while traveling the segment
     current_seg_length_to_go_ = current_seg_length_;
+    
     steeringProfiler_.resetSegValues();
     current_seg_phi_des_ = current_seg_init_tan_angle_;
+    
     Eigen::Vector2d current_seg_xy_des_ = current_seg_ref_point_;
 
     // interpretation of goal heading depends on segment type:
@@ -468,7 +499,7 @@ void DesStateGenerator::unpack_next_path_segment() {
             //compute goal heading:
             ROS_INFO("unpacking a spin-in-place segment");
             current_seg_phi_goal_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_) * current_seg_length_;
-            steeringProfiler_.desiredPhi = current_seg_length_;
+            steeringProfiler_.desiredPhi = current_seg_phi_goal_;
             steeringProfiler_.phiLeft = current_seg_length_;
             steeringProfiler_.lastCallbackPhi = odom_phi_;
             break;
@@ -540,10 +571,11 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
 
     //incremental forward move distance; a scalar
     //use distance formula from point????
-   // double delta_s = current_speed_des_*dt_;
-   // current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
-    //current_seg_length_to_go_ -= manhattan_distance();
-    current_seg_length_to_go_ = steeringProfiler_.distanceLeft;
+    double delta_s = current_speed_des_*dt_;
+    current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
+    
+    
+    steeringProfiler_.distanceLeft = current_seg_length_to_go_;
     
     ROS_INFO("update_des_state_lineseg: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
     if (current_seg_length_to_go_ < LENGTH_TOL) { // check if done with this move
@@ -568,12 +600,47 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     desired_state.header.stamp = ros::Time::now();
     return desired_state;
 }
-//
-//double DesStateGenerator::manhattan_distance(){
-//    double xDiff = abs(odom_x_ - current_seg_xy_des_(0));
-//    double yDiff = abs(odom_y_ - current_seg_xy_des_(1));
-//    return xDiff + yDiff;
-//}
+
+nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
+    nav_msgs::Odometry desired_state; // fill in this message and return it
+    // need to update these values:
+    //    current_seg_length_to_go_, current_seg_phi_des_, current_seg_xy_des_ 
+    //    current_speed_des_, current_omega_des_
+    current_seg_xy_des_ = current_seg_ref_point_; // this value will not change during spin-in-place
+    current_speed_des_ = 0.0; // also unchanging
+
+    current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
+
+    double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
+    ROS_INFO("update_des_state_spin: delta_phi = %f", delta_phi);
+    current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
+    ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
+    steeringProfiler_.phiLeft = current_seg_length_to_go_; 
+
+    if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
+        current_seg_type_ = HALT;
+        current_seg_xy_des_ = current_seg_ref_point_; // specify destination vertex as exact, current goal
+        current_seg_length_to_go_ = 0.0;
+        current_speed_des_ = 0.0; 
+        current_omega_des_ = 0.0;
+        current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_) * current_seg_length_;
+        current_path_seg_done_ = true;
+        ROS_INFO("update_des_state_spin: done with spin");
+    } else { // not done yet--rotate some more
+        // based on angular distance covered, compute current desired heading
+        // consider specified curvature ==> rotation direction to goal
+        current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*(current_seg_length_ - current_seg_length_to_go_);
+    }
+
+    // fill in components of desired-state message:
+    desired_state.twist.twist.linear.x = current_speed_des_;
+    desired_state.twist.twist.angular.z = current_omega_des_;
+    desired_state.pose.pose.position.x = current_seg_xy_des_(0);
+    desired_state.pose.pose.position.y = current_seg_xy_des_(1);
+    desired_state.pose.pose.orientation = convertPlanarPhi2Quaternion(current_seg_phi_des_);
+    desired_state.header.stamp = ros::Time::now();
+    return desired_state;
+}
 
 nav_msgs::Odometry DesStateGenerator::update_des_state_halt() {
     nav_msgs::Odometry desired_state; // fill in this message and return it
@@ -610,47 +677,6 @@ double DesStateGenerator::compute_speed_profile() {
     ROS_INFO("compute_speed_profile: cmd_speed = %f", commandSpeed);
     return commandSpeed;
      // return MAX_SPEED;
-}
-
-nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
-    nav_msgs::Odometry desired_state; // fill in this message and return it
-    // need to update these values:
-    //    current_seg_length_to_go_, current_seg_phi_des_, current_seg_xy_des_ 
-    //    current_speed_des_, current_omega_des_
-    current_seg_xy_des_ = current_seg_ref_point_; // this value will not change during spin-in-place
-    current_speed_des_ = 0.0; // also unchanging
-
-    current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
-
-    //double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
-    //ROS_INFO("update_des_state_spin: delta_phi = %f", delta_phi);
-    //current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
-    //ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
-    current_seg_length_to_go_ = steeringProfiler_.phiLeft;
-
-    if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
-        current_seg_type_ = HALT;
-        current_seg_xy_des_ = current_seg_ref_point_; // specify destination vertex as exact, current goal
-        current_seg_length_to_go_ = 0.0;
-        current_speed_des_ = 0.0; 
-        current_omega_des_ = 0.0;
-        current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_) * current_seg_length_;
-        current_path_seg_done_ = true;
-        ROS_INFO("update_des_state_spin: done with spin");
-    } else { // not done yet--rotate some more
-        // based on angular distance covered, compute current desired heading
-        // consider specified curvature ==> rotation direction to goal
-        current_seg_phi_des_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_)*(current_seg_length_ - current_seg_length_to_go_);
-    }
-
-    // fill in components of desired-state message:
-    desired_state.twist.twist.linear.x = current_speed_des_;
-    desired_state.twist.twist.angular.z = current_omega_des_;
-    desired_state.pose.pose.position.x = current_seg_xy_des_(0);
-    desired_state.pose.pose.position.y = current_seg_xy_des_(1);
-    desired_state.pose.pose.orientation = convertPlanarPhi2Quaternion(current_seg_phi_des_);
-    desired_state.header.stamp = ros::Time::now();
-    return desired_state;
 }
 
 /**

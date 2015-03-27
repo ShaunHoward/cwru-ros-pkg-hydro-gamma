@@ -17,7 +17,7 @@
 #define	STEER_VEL_PROFILER_H
 
 // dynamic limitations
-const double MAX_SPEED = 1; // m/sec; adjust this
+const double MAX_SPEED = 0.5; // m/sec; adjust this
 const double MAX_OMEGA = 0.5; //1.0; // rad/sec; adjust this
 const double MAX_ACCEL = 1.0; // m/sec^2; adjust this
 const double MAX_ALPHA = 1.0; // rad/sec^2; adjust this

@@ -202,10 +202,11 @@ void SteeringController::my_clever_steering_algorithm() {
     steering_errs_publisher_.publish(steering_errs_); // suitable for plotting w/ rqt_plot
     
     controller_speed = des_state_vel_;
-    controller_speed += K_TRIP_DIST * trip_dist_err;
+   // controller_speed += K_TRIP_DIST * trip_dist_err;
     controller_omega = des_state_omega_;
     controller_omega += K_PHI * heading_err;
     controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+    
     //END OF DEBUG STUFF
 //    steeringProfiler_.headingError = heading_err;
 //    steeringProfiler_.tripDistError = trip_dist_err;

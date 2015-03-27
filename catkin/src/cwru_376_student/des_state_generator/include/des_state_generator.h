@@ -82,15 +82,13 @@ public:
     geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi);
     double compute_heading_from_v1_v2(Eigen::Vector2d v1, Eigen::Vector2d v2);
 
-    geometry_msgs::Pose map_to_odom_pose(geometry_msgs::Pose map_pose); // convert a pose from map frame to odom frame
-    geometry_msgs::Pose odom_to_map_pose(geometry_msgs::Pose odom_pose); // convert a pose from odom frame to map frame   
+    geometry_msgs::PoseStamped map_to_odom_pose(geometry_msgs::PoseStamped map_pose); // convert a pose from map frame to odom frame
+    geometry_msgs::PoseStamped odom_to_map_pose(geometry_msgs::PoseStamped odom_pose); // convert a pose from odom frame to map frame   
     
     //the interesting functions: how to get a new path segment and how to update the desired state
     void update_des_state();
     void unpack_next_path_segment();
     
-    State current_state;
- 
 private:
     
     //PRIVATE DATA:
@@ -108,13 +106,14 @@ private:
     std::queue<geometry_msgs::PoseStamped> path_queue_; //a C++ "queue" object, stores vertices as Pose points in a FIFO queue; receive these via appendPath service
     std::queue<cwru_msgs::PathSegment> segment_queue_; // path segment objects--as generated from crude polyline path (above)
 
-    geometry_msgs::Pose last_map_pose_rcvd_;
+    geometry_msgs::PoseStamped last_map_pose_rcvd_;
     geometry_msgs::Pose new_pose_des_;
     nav_msgs::Odometry des_state_;
 
     //state values from odometry; these will get filled in by odom callback
     nav_msgs::Odometry current_odom_;    
     geometry_msgs::Pose odom_pose_;    
+    geometry_msgs::PoseStamped odom_pose_stamped_;
     double odom_vel_;
     double odom_omega_;
     double odom_x_;
@@ -142,8 +141,11 @@ private:
     //Last time odom callback took place
     ros::Time lastCallbackTime;
     
-    
     bool waiting_for_vertex_;
+    
+    tf::TransformListener* tfListener_;
+    tf::StampedTransform mapToOdom_;
+    tf::StampedTransform odomToMap_; 
 
     // PRIVATE METHODS:
     void initializeSubscribers(); // we will define some helper methods to encapsulate the gory details of initializing subscribers, publishers and services
@@ -151,8 +153,7 @@ private:
     void initializeServices();
     void initializeSteeringProfiler();
     void update_steering_profiler();
-    double manhattan_distance();
-
+   
     //prototypes for subscription callbacks
     void odomCallback(const nav_msgs::Odometry& odom_rcvd);
     
