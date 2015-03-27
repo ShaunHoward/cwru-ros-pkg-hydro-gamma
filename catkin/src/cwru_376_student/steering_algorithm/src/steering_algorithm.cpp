@@ -55,7 +55,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle, SteerVelProf
 //member helper function to set up subscribers;
 void SteeringController::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers: odom and desState");
-//    odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &SteeringController::odomCallback, this); //subscribe to odom messages
+  //  odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &SteeringController::odomCallback, this); //subscribe to odom messages
     odom_subscriber_ = nh_.subscribe("odom", 1, &SteeringController::odomCallback, this); //subscribe to odom messages
     // add more subscribers here, as needed
     des_state_subscriber_ = nh_.subscribe("/desState", 1, &SteeringController::desStateCallback, this); // for desired state messages
@@ -77,7 +77,7 @@ void SteeringController::initializePublishers()
 {
     ROS_INFO("Initializing Publishers: cmd_vel and cmd_vel_stamped");
   //  cmd_publisher_ = nh_.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1, true); // talks to the robot!
- //  cmd_publisher2_ = nh_.advertise<geometry_msgs::TwistStamped>("/robot0/cmd_vel_stamped",1, true); //alt topic, includes time stamp
+  // cmd_publisher2_ = nh_.advertise<geometry_msgs::TwistStamped>("/robot0/cmd_vel_stamped",1, true); //alt topic, includes time stamp
     cmd_publisher_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1, true); // talks to the robot!
     cmd_publisher2_ = nh_.advertise<geometry_msgs::TwistStamped>("/cmd_vel_stamped",1, true); //alt topic, includes time stamp
     steering_errs_publisher_ =  nh_.advertise<std_msgs::Float32MultiArray>("steering_errs",1, true);
@@ -138,6 +138,17 @@ double SteeringController::min_dang(double dang) {
     return dang;
 }
 
+// saturation function, values -1 to 1
+double SteeringController::sat(double x) {
+    if (x>1.0) {
+        return 1.0;
+    }
+    if (x< -1.0) {
+        return -1.0;
+    }
+    return x;
+}
+
 //some conversion utilities:
 double SteeringController::convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion) {
     double quat_z = quaternion.z;
@@ -189,42 +200,52 @@ void SteeringController::my_clever_steering_algorithm() {
     steering_errs_.data.push_back(trip_dist_err);
 
     steering_errs_publisher_.publish(steering_errs_); // suitable for plotting w/ rqt_plot
+    
+    controller_speed = des_state_vel_;
+   // controller_speed += K_TRIP_DIST * trip_dist_err;
+    controller_omega = des_state_omega_;
+    controller_omega += K_PHI * heading_err;
+    controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
+    
     //END OF DEBUG STUFF
-    steeringProfiler_.headingError = heading_err;
-    steeringProfiler_.tripDistError = trip_dist_err;
-    steeringProfiler_.lateralError = lateral_err;
-    
-    //Correct errors in omega if there is heading error or lateral error
-    //controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
-    if (des_state_vel_ > 0 && des_state_omega_ == 0.0){ //We are moving forward but may stop to turn if heading error exists
-        //This case doesn't work, delta phi is sometimes not calculated properly.
-        //Keeps turning to the right
-        ROS_INFO("Minimizing heading error");
-        minimizeHeadingError(heading_err, lateral_err, trip_dist_err);
-        controller_omega = 0;
-    } else if (des_state_omega_ > 0 && des_state_vel_ == 0.0) { //Turning case, this case works
-        ROS_INFO("Turning the robot");
-        //Just use the desired state omega since it calculates a good estimated turn
-        controller_omega = des_state_omega_;
-        controller_speed = 0;
-    } else {
-        ROS_INFO("ARC-type of state0");
-        controller_omega = des_state_omega_;
-        controller_speed = des_state_vel_;
-    }
-    
-    //Correct errors in speed if there is a trip dist error
-  //  if (des_state_vel_ == 0) {
-  //      controller_speed = 0;
-//    } else if (trip_dist_err > TRIP_ERR_TOL){
+//    steeringProfiler_.headingError = heading_err;
+//    steeringProfiler_.tripDistError = trip_dist_err;
+//    steeringProfiler_.lateralError = lateral_err;
+//    
+//    //Correct errors in omega if there is heading error or lateral error
+//    //controller_omega = compute_controller_omega(trip_dist_err, heading_err, lateral_err);
+//    if (des_state_vel_ != 0 && des_state_omega_ == 0.0 &&
+//            (heading_err > HEAD_ERR_TOL || heading_err < -HEAD_ERR_TOL)){
+//        //We are moving forward but may stop to turn if heading error exists
+//        //This case doesn't work, delta phi is sometimes not calculated properly.
+//        //Keeps turning to the right
+//        ROS_INFO("Minimizing heading error");
+//        minimizeHeadingError(heading_err, lateral_err, trip_dist_err);
 //        controller_speed = des_state_vel_;
-//        //controller_speed = compute_controller_speed(trip_dist_err);
+//        controller_omega = 0;
+//    } else if (des_state_omega_ != 0 && des_state_vel_ == 0.0) { //Turning case, this case works
+//        ROS_INFO("Turning the robot");
+//        //Just use the desired state omega since it calculates a good estimated turn
+//        controller_omega = des_state_omega_;
+//        controller_speed = 0;
 //    } else {
-//        
+//        ROS_INFO("ARC-type of states");
+//        controller_omega = des_state_omega_;
+//        controller_speed = des_state_vel_;
 //    }
-    
-    //controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits   
-        
+//    
+//    //Correct errors in speed if there is a trip dist error
+//  //  if (des_state_vel_ == 0) {
+//  //      controller_speed = 0;
+////    } else if (trip_dist_err > TRIP_ERR_TOL){
+////        controller_speed = des_state_vel_;
+////        //controller_speed = compute_controller_speed(trip_dist_err);
+////    } else {
+////        
+////    }
+//    
+//    //controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits   
+//        
     // send out our very clever speed/spin commands:
     twist_cmd_.linear.x = controller_speed;
     twist_cmd_.angular.z = controller_omega;
@@ -238,41 +259,47 @@ void SteeringController::my_clever_steering_algorithm() {
     cmd_publisher_.publish(twist_cmd_);  
     cmd_publisher2_.publish(twist_cmd2_);  
 }
-
-//this will compute the controller omega to accommodate the error
-double SteeringController::compute_controller_omega(double trip_dist_err,
-    double heading_err, double lateral_err){
-    double controller_omega = des_state_omega_;
-    double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
-    //ROS_INFO("New phi from steering alg is: %f", newPhi);
-//    if (lateral_err > LAT_ERR_TOL){ //Rotate to the left 
-//        //heading_err > 0
-//        //use heading error to calculate +omega
-//        controller_omega = compute_omega_profile(newPhi);
-//    } else if (lateral_err < -LAT_ERR_TOL){
-//        //heading_err < 0
-//        //use heading error to calculate -omega
-//        controller_omega = compute_omega_profile(newPhi);
-//    }
-
-    return controller_omega;
-}
-
+//
+////this will compute the controller omega to accommodate the error
+//double SteeringController::compute_controller_omega(double trip_dist_err,
+//    double heading_err, double lateral_err){
+//    double controller_omega = des_state_omega_;
+//    double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
+//    //ROS_INFO("New phi from steering alg is: %f", newPhi);
+////    if (lateral_err > LAT_ERR_TOL){ //Rotate to the left 
+////        //heading_err > 0
+////        //use heading error to calculate +omega
+////        controller_omega = compute_omega_profile(newPhi);
+////    } else if (lateral_err < -LAT_ERR_TOL){
+////        //heading_err < 0
+////        //use heading error to calculate -omega
+////        controller_omega = compute_omega_profile(newPhi);
+////    }
+//
+//    return controller_omega;
+//}
+//
 void SteeringController::minimizeHeadingError(double heading_err, double lateral_err, double trip_dist_err){
     
-   // double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
-    double newPhi = des_state_phi_;
+ //   double newPhi = (M_PI/2) - abs(atan2(trip_dist_err, lateral_err)) + heading_err;
+   // double newPhi = des_state_phi_;
     twist_cmd_.linear.x = 0.0;
     //twist_cmd_.angular.z = 0.0;
+    
+    bool turnRight = true;
+    // if lateral error is positive, turn left.
+    if (lateral_err > 0){
+        turnRight = false;
+    }
 
-    ROS_INFO("New starting phi desired: %f", newPhi);
+    ROS_INFO("Phi to rotate to minimize error: %f", heading_err);
  
     twist_cmd2_.twist = twist_cmd_; // copy the twist command into twist2 message
     twist_cmd2_.header.stamp = ros::Time::now(); // look up the time and put it in the header 
     cmd_publisher_.publish(twist_cmd_);  
-    cmd_publisher2_.publish(twist_cmd2_);  
+    cmd_publisher2_.publish(twist_cmd2_);
     //Rotates to minimize the heading error
-    steeringProfiler_.rotateToPhi(cmd_publisher_, twist_cmd_, newPhi);
+    steeringProfiler_.rotateToPhi(cmd_publisher_, twist_cmd_, heading_err, turnRight);
 }
 
 //double SteeringController::compute_omega_profile(double newPhi) {

@@ -35,6 +35,10 @@
 //Include the steering vel profiler to control velocity
 #include <SteerVelProfiler.h>
 
+const double K_PHI = 10.0; // control gains for steering
+const double K_DISP = 3.0;
+const double K_TRIP_DIST = 1.0;
+
 // define a class, including a constructor, member variables and member functions
 class SteeringController
 {
@@ -48,6 +52,7 @@ public:
         double heading_err, double lateral_err);
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
+    double sat(double x);
     
     // some utilities:
     //signum function: define this one in-line

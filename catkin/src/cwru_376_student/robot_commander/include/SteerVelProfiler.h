@@ -17,7 +17,7 @@
 #define	STEER_VEL_PROFILER_H
 
 // dynamic limitations
-const double MAX_SPEED = 1; // m/sec; adjust this
+const double MAX_SPEED = 0.5; // m/sec; adjust this
 const double MAX_OMEGA = 0.5; //1.0; // rad/sec; adjust this
 const double MAX_ACCEL = 1.0; // m/sec^2; adjust this
 const double MAX_ALPHA = 1.0; // rad/sec^2; adjust this
@@ -62,7 +62,7 @@ public:
     double turnSlowDown(bool turnRight);
     double turnSpeedUp(double scheduledOmega);
     void rotateToPhi(ros::Publisher velocityPublisher, geometry_msgs::Twist velocityCommand,
-        float endPhi);
+        float endPhi, bool turnRight);
     bool isDoneRotating();
     void setOdomXYValues(double odomX, double odomY);
     void setOdomRotationValues(double odomPhi, double odomOmega);
@@ -70,12 +70,14 @@ public:
     void setOdomDT(double dt);
     void setDistanceLeft(double distanceLeft);
     void setCurrSegLength(double currSegLength);
+    double min_dang(double dang);
     void resetSegValues();
     double desiredPhi;
     double odomPhi;
     double phiCompleted;
     double phiLeft;
     double lastCallbackPhi;
+    double initOdomPhi;
     double odomOmega;
     double dt;
     double odomX;
@@ -93,6 +95,7 @@ public:
     bool initializeRotation(double endPhi);
     bool turnRight;
     double reverseSlowDown(double segment_error);
+    bool firstCall;
 };
 
 #endif	/* STEER_VEL_PROFILER_H */
