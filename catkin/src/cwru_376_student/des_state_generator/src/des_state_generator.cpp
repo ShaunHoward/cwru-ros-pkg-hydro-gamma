@@ -220,35 +220,35 @@ double DesStateGenerator::compute_heading_from_v1_v2(Eigen::Vector2d v1, Eigen::
 
 //DUMMY...
 geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::PoseStamped map_pose) {
-    // to use tf, need to convert coords from a geometry_msgs::Pose into a tf::Point
-    tf::Point tf_map_goal;
-    tf_map_goal.setX(map_pose.pose.position.x); //fill in the data members of this tf::Point
-    tf_map_goal.setY(map_pose.pose.position.y);
-    tf_map_goal.setZ(map_pose.pose.position.z);
-    tf::Point tf_odom_goal; //another tf::Point for result
-    geometry_msgs::PoseStamped odom_pose; // and we'll convert back to a geometry_msgs::Pose to return our result
-    const geometry_msgs::PoseStamped c_map_pose = map_pose;
-    ROS_INFO("new subgoal: goal in map pose is (x,y) = (%f, %f)",map_pose.pose.position.x,map_pose.pose.position.y);
-    
-    //now, use the tf listener to find the transform from map coords to odom coords:
-    tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
-    tf_odom_goal = mapToOdom_*tf_map_goal; //here's one way to transform: operator "*" defined for class tf::Transform
-    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",tf_odom_goal.x(),tf_odom_goal.y());
-    //let's transform the map_pose goal point into the odom frame:
-    tfListener_->transformPose("odom", map_pose, odom_pose);
-    //tf::TransformListener tfl;
-    //tfl.transformPoint("odom",c_map_pose,odom_pose);
-    //tfl.transformPose()
-    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",odom_pose.pose.position.x,odom_pose.pose.position.y);
-    ROS_INFO("odom_pose frame id: ");
-    
-    std::cout<<odom_pose.header.frame_id<<std::endl;
-    if (true) {
-        std::cout<<"DEBUG: enter 1: ";
-        std::cin>>ans;
-    }
-    return odom_pose; // dummy--no conversion; when AMCL is running, use base-frame transform to convert from map to odom coords
-
+//    // to use tf, need to convert coords from a geometry_msgs::Pose into a tf::Point
+//    tf::Point tf_map_goal;
+//    tf_map_goal.setX(map_pose.pose.position.x); //fill in the data members of this tf::Point
+//    tf_map_goal.setY(map_pose.pose.position.y);
+//    tf_map_goal.setZ(map_pose.pose.position.z);
+//    tf::Point tf_odom_goal; //another tf::Point for result
+//    geometry_msgs::PoseStamped odom_pose; // and we'll convert back to a geometry_msgs::Pose to return our result
+//    const geometry_msgs::PoseStamped c_map_pose = map_pose;
+//    ROS_INFO("new subgoal: goal in map pose is (x,y) = (%f, %f)",map_pose.pose.position.x,map_pose.pose.position.y);
+//    
+//    //now, use the tf listener to find the transform from map coords to odom coords:
+//    tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+//    tf_odom_goal = mapToOdom_*tf_map_goal; //here's one way to transform: operator "*" defined for class tf::Transform
+//    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",tf_odom_goal.x(),tf_odom_goal.y());
+//    //let's transform the map_pose goal point into the odom frame:
+//    tfListener_->transformPose("odom", map_pose, odom_pose);
+//    //tf::TransformListener tfl;
+//    //tfl.transformPoint("odom",c_map_pose,odom_pose);
+//    //tfl.transformPose()
+//    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",odom_pose.pose.position.x,odom_pose.pose.position.y);
+//    ROS_INFO("odom_pose frame id: ");
+//    
+//    std::cout<<odom_pose.header.frame_id<<std::endl;
+//    if (true) {
+//        std::cout<<"DEBUG: enter 1: ";
+//        std::cin>>ans;
+//    }
+//    return odom_pose; // dummy--no conversion; when AMCL is running, use base-frame transform to convert from map to odom coords
+    return map_pose;
 }
 
 //DUMMY...
