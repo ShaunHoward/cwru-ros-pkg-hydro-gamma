@@ -38,6 +38,7 @@
 const double K_PHI = 10.0; // control gains for steering
 const double K_DISP = 3.0;
 const double K_TRIP_DIST = 1.0;
+const double TRIP_TOL = .2;
 
 // define a class, including a constructor, member variables and member functions
 class SteeringController
