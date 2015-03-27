@@ -569,13 +569,13 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
     // this value will not change during lineseg motion
     current_seg_phi_des_ = current_seg_init_tan_angle_; 
 
-    //incremental forward move distance; a scalar
-    //use distance formula from point????
-    double delta_s = current_speed_des_*dt_;
-    current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
+//    //incremental forward move distance; a scalar
+//    //use distance formula from point????
+//    double delta_s = current_speed_des_*dt_;
+//    current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
     
     
-    steeringProfiler_.distanceLeft = current_seg_length_to_go_;
+    current_seg_length_to_go_ = steeringProfiler_.distanceLeft;
     
     ROS_INFO("update_des_state_lineseg: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
     if (current_seg_length_to_go_ < LENGTH_TOL) { // check if done with this move

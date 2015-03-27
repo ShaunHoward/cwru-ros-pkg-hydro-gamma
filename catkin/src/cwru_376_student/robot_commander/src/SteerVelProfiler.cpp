@@ -164,7 +164,7 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
         // may need to ramp up to v_max; do so within accel limits
         double testVelocity = odomVel + MAX_ACCEL * dt; // if callbacks are slow, this could be abrupt
         // operator:  c = (a>b) ? a : b;
-        newVelocityCommand = (testVelocity > scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
+        newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; //choose lesser of two options
         // this prevents overshooting scheduled_vel
     } else if (odomVel > scheduledVelocity) { //travelling too fast--this could be trouble
         // ramp down to the scheduled velocity.  However, scheduled velocity might already be ramping down at a_max.
