@@ -205,13 +205,17 @@ void SteeringController::my_clever_steering_algorithm() {
 
     if (trip_dist_err < -TRIP_TOL || trip_dist_err > TRIP_TOL){
         controller_speed += trip_dist_err;
+        controller_speed = MAX_SPEED*sat(controller_speed/MAX_SPEED); // saturate speed command at specified limits
     }
+    
     controller_omega = des_state_omega_;
 //    if (heading_err < - HEAD_TOL || heading_err > HEAD_TOL){
         controller_omega += K_PHI * heading_err;
+        controller_omega += K_LAT * lateral_err; //sgn(lateral_err) * LAT_ADJUST;
         controller_omega = MAX_OMEGA*sat(controller_omega/MAX_OMEGA); // saturate omega command at specified limits
  //   }
-    
+      //  if (lateral_err < -LAT_TOL || lateral_err > LAT_TOL) {
+    //    }
     //END OF DEBUG STUFF
 //    steeringProfiler_.headingError = heading_err;
 //    steeringProfiler_.tripDistError = trip_dist_err;
