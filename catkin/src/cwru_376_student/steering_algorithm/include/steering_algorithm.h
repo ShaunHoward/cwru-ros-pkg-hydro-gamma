@@ -35,10 +35,17 @@
 //Include the steering vel profiler to control velocity
 #include <SteerVelProfiler.h>
 
+//speed and omega gains
+//accounts for the heading error in odom vs des state
 const double K_PHI = 10.0; // control gains for steering
+//accounts for the displacement error in odom vs des state
 const double K_DISP = 3.0;
+//accounts for the trip distance error in odom vs des state
 const double K_TRIP_DIST = 1.0;
+//accounts for the lateral error in odom vs des state
 const double K_LAT = .1;
+
+//tolerance for the errors in steering
 const double TRIP_TOL = .2;
 const double HEAD_TOL = .2;
 const double LAT_TOL = .2;
@@ -51,20 +58,22 @@ public:
     SteeringController(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
     // may choose to define public methods or public variables, if desired
     void my_clever_steering_algorithm(); // here is the heart of it...use odom state and desired state to compute twist command, and publish it
-    //this may need to incorporate lateral error as well
+    
     double compute_controller_speed(double trip_dist_err);
     double compute_controller_omega(double trip_dist_err,
         double heading_err, double lateral_err);
+    
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
     double sat(double x);
     
     // some utilities:
     //signum function: define this one in-line
-    double sgn(double x) { if (x>0.0) {return 1.0; }
-    else if (x<0.0) {return -1.0;}
-    else {return 0.0;}
-    }
+    //gets the sign of the input number
+    double sgn(double x) {
+        if (x>0.0) {return 1.0; }
+        else if (x<0.0) {return -1.0;}
+    else {return 0.0;}}
 private:
     
     // The steering velocity profiler to move the robot accordingly.
@@ -125,6 +134,7 @@ private:
     double compute_omega_profile(double newPhi);
     void minimizeHeadingError(double heading_err, double lateral_err, double trip_dist_err);
  
+    //callbacks for odom and desired state generation
     void odomCallback(const nav_msgs::Odometry& odom_rcvd);
     void desStateCallback(const nav_msgs::Odometry& des_state_rcvd);    
         
