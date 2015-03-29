@@ -434,6 +434,11 @@ bool SteerVelProfiler::isDoneRotating() {
     return false;
 }
 
+/**
+ * Resets the segment values for this steering velocity profiler instance.
+ * This will reset data necessary to use the trapezoidal forward and steering
+ * velocity profiles.
+ */
 void SteerVelProfiler::resetSegValues(){
     phiLeft = 0;
     phiCompleted = 0;

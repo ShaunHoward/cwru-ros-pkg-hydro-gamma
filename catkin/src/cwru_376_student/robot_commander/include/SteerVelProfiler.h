@@ -16,20 +16,24 @@
 #ifndef STEER_VEL_PROFILER_H
 #define	STEER_VEL_PROFILER_H
 
-// dynamic limitations
-const double MAX_SPEED = 1.0; // m/sec; adjust this
-const double MAX_OMEGA = 1.0; //1.0; // rad/sec; adjust this
-const double MAX_ACCEL = 0.5; // m/sec^2; adjust this
-const double MAX_ALPHA = 0.5; // rad/sec^2; adjust this
+// dynamic limitations that should be changed based on robot physics
+const double MAX_SPEED = 1.0; // m/sec;
+const double MAX_OMEGA = 1.0; //1.0; // rad/sec; 
+const double MAX_ACCEL = 0.5; // m/sec^2; 
+const double MAX_ALPHA = 0.5; // rad/sec^2;
 
-const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
-const double HEADING_TOL = 0.05; // heading tolerance; adjust this
+
 
 const double UPDATE_RATE = 50.0; // choose the desired-state publication update rate
-//The lateral error tolerance value.
+
+//Tolerance values for each type of error calculated during steering of the robot
 const double LAT_ERR_TOL = 0.05;
 const double HEAD_ERR_TOL = 0.1;
 const double TRIP_ERR_TOL = 0.25;
+const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
+const double HEADING_TOL = 0.05; // heading tolerance; adjust this
+
+//an omega gain, currently unused
 const double OMEGA_GAIN = 5;
 
 // compute some properties of trapezoidal velocity profile plan:
