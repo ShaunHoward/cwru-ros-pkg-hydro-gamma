@@ -42,7 +42,7 @@ const double K_LAT = .1;
 const double TRIP_TOL = .2;
 const double HEAD_TOL = .2;
 const double LAT_TOL = .2;
-const double LAT_ADJUST = .005;
+const double LAT_ADJUST = .0025;
 
 // define a class, including a constructor, member variables and member functions
 class SteeringController
