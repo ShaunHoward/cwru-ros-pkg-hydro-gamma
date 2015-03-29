@@ -56,6 +56,10 @@ enum State {
     HALT_, LINE_, ARC_, SPIN_IN_PLACE_
 };
 
+//Tolerance values for deciding where to end a segment
+const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
+const double HEADING_TOL = 0.005; // heading tolerance; adjust this
+
 //class SteerVelProfiler;
 
 // define a class, including a constructor, member variables and member functions

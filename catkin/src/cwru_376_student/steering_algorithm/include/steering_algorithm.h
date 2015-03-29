@@ -37,19 +37,18 @@
 
 //speed and omega gains
 //accounts for the heading error in odom vs des state
-const double K_PHI = .5; // control gains for steering
+const double K_PHI = .1; // control gains for steering
 //accounts for the displacement error in odom vs des state
 const double K_DISP = 3.0;
 //accounts for the trip distance error in odom vs des state
 const double K_TRIP_DIST = .5;
 //accounts for the lateral error in odom vs des state
-const double K_LAT = .01;
+const double K_LAT = .08;
 
-//tolerance for the errors in steering
-const double TRIP_TOL = .2;
-const double HEAD_TOL = .2;
-const double LAT_TOL = .2;
-const double LAT_ADJUST = .0025;
+//Tolerance values for each type of error calculated during steering of the robot
+const double LAT_ERR_TOL = 0.05;
+const double HEAD_ERR_TOL = 0.02;
+const double TRIP_ERR_TOL = 0.3;
 
 // define a class, including a constructor, member variables and member functions
 class SteeringController

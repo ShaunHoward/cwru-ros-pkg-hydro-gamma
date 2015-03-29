@@ -640,7 +640,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
     ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
     steeringProfiler_.phiLeft = current_seg_length_to_go_; 
 
-    if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move
+    if (current_seg_length_to_go_ < -HEADING_TOL) { // check if done with this move
         current_seg_type_ = HALT;
         current_seg_xy_des_ = current_seg_ref_point_; // specify destination vertex as exact, current goal
         current_seg_length_to_go_ = 0.0;
