@@ -21,8 +21,8 @@ int ans;
 // odd syntax: have to pass nodehandle pointer into constructor for constructor to build subscribers, etc
 
 DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler) : nh_(*nodehandle), steeringProfiler_(*steerProfiler) { // constructor
-    ROS_INFO("in class constructor of DesStateGenerator");
-        
+//    ROS_INFO("in class constructor of DesStateGenerator");
+//        
 //    tfListener_ = new tf::TransformListener;  //create a transform listener
 //    
 //    // wait to start receiving valid tf transforms between map and odom:
@@ -43,7 +43,7 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
 //            }   
 //    }
 //    ROS_INFO("tf is good");
-//    // from now on, tfListener will keep track of transforms
+    // from now on, tfListener will keep track of transforms
     
     initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
     initializePublishers();
@@ -257,6 +257,10 @@ geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::Po
 //    tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
 //    tf_odom_goal = mapToOdom_*tf_map_goal; //here's one way to transform: operator "*" defined for class tf::Transform
 //    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)",tf_odom_goal.x(),tf_odom_goal.y());
+//    
+//    //must update the time stamp of the next map pose
+//    map_pose.header.stamp = ros::Time::now();
+//    
 //    //let's transform the map_pose goal point into the odom frame:
 //    tfListener_->transformPose("odom", map_pose, odom_pose);
 //    //tf::TransformListener tfl;
