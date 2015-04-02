@@ -22,6 +22,8 @@ int ans;
 
 DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler) : nh_(*nodehandle), steeringProfiler_(*steerProfiler) { // constructor
     ROS_INFO("in class constructor of DesStateGenerator");
+    
+    halt = false;
         
     tfListener_ = new tf::TransformListener;  //create a transform listener
     
@@ -514,14 +516,12 @@ void DesStateGenerator::unpack_next_path_segment() {
     // interpretation of goal heading depends on segment type:
     switch (current_seg_type_) {
         case LINE:
-         //   current_state = State.LINE_;
             ROS_INFO("unpacking a lineseg segment");
             current_seg_phi_goal_ = current_seg_init_tan_angle_; // this will remain constant over lineseg     
             steeringProfiler_.distanceLeft = current_seg_length_;
             steeringProfiler_.currSegLength = current_seg_length_;
             break;
         case SPIN_IN_PLACE:
-           // current_state = State.SPIN_IN_PLACE_;
             //compute goal heading:
             ROS_INFO("unpacking a spin-in-place segment");
             current_seg_phi_goal_ = current_seg_init_tan_angle_ + sgn(current_seg_curvature_) * current_seg_length_;
@@ -530,9 +530,7 @@ void DesStateGenerator::unpack_next_path_segment() {
             steeringProfiler_.lastCallbackPhi = odom_phi_;
             break;
         case ARC: // not implemented; set segment type to HALT
-            //current_state = State.ARC_;
         default:
-            //current_state = State.HALT_;
             ROS_WARN("segment type not defined");
             current_seg_type_ = HALT;
     }
@@ -599,7 +597,6 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_lineseg() {
 //    //use distance formula from point????
 //    double delta_s = current_speed_des_*dt_;
 //    current_seg_length_to_go_ -= delta_s; // plan to move forward by this much
-    
     
     current_seg_length_to_go_ = steeringProfiler_.distanceLeft;
     
@@ -702,7 +699,6 @@ double DesStateGenerator::compute_speed_profile() {
     double commandSpeed = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
     ROS_INFO("compute_speed_profile: cmd_speed = %f", commandSpeed);
     return commandSpeed;
-     // return MAX_SPEED;
 }
 
 /**
@@ -739,9 +735,84 @@ double DesStateGenerator::compute_omega_profile() {
     //otherwise, omega will be zero because the robot is not turning
     ROS_INFO("omega profile called with zero rotation, returning 0 omega.");
     return 0.0;
-//    double des_omega = sgn(current_seg_curvature_) * MAX_OMEGA;
-//    ROS_INFO("compute_omega_profile: des_omega = %f", des_omega);
-//    return des_omega; // spin in direction of closest rotation to target heading
+}
+
+/**
+ * Determines whether to stop the robot due to a lidar alarm.
+ * 
+ * @param lidarAlarmMsg - a boolean message that designates if the robot needs to
+ * be stopped immediately
+ */
+void lidarAlarmCallback(const std_msgs::Bool& lidarAlarmMsg) {
+    lidar.setAlarm(lidarAlarmMsg.data);
+    if (lidar.alarm) {
+        ROS_INFO("The lidar alarm is on!");
+     //   eStop();
+    }
+}
+
+/**
+ * Determines whether to run the robot along a new, slow down segment, to sound a 
+ * lidar alarm, or to keep moving.
+ * 
+ * @param pingDistance - the distance of the ping closest to the robot within a given angle range
+ */
+void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
+    lidar.setClosestPing(pingDistance.data);
+    ROS_INFO("The ping distance from front of robot is: %f", lidar.closestPing);
+    
+    //Sound the lidar alarm when something is too close to the robot
+    if (lidar.closestPing <= MIN_SAFE_RANGE) {
+        lidar.setAlarm(true);
+    }
+}
+
+/**
+ * Determines whether to stop the robot immediately
+ * because estop is on.
+ * 
+ * @param estopMsg - a boolean message that designates whether the robot
+ * estop is on
+ */
+void estopCallback(const std_msgs::Bool& estopMsg) {
+    //assign conversion to bool type from ROS Bool type
+    estop.set(estopMsg.data);
+    if (estop.on) {
+        ROS_INFO("Velocity profiler ESTOP enabled.");
+        estop.set(true);
+      //  eStop();
+    }
+}
+
+///**
+// * Resets the velocity of the robot in an effort to stop the robot immediately.
+// */
+//void eStop() {
+//    velocityCommand.linear.x = 0.0; // initialize these values to zero
+//    velocityCommand.linear.y = 0.0;
+//    velocityCommand.linear.z = 0.0;
+//    velocityCommand.angular.x = 0.0;
+//    velocityCommand.angular.y = 0.0;
+//    velocityCommand.angular.z = 0.0;
+//    velocityPublisher.publish(velocityCommand);
+//    ROS_INFO("ESTOP function executed.");
+//}
+
+/**
+ * Determines whether to stop the robot immediately
+ * because software halt is enabled.
+ * 
+ * @param haltMsg - a boolean message that designates whether the robot
+ * should halt
+ */
+void haltCallback(const std_msgs::Bool& haltMsg) {
+    //assign conversion to bool type from ROS Bool type
+    halt = haltMsg.data;
+    if (halt) {
+        ROS_INFO("Software halt enabled. ESTOP on.");
+        estop.set(true);
+        //eStop();
+    }
 }
 
 int main(int argc, char** argv) {
@@ -752,6 +823,11 @@ int main(int argc, char** argv) {
     ROS_INFO("main: instantiating a DesStateGenerator");
     DesStateGenerator desStateGenerator(&nh, &steeringProfiler); //instantiate a DesStateGenerator object and pass in pointer to nodehandle for constructor to use
     ros::Rate sleep_timer(UPDATE_RATE); //a timer for desired rate, e.g. 50Hz
+    
+    ros::Subscriber ping_dist_subscriber = nh.subscribe("lidar_dist", 1, pingDistanceCallback);
+    ros::Subscriber lidar_alarm_subscriber = nh.subscribe("lidar_alarm", 1, lidarAlarmCallback);
+    ros::Subscriber estop_subscriber = nh.subscribe("estop_listener", 1, estopCallback);
+    ros::Subscriber halt_subscriber = nh.subscribe("halt_cmd", 1, haltCallback);
 
     //constructor will wait for a valid odom message; let's use this for our first vertex;
     ROS_INFO("main: going into main loop");

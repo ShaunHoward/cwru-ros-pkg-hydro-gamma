@@ -52,6 +52,7 @@ const int LINE = cwru_msgs::PathSegment::LINE;
 const int ARC = cwru_msgs::PathSegment::ARC;
 const int SPIN_IN_PLACE = cwru_msgs::PathSegment::SPIN_IN_PLACE;
 
+
 enum State {
     HALT_, LINE_, ARC_, SPIN_IN_PLACE_
 };
@@ -59,6 +60,64 @@ enum State {
 //Tolerance values for deciding where to end a segment
 const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
 const double HEADING_TOL = 0.005; // heading tolerance; adjust this
+
+const double MIN_SAFE_RANGE = 0.5;
+const double MAX_SAFE_RANGE = 1.0;
+/**
+ * A lidar struct that holds the values necessary to determine lidar values
+ * in the velocity profiler.
+ */
+struct Lidar{
+    public:
+        //Lidar variables
+        float closestPing;
+        bool alarm;
+        bool stop;
+        bool modifiedSegment;
+
+        //Setters for lidar values
+        void setAlarm(bool alarm_bool){
+                alarm = alarm_bool;
+        }
+        void setStop(bool stop_bool){
+                stop = stop_bool;
+        }
+        void setClosestPing(float closest){
+                closestPing = closest;
+        }
+        void setModifiedSegment(bool modified){
+                modifiedSegment = modified;
+        }
+};
+
+/**
+ * An estop struct that just allows estop to be set on or off.
+ */
+struct Estop{
+    public:
+        //Whether the estop is on
+        bool on;
+
+        //Set whether the estop is on
+        void set(bool on_){
+                on = on_;
+        }
+};
+
+    
+Lidar lidar;
+Estop estop;
+
+//Whether to halt the robot due to software halt command
+bool halt;
+
+void pingDistanceCallback(const std_msgs::Float32& pingDistance);
+
+void lidarAlarmCallback(const std_msgs::Bool& lidarAlarmMsg);
+
+void estopCallback(const std_msgs::Bool& estopMsg);
+
+void haltCallback(const std_msgs::Bool& haltMsg);
 
 //class SteerVelProfiler;
 
@@ -92,6 +151,8 @@ public:
     //the interesting functions: how to get a new path segment and how to update the desired state
     void update_des_state();
     void unpack_next_path_segment();
+
+//Various structs for use with des state generation
     
 private:
     
