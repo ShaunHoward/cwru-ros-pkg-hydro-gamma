@@ -152,6 +152,8 @@ public:
     void update_des_state();
     void unpack_next_path_segment();
 
+    double modified_seg_length;
+    double seg_length_left_after_stop;
 //Various structs for use with des state generation
     
 private:

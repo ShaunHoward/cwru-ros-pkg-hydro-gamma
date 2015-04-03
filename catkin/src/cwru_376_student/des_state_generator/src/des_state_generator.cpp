@@ -84,6 +84,8 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
     waiting_for_vertex_ = true;
     current_path_seg_done_ = true;
     lastCallbackTime = ros::Time::now();
+    modified_seg_length = 0.0;
+    seg_length_left_after_stop = 0.0;
 
     last_map_pose_rcvd_ = odom_to_map_pose(odom_pose_stamped_); // treat the current odom pose as the first vertex--cast it into map coords to save
 }
@@ -271,7 +273,7 @@ geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::Po
     ROS_INFO("odom_pose frame id: ");
     
     std::cout<<odom_pose.header.frame_id<<std::endl;
-    if (true) {
+    if (DEBUG_MODE) {
         std::cout<<"DEBUG: enter 1: ";
         std::cin>>ans;
     }
@@ -634,11 +636,11 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
 
     current_omega_des_ = compute_omega_profile(); //USE VEL PROFILING 
 
-    double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
-    ROS_INFO("update_des_state_spin: delta_phi = %f", delta_phi);
-    current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
-    ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
-    steeringProfiler_.phiLeft = current_seg_length_to_go_; 
+  //  double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
+   // ROS_INFO("update_des_state_spin: delta_phi = %f", delta_phi);
+   // current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
+   // ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
+    current_seg_length_to_go_ = steeringProfiler_.phiLeft; 
 
     if (current_seg_length_to_go_ < -HEADING_TOL) { // check if done with this move
         current_seg_type_ = HALT;
@@ -694,11 +696,15 @@ double DesStateGenerator::compute_speed_profile() {
     //Update the steering profiler with fresh odom readings.
     update_steering_profiler();
     //put check in here for segment type
-    //Compute the speed profile from the steering velocity profiler.
-    double speedProfile = steeringProfiler_.trapezoidalSlowDown(steeringProfiler_.currSegLength);
-    double commandSpeed = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
-    ROS_INFO("compute_speed_profile: cmd_speed = %f", commandSpeed);
-    return commandSpeed;
+    if (!lidar.alarm && !estop.on) {
+        //Compute the speed profile from the steering velocity profiler.
+        double speedProfile = steeringProfiler_.trapezoidalSlowDown(steeringProfiler_.currSegLength);
+        double commandSpeed = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
+        ROS_INFO("compute_speed_profile: cmd_speed = %f", commandSpeed);
+        return commandSpeed;
+    } else {
+        return 0.0;
+    }
 }
 
 /**
@@ -716,7 +722,7 @@ double DesStateGenerator::compute_omega_profile() {
 
     //if turning, run trapezoidal omega profiler based on the turn direction and
     //the current segment length left to travel
-    if (turnDirection != 0) {
+    if (turnDirection != 0 && !lidar.alarm && !estop.on) {
         bool turnRight = false;
         if (turnDirection < 0) {
             turnRight = true;
@@ -748,6 +754,8 @@ void lidarAlarmCallback(const std_msgs::Bool& lidarAlarmMsg) {
     if (lidar.alarm) {
         ROS_INFO("The lidar alarm is on!");
      //   eStop();
+    } else {
+        ROS_INFO("The lidar alarm is off!");
     }
 }
 
@@ -761,9 +769,27 @@ void pingDistanceCallback(const std_msgs::Float32& pingDistance) {
     lidar.setClosestPing(pingDistance.data);
     ROS_INFO("The ping distance from front of robot is: %f", lidar.closestPing);
     
-    //Sound the lidar alarm when something is too close to the robot
+//    //Slow down to min safe range if on a line segment
+//    if (lidar.closestPing <= MAX_SAFE_RANGE && current_seg_type_ == LINE && !lidar.modifiedSegment){
+//
+//        modified_seg_length = MAX_SAFE_RANGE - MIN_SAFE_RANGE;
+//        if (modified_seg_length < steeringProfiler.distLeft){
+//            lidar.setModifiedSegment(true);
+//            seg_length_left_after_stop = steeringProfiler_.distLeft - modified_seg_length;
+//            steeringProfiler.currSegLength = modified_seg_length;
+//            steeringProfiler.distLeft = modified_seg_length;
+//      
+//        }
+//    } else if (lidar.closestPing > MAX_SAFE_RANGE && current_seg_type_ == LINE
+//            && lidar.modifiedSegment){
+//        steeringProfiler.currSegLength = modified_seg_length;
+//    }
+//    
+    //Sound an alarm if something is too close
     if (lidar.closestPing <= MIN_SAFE_RANGE) {
         lidar.setAlarm(true);
+    } else {
+        lidar.setAlarm(false);
     }
 }
 
@@ -781,6 +807,8 @@ void estopCallback(const std_msgs::Bool& estopMsg) {
         ROS_INFO("Velocity profiler ESTOP enabled.");
         estop.set(true);
       //  eStop();
+    } else {
+        estop.set(false);
     }
 }
 
@@ -812,6 +840,8 @@ void haltCallback(const std_msgs::Bool& haltMsg) {
         ROS_INFO("Software halt enabled. ESTOP on.");
         estop.set(true);
         //eStop();
+    } else {
+        estop.set(false);
     }
 }
 
