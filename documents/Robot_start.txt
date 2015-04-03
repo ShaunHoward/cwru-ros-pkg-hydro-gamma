@@ -12,6 +12,8 @@ Save file and exit.
 source ~/.bashrc
 
 UNPLUG ROBOT!!!!!
+start roscore:
+roscore
 
 Get LIDAR ready:
 sudo chmod a+rw /dev/ttyUSB0
@@ -28,6 +30,13 @@ rosrun sensor_utils lidar_alarm
 
 Run estop listener:
 rosrun sensor_utils estop_listener
+
+Run map_server:
+cd ~/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/cwru_base_hydro/cwru_maps/maps
+rosrun map_server map_server 2nd_floor_one_door.yaml 
+
+Run amcl:
+rosrun amcl amcl scan:=/scan  (or scan:=base_laser1_scan) 
 
 Run velocity profiler:
 rosrun robot_commander vel_profiler
