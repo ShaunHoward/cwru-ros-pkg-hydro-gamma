@@ -97,8 +97,8 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
 
 void DesStateGenerator::initializeSubscribers() {
     ROS_INFO("Initializing Subscribers");
- ///   odom_subscriber_ = nh_.subscribe("/robot0/odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
     odom_subscriber_ = nh_.subscribe("odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
+ //   odom_subscriber_ = nh_.subscribe("odom", 1, &DesStateGenerator::odomCallback, this); //subscribe to odom messages
     // add more subscribers here, as needed
 }
 
@@ -640,7 +640,7 @@ nav_msgs::Odometry DesStateGenerator::update_des_state_spin() {
   //  double delta_phi = current_omega_des_*dt_; //incremental rotation--could be + or -
    // ROS_INFO("update_des_state_spin: delta_phi = %f", delta_phi);
    // current_seg_length_to_go_ -= fabs(delta_phi); // decrement the (absolute) distance (rotation) to go
- 	current_seg_length_to_go_ = steeringProfiler_.phiLeft; 
+    current_seg_length_to_go_ = steeringProfiler_.phiLeft; 
     ROS_INFO("update_des_state_spin: current_segment_length_to_go_ = %f", current_seg_length_to_go_);
    
     if (current_seg_length_to_go_ < HEADING_TOL) { // check if done with this move

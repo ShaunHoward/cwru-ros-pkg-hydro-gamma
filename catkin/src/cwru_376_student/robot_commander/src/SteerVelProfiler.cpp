@@ -246,7 +246,7 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
     if (fabs(odomOmega) < scheduledOmega) { // maybe we halted
         // may need to ramp up to maxOmega; do so within accel limits
         double testOmega = fabs(odomOmega) + MAX_ALPHA * dt; // if callbacks are slow, this could be abrupt
-        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
+        newOmegaCommand = (testOmega > scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
     } else if (fabs(odomOmega) > scheduledOmega) { //travelling too fast--this could be trouble
         // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
         // need to catch up, so ramp down even faster than maxAlpha.  Try 1.2*maxAlpha.
