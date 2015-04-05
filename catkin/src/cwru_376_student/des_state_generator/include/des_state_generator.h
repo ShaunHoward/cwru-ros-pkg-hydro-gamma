@@ -63,6 +63,7 @@ const double HEADING_TOL = 0.005; // heading tolerance; adjust this
 
 const double MIN_SAFE_RANGE = 0.5;
 const double MAX_SAFE_RANGE = 1.0;
+
 /**
  * A lidar struct that holds the values necessary to determine lidar values
  * in the velocity profiler.
@@ -104,7 +105,7 @@ struct Estop{
         }
 };
 
-    
+//Make a new lidar and estop struct    
 Lidar lidar;
 Estop estop;
 
@@ -119,27 +120,26 @@ void estopCallback(const std_msgs::Bool& estopMsg);
 
 void haltCallback(const std_msgs::Bool& haltMsg);
 
-//class SteerVelProfiler;
-
 // define a class, including a constructor, member variables and member functions
-
 class DesStateGenerator {
 public:
     // PUBLIC MEMBER FUNCTIONS:
     DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
 
-    // some utilities:
+    //some utilities:
     //signum function: define this one in-line
-    double sgn(double x) { if (x>0.0) {return 1.0; }
-    else if (x<0.0) {return -1.0;}
-    else {return 0.0;}
+    double sgn(double x) {
+        if (x>0.0) {return 1.0; }
+        else if (x<0.0) {return -1.0;}
+        else {return 0.0;}
     }
     
     bool get_waiting_for_vertex() { return waiting_for_vertex_; }  
     bool get_current_path_seg_done() { return current_path_seg_done_; }     
     
+    // compute periodic solution for smallest magnitude of angle of dang, e.g. +/- 2pi
+    double min_dang(double dang); 
     
-    double min_dang(double dang); // compute periodic solution for smallest magnitude of angle of dang, e.g. +/- 2pi
     //a couple of utility functions: convert quaternion to heading and vice versa, for planar motion
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);
     geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi);
@@ -152,9 +152,9 @@ public:
     void update_des_state();
     void unpack_next_path_segment();
 
+    //track the segment lengths after estop, lidar alarm, or halt
     double modified_seg_length;
     double seg_length_left_after_stop;
-//Various structs for use with des state generation
     
 private:
     
