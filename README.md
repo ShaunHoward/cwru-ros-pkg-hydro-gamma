@@ -5,7 +5,7 @@ This package contains multiple ROS packages that control different mobile robots
 Each package has meaningful node(s) that handle different tasks within the robot systems.
 The packages have documentation in them to outline their purpose. 
 
-Team Gamma: Shaun Howard, Kei Hitomi, An Zhigang, Xiang Liu
+Team Gamma: Shaun Howard, Kei Hitomi, Zhigang An, Xuyang Liu
 
 Welcome to cwru-ros-pkg-hydro.  This is the latest release for Case Western Reserve University's Mobile / Dexterous Robotics Lab's ROS package to run on all of the lab's mobile robots.  
 
