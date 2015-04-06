@@ -54,16 +54,12 @@ const double TRIP_ERR_TOL = 0.3;
 class SteeringController
 {
 public:
-    SteeringController(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler); //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
-    // may choose to define public methods or public variables, if desired
-    void my_clever_steering_algorithm(); // here is the heart of it...use odom state and desired state to compute twist command, and publish it
+    //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
+    SteeringController(ros::NodeHandle* nodehandle); 
     
-    double compute_controller_speed(double trip_dist_err);
-    double compute_controller_omega(double trip_dist_err,
-        double heading_err, double lateral_err);
+    //uses odom state and desired state to compute twist command, and publish it
+    void my_clever_steering_algorithm(); 
 
-	bool got_des_state;
-    
     double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);   
     double min_dang(double dang);  
     double sat(double x);
@@ -74,11 +70,11 @@ public:
     double sgn(double x) {
         if (x>0.0) {return 1.0; }
         else if (x<0.0) {return -1.0;}
-    else {return 0.0;}}
+        else {return 0.0;}
+    }
+        
 private:
-    
-    // The steering velocity profiler to move the robot accordingly.
-    SteerVelProfiler steeringProfiler_;
+
     // put private member data here;  "private" data will only be available to member functions of this class;
     ros::NodeHandle nh_; // we will need this, to pass between "main" and constructor
     // some objects to support subscriber, service, and publisher
@@ -96,10 +92,6 @@ private:
     double current_speed_des_;
     double current_omega_des_;
     double dt_;
-   
-    //Last time odom callback took place
-    ros::Time lastCallbackTime;
-    
 
     //state values from odometry; these will get filled in by odom callback
     nav_msgs::Odometry current_odom_; // fill in these objects from callbacks
@@ -130,10 +122,6 @@ private:
     void initializeSubscribers(); // we will define some helper methods to encapsulate the gory details of initializing subscribers, publishers and services
     void initializePublishers();
     void initializeServices();
-    void initializeSteeringProfiler();
-    void update_steering_profiler();
-    double compute_omega_profile(double newPhi);
-    void minimizeHeadingError(double heading_err, double lateral_err, double trip_dist_err);
  
     //callbacks for odom and desired state generation
     void odomCallback(const nav_msgs::Odometry& odom_rcvd);
