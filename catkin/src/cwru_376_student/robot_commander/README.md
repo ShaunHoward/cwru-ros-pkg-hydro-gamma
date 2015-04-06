@@ -4,7 +4,7 @@ Team Gamma
 
 This package exists to command the velocity of the robot. 
 A velocity scheduler (vel_scheduler) node exists in the package which determines when to 
-accelerate, decelerate, or stop the robot. A second steering velocity profiler(SteerVelProfiler) library class exists in the package in order to command the robot velocity via desired states (i.e. des_state_generator package). This class is not a node and therefore does not have a main method. It simply computes the desired next values for forward and turning velocities. Most of the documentation below pertains the velocity scheduler, however, some of the description does pertain to the steering velocity profiler.
+accelerate, decelerate, or stop the robot. A second steering velocity profiler (SteerVelProfiler) library class exists in the package in order to command the robot velocity via desired states (i.e. des_state_generator package). This class is not a node and therefore does not have a main method. It simply computes the desired next values for forward and turning velocities. Most of the documentation below pertains the velocity scheduler, however, some of the description does pertain to the steering velocity profiler.
 
 Trapezoidal speed up and trapezoidal speed down algorithms determine at what rate
 to speed up or down the robot according to the lidar_alarm node and estop_listener node as well as the odometer readings
