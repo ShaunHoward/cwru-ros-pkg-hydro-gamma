@@ -10,7 +10,7 @@
 //CONSTRUCTOR:  this will get called whenever an instance of this class is created
 // want to put all dirty work of initializations here
 // odd syntax: have to pass nodehandle pointer into constructor for constructor to build subscribers, etc
-SteeringController::SteeringController(ros::NodeHandle* nodehandle, SteerVelProfiler* steerProfiler):nh_(*nodehandle), steeringProfiler_(*steerProfiler) 
+SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehandle) 
 { // constructor
     ROS_INFO("in class constructor of SteeringController");
     initializeSubscribers(); // package up the messy work of creating subscribers; do this overhead in constructor
