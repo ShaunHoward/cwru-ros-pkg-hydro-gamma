@@ -1,5 +1,6 @@
 /**
- * process_pcd_dev.cpp: wsn, April, 2015
+ * Team Gamma
+ * find_can.cpp
  * 
  * Example code to acquire a pointcloud from disk, then perform various processing steps interactively.
  * Processing is invoked by point-cloud selections in rviz, as well as "mode" settings via a service
@@ -77,7 +78,6 @@ const int IDENTIFY_PLANE = 0;
 const int FIND_PNTS_ABOVE_PLANE = 1;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_INIT = 2;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE = 3;
-//const int MAKE_CAN_CLOUD = 4;
 const int FIND_ON_TABLE = 4;
 
 //choose a tolerance for plane fitting, e.g. 1cm
@@ -142,6 +142,8 @@ void selectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
     //operate on selected points to remove outliers and
     //find centroid and plane params
     process_patch(iselect_filtered, g_patch_centroid, g_plane_params); 
+    
+    std::cout << "latest filtered global patch: " << g_plane_params.transpose() << std::endl;
     
     // update our states to note that we have process a patch, and thus have valid plane info
     g_processed_patch = true; 
@@ -331,7 +333,6 @@ void computeRsqd(PointCloud<pcl::PointXYZ>::Ptr pcl_cloud, Eigen::Vector3f centr
  */
 void transform_cloud(PointCloud<pcl::PointXYZ>::Ptr inputCloud, Eigen::Matrix3f R_xform, PointCloud<pcl::PointXYZ>::Ptr outputCloud) {
     // copy over the header info from the inputCloud.
-    // NOTE: copying the 
     outputCloud->header = inputCloud->header;
     outputCloud->is_dense = inputCloud->is_dense;
     outputCloud->width = inputCloud->width;
@@ -349,7 +350,6 @@ void transform_cloud(PointCloud<pcl::PointXYZ>::Ptr inputCloud, Eigen::Matrix3f 
 
 void transform_cloud(PointCloud<pcl::PointXYZ>::Ptr inputCloud, Eigen::Matrix3f R_xform, Eigen::Vector3f offset, PointCloud<pcl::PointXYZ>::Ptr outputCloud) {
     // copy over the header info from the inputCloud.
-    // NOTE: copying the 
     outputCloud->header = inputCloud->header;
     outputCloud->is_dense = inputCloud->is_dense;
     outputCloud->width = inputCloud->width;
@@ -600,8 +600,14 @@ int main(int argc, char** argv) {
     int ans;
     Eigen::Vector3f can_center_wrt_plane;
     Eigen::Affine3f A_plane_to_sensor;
+    
+    //use these for fixing errors in registration of can cloud
+    Eigen::Vector3f dEdC;
+    Eigen::Vector3f dEdC_norm;
+    
     while (ros::ok()) {
         if (g_trigger) {
+            ROS_INFO("g_trigger enabled");
             g_trigger = false; // reset the trigger
 
             // what we do here depends on our mode; mode is settable via a service
@@ -629,15 +635,20 @@ int main(int argc, char** argv) {
 
                     ROS_INFO("creating a can cloud");
                     make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
+
                     // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
                     for (int i=0;i<3;i++) {
-                        g_cylinder_origin[i] = g_patch_centroid[i]; // DO BETTER THAN THIS
+                        g_cylinder_origin[i] = g_patch_centroid[i];
                     }
                     
-                    // fix the z-height, based on plane height:
+                    //walk back from the normal of the surface by one radius
+                    //to get near the center of the object
+                    g_cylinder_origin[1] -= R_CYLINDER;
+                    
+                    //the initial guess for the origin of the cylinder, expressed in sensor coords,
+                    //has z-height fixed based on plane height
                     g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
-                    //g_cylinder_origin is now the initial guess for the origin of the cylinder, expressed in sensor coords
-
+                   
                     // now, cast this into the rotated coordinate frame:
                     can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin; 
 
@@ -653,20 +664,26 @@ int main(int argc, char** argv) {
                     break;
                     
                 case COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE:         
-                        cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
-                       // try to do something smart.  can try using dEdCy and dEdCx
-                        
-                        //r_tol = 2 * sqrt(2*E);
-                        //dEnorm = dEdC.norm():
-                        //g_model_origin -= 0.001 * dEdC/dEnorm;
-                        can_center_wrt_plane[0]+= 0.0;  //THIS IS DUMB; DO SOMETHING SMART TO IMPROVE CENTER ESTIMATE
-                        can_center_wrt_plane[1]+= 0.0; 
-                    
+                    cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
+                      
+                    dEdC[0] = dEdCx;
+                    dEdC[1] = dEdCy;
+                    dEdC[2] = can_center_wrt_plane[2];
+
+                    //get normalized error vector
+                    dEdC_norm = dEdC.normalized();
+
+                    //use gradient descent to improve registration values
+                    //from normalized error vector
+                    can_center_wrt_plane[0] -= 0.005 * dEdC_norm[0];
+                    can_center_wrt_plane[1] -= 0.005 * dEdC_norm[1];
+
                     ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
                     compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
                     cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
 
-                    g_cylinder_origin=    g_A_plane*can_center_wrt_plane; 
+                    //set the cylinder origin to the latest optimized guess
+                    g_cylinder_origin = g_A_plane*can_center_wrt_plane; 
                     A_plane_to_sensor.translation() = g_cylinder_origin;
                     transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
                     break;
@@ -674,7 +691,6 @@ int main(int argc, char** argv) {
                 case FIND_ON_TABLE:
                     ROS_INFO("filtering for objects on most recently defined plane: not implemented yet");
                     //really, this is steps 0,1,2 and 3, above
-                    //walk back from the normal of the surface by one radius(go negative), that is the center of the object
                     break;
                     
                 default:
@@ -689,8 +705,8 @@ int main(int argc, char** argv) {
         //and also display whatever we choose to put in here
         pubCloud.publish(g_display_cloud); 
 
-        ros::spinOnce();
         rate.sleep();
+        ros::spinOnce();
     }
     return 0;
 }
