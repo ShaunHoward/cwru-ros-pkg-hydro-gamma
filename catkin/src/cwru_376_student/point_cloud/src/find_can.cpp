@@ -118,9 +118,13 @@ std::vector<int> g_indices_of_plane; //indices of patch that do not contain outl
  */
 bool modeService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response) {
     ROS_INFO("mode select service callback activated");
-    response.resp = true; // boring, but valid response info
+    
+    // boring, but valid response info
+    response.resp = true; 
     g_pcl_process_mode = request.req;
-    g_trigger = true; //signal that we received a request; trigger a response
+    
+    //signal that we received a request; trigger a response
+    g_trigger = true; 
     cout << "Mode set to: " << g_pcl_process_mode << endl;
     return true;
 }
