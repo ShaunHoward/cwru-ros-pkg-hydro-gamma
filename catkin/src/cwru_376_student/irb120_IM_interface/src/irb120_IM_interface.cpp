@@ -27,6 +27,10 @@ Eigen::Quaterniond g_quat;
 Eigen::Matrix3d g_R;
 Eigen::Affine3d g_A_flange_desired;
 bool g_trigger = false;
+
+//have a tolerance on the goal pose position values
+const double POS_TOL = 0.1f;
+
 using namespace std;
 
 void markerListenerCB(
@@ -47,10 +51,11 @@ void markerListenerCB(
 }
 
 void jointStateCB(const sensor_msgs::JointStatePtr &js_msg) {
+    ROS_INFO("Got joint states from callback");
     for (int i = 0; i < 6; i++) {
         g_q_state[i] = js_msg->position[i];
     }
-    //cout<<"g_q_state: "<<g_q_state.transpose()<<endl;
+    cout<<"g_q_state: "<<g_q_state.transpose()<<endl;
 }
 
 bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response) {
@@ -134,47 +139,92 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
     A_flange_des_DH = g_A_flange_desired;
     A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
 
-    int nsolns = ik_solver.ik_solve(A_flange_des_DH);
-    ROS_INFO("there are %d solutions", nsolns);
-    if(nsolns > 0){
-        ik_solver.get_solns(q6dof_solns);
+    // int nsolns = ik_solver.ik_solve(A_flange_des_DH);
+    // ROS_INFO("there are %d solutions", nsolns);
+    // if(nsolns > 0){
+    //     ik_solver.get_solns(q6dof_solns);
     
-        // See how many results we get.
-        int amount = q6dof_solns.size();
+    //     // See how many results we get.
+    //     int amount = q6dof_solns.size();
 
-        // counter for comparing results, choice for the best result index.
-        int counter = 0, choice = 0;
+    //     // counter for comparing results, choice for the best result index.
+    //     int counter = 0, choice = 0;
 
-        // Result matrix consists of members under double type.
-        // Assign a REALLY large value.
-        double minSum = 10000;
-        double moveSum;
+    //     // Result matrix consists of members under double type.
+    //     // Assign a REALLY large value.
+    //     double minSum = 10000;
+    //     double moveSum;
 
-        // Go through all results...
-        for (; counter < amount; ++counter) {
-            moveSum = 0;
+    //     // Go through all results...
+    //     for (; counter < amount; ++counter) {
+    //         moveSum = 0;
 
-            // Add up absolute values of all members of a single matrix.
-            for (int i = 0; i < q6dof_solns[0].size(); ++i) {
-                // Every matrix is 6 * 1, so the second parameter is always 0.
-                // Type is double, so use abs instead of fabs.
-                moveSum += abs(q6dof_solns[counter](i, 0));
-            }
+    //         // Add up absolute values of all members of a single matrix.
+    //         for (int i = 0; i < q6dof_solns[0].size(); ++i) {
+    //             // Every matrix is 6 * 1, so the second parameter is always 0.
+    //             // Type is double, so use abs instead of fabs.
+    //             moveSum += abs(q6dof_solns[counter](i, 0));
+    //         }
 
-            if (moveSum < minSum) {
-                minSum = moveSum;
-                choice = counter;
-            }
+    //         if (moveSum < minSum) {
+    //             minSum = moveSum;
+    //             choice = counter;
+    //         }
+    //     }
+    //     // Print debug info in terminal.
+    //     ROS_INFO("Choose result No.%d.", choice);
+    //     // Choose the best result.
+    //     qvec = q6dof_solns[choice];
+    //     stuff_trajectory(qvec, home_trajectory);
+    //     ROS_INFO("publishng initial trajectory");
+    //     //pub.publish(home_trajectory);   
+    // }
+
+}
+
+/**
+ * Determine if the arm is currently at the goal pose.
+ */
+bool isAtGoal(){
+
+    cout << "g_p: " << g_p.transpose() << endl;
+    cout << "R: " << endl;
+    cout << g_R << endl;
+
+    //gather desired position values
+    Vectorq6x1 q_des(6);
+    //double q_des[7];
+    q_des[0] = g_p[0];
+    q_des[1] = g_p[1];
+    q_des[2] = g_p[2];
+    q_des[3] = g_quat.x();
+    q_des[4] = g_quat.y();
+    q_des[5] = g_quat.z();
+  //  q_des[6] = g_quat.w();
+
+  //  g_A_flange_desired.translation();
+  //  g_A_flange_desired.linear();
+
+    cout<<"g_q_state: "<<g_q_state.transpose()<<endl;
+    cout<<"q_des: "<<q_des.transpose()<<endl;
+
+    // ROS_INFO("The state values are: x: %f, y: %f, z: %f, quatx: %f, quaty: %f, quatz: %f, quatw: %f",
+     //    g_q_state[0],g_q_state[1],g_q_state[2],g_q_state[3],g_q_state[4],g_q_state[5],g_q_state[6]);
+
+    // ROS_INFO("The desired values are: x: %f, y: %f, z: %f, quatx: %f, quaty: %f, quatz: %f, quatw: %f",
+    //     q_des[0],q_des[1],q_des[2],q_des[3],q_des[4],q_des[5],q_des[6]);
+
+    //check if each current position value is within the tolerance
+    //of the desired positiion values.
+    for (int i = 0; i < 6; i++) {
+        //check if the current position is within a tolerance from the goal position
+        if (!(g_q_state[i] > q_des[i] - POS_TOL && g_q_state[i] < q_des[i] + POS_TOL)){
+            ROS_INFO("The arm is not currently at the goal");
+            //when it is outside of this range, it is not at the goal position
+            return false;
         }
-        // Print debug info in terminal.
-        ROS_INFO("Choose result No.%d.", choice);
-        // Choose the best result.
-        qvec = q6dof_solns[choice];
-        stuff_trajectory(qvec, home_trajectory);
-        ROS_INFO("publishng initial trajectory");
-        //pub.publish(home_trajectory);   
     }
-
+    return true;
 }
 
 int main(int argc, char** argv) {
@@ -182,7 +232,7 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     ros::Publisher pub = nh.advertise<trajectory_msgs::JointTrajectory>("joint_path_command", 1);
     ROS_INFO("setting up subscribers ");
-    ros::Subscriber sub_js = nh.subscribe("/joint_states", 1, jointStateCB);
+    ros::Subscriber sub_js = nh.subscribe("/abby/joint_states", 1, jointStateCB);
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
     ros::ServiceServer service = nh.advertiseService("move_trigger", triggerService);
 
@@ -195,7 +245,7 @@ int main(int argc, char** argv) {
     Irb120_IK_solver ik_solver;
     Eigen::Vector3d n_urdf_wrt_DH, t_urdf_wrt_DH, b_urdf_wrt_DH;
     bool first = true;
-    g_trigger = true;
+    //bool nextPose = true;
     // in home pose, R_urdf = I
     //DH-defined tool-flange axes point as:
     // z = 1,0,0
@@ -230,16 +280,19 @@ int main(int argc, char** argv) {
     int nsolns;
 
     while (ros::ok()) {
-        ros::spinOnce();
         if(first){
-            first = false;
+      //      first = false;
             initialize_arm_position(pub, R_urdf_wrt_DH,ik_solver);
-            g_trigger = true;
+          //  g_trigger = true;
         }
-        //if (g_trigger) {
-            //first = false;
-            // ooh!  excitement time!  got a new tool pose goal!
-            g_trigger = false; // reset the trigger
+        ros::spinOnce();
+
+        if (first || g_trigger || !isAtGoal()) {
+            //no longer on the first call
+            first = false;
+             // reset the trigger
+            g_trigger = false;
+
             //is this point reachable?
             A_flange_des_DH = g_A_flange_desired;
             A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
@@ -248,11 +301,11 @@ int main(int argc, char** argv) {
             nsolns = ik_solver.ik_solve(A_flange_des_DH);
             ROS_INFO("there are %d solutions", nsolns);
 
-            if (nsolns > 0) {
+            if (nsolns > 0){
                 ik_solver.get_solns(q6dof_solns);
 
-#pragma mark - modification start
                 //qvec = q6dof_solns[0]; // arbitrarily choose first soln
+
                 // See how many results we get.
                 int amount = q6dof_solns.size();
 
@@ -270,6 +323,7 @@ int main(int argc, char** argv) {
 
                     // Add up absolute values of all members of a single matrix.
                     for (int i = 0; i < q6dof_solns[0].size(); ++i) {
+
                         // Every matrix is 6 * 1, so the second parameter is always 0.
                         // Type is double, so use abs instead of fabs.
                         moveSum += abs(q6dof_solns[counter](i, 0));
@@ -280,19 +334,20 @@ int main(int argc, char** argv) {
                         choice = counter;
                     }
                 }
+
                 // Print debug info in terminal.
                 ROS_INFO("Choose result No.%d.", choice);
+
                 // Choose the best result.
                 qvec = q6dof_solns[choice];
-#pragma mark - modification end
 
                 stuff_trajectory(qvec, new_trajectory);
 
                 pub.publish(new_trajectory);
             }
-       // }
+        }
+        ros::spinOnce();
         sleep_timer.sleep();
-
     }
 
     return 0;
