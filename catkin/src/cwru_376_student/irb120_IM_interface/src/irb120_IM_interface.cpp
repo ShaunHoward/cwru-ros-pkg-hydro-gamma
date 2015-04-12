@@ -31,9 +31,10 @@ using namespace std;
 
 void markerListenerCB(
         const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
-    ROS_INFO_STREAM(feedback->marker_name << " is now at "
-            << feedback->pose.position.x << ", " << feedback->pose.position.y
-            << ", " << feedback->pose.position.z);
+    ROS_INFO_STREAM(feedback->marker_name << " is now at x: "
+            << feedback->pose.position.x << ", y: " << feedback->pose.position.y
+            << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
+            << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
     //copy to global vars:
     g_p[0] = feedback->pose.position.x;
     g_p[1] = feedback->pose.position.y;
@@ -54,14 +55,18 @@ void jointStateCB(const sensor_msgs::JointStatePtr &js_msg) {
 
 bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response) {
     ROS_INFO("service callback activated");
-    response.resp = true; // boring, but valid response info
+     // boring, but valid response info
+    response.resp = true;
+
     // grab the most recent IM data and repackage it as an Affine3 matrix to set a target hand pose;
     g_A_flange_desired.translation() = g_p;
     g_A_flange_desired.linear() = g_R;
     cout << "g_p: " << g_p.transpose() << endl;
     cout << "R: " << endl;
     cout << g_R << endl;
-    g_trigger = true; //inform "main" that we have a new goal!
+
+    //inform "main" that we have a new goal!
+    g_trigger = true; 
     return true;
 }
 
@@ -106,6 +111,72 @@ void stuff_trajectory(Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_tra
     new_trajectory.points.push_back(trajectory_point2); // append this point to trajectory
 }
 
+void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, Irb120_IK_solver ik_solver){
+    trajectory_msgs::JointTrajectory home_trajectory;
+    std::vector<Vectorq6x1> q6dof_solns;
+    Vectorq6x1 qvec;
+    g_p[0] = -0.540994;
+    g_p[1] = -0.00188585;
+    g_p[2] = 0.571356;
+    g_quat.x() =  0.0128913;
+    g_quat.y() = -0.710416;
+    g_quat.z() = -0.0152647;
+    g_quat.w() = 0.703499;
+    g_R = g_quat.matrix();
+
+    g_A_flange_desired.translation() = g_p;
+    g_A_flange_desired.linear() = g_R;
+    cout << "g_p: " << g_p.transpose() << endl;
+    cout << "R: " << endl;
+    cout << g_R << endl;
+
+    Eigen::Affine3d A_flange_des_DH;
+    A_flange_des_DH = g_A_flange_desired;
+    A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
+
+    int nsolns = ik_solver.ik_solve(A_flange_des_DH);
+    ROS_INFO("there are %d solutions", nsolns);
+    if(nsolns > 0){
+        ik_solver.get_solns(q6dof_solns);
+    
+        // See how many results we get.
+        int amount = q6dof_solns.size();
+
+        // counter for comparing results, choice for the best result index.
+        int counter = 0, choice = 0;
+
+        // Result matrix consists of members under double type.
+        // Assign a REALLY large value.
+        double minSum = 10000;
+        double moveSum;
+
+        // Go through all results...
+        for (; counter < amount; ++counter) {
+            moveSum = 0;
+
+            // Add up absolute values of all members of a single matrix.
+            for (int i = 0; i < q6dof_solns[0].size(); ++i) {
+                // Every matrix is 6 * 1, so the second parameter is always 0.
+                // Type is double, so use abs instead of fabs.
+                moveSum += abs(q6dof_solns[counter](i, 0));
+            }
+
+            if (moveSum < minSum) {
+                minSum = moveSum;
+                choice = counter;
+            }
+        }
+        // Print debug info in terminal.
+        ROS_INFO("Choose result No.%d.", choice);
+        // Choose the best result.
+        qvec = q6dof_solns[choice];
+        stuff_trajectory(qvec, home_trajectory);
+        ROS_INFO("publishng initial trajectory");
+        //pub.publish(home_trajectory);   
+    }
+
+}
+
 int main(int argc, char** argv) {
     ros::init(argc, argv, "simple_marker_listener"); // this will be the node name;
     ros::NodeHandle nh;
@@ -123,6 +194,8 @@ int main(int argc, char** argv) {
     Irb120_fwd_solver irb120_fwd_solver; //instantiate forward and IK solvers
     Irb120_IK_solver ik_solver;
     Eigen::Vector3d n_urdf_wrt_DH, t_urdf_wrt_DH, b_urdf_wrt_DH;
+    bool first = true;
+    g_trigger = true;
     // in home pose, R_urdf = I
     //DH-defined tool-flange axes point as:
     // z = 1,0,0
@@ -158,7 +231,13 @@ int main(int argc, char** argv) {
 
     while (ros::ok()) {
         ros::spinOnce();
-        if (g_trigger) {
+        if(first){
+            first = false;
+            initialize_arm_position(pub, R_urdf_wrt_DH,ik_solver);
+            g_trigger = true;
+        }
+        //if (g_trigger) {
+            //first = false;
             // ooh!  excitement time!  got a new tool pose goal!
             g_trigger = false; // reset the trigger
             //is this point reachable?
@@ -211,7 +290,7 @@ int main(int argc, char** argv) {
 
                 pub.publish(new_trajectory);
             }
-        }
+       // }
         sleep_timer.sleep();
 
     }
