@@ -30,7 +30,7 @@ Eigen::Affine3d g_A_flange_desired;
 bool g_trigger = false;
 
 //have a tolerance on the goal pose position values
-const double POS_TOL = 0.1f;
+const double JOINT_ERR_TOL = 0.1f;
 
 tf::TransformListener* g_tfListener;
 tf::StampedTransform g_armlink1_wrt_baseLink;
@@ -243,9 +243,11 @@ bool isAtGoal(Vectorq6x1 qvec) {
     double errorFromGoal = error_vector.norm();
     
     //check if the current position is within a tolerance from the goal position
-    if (errorFromGoal > POS_TOL){  
+    if (errorFromGoal > JOINT_ERR_TOL){  
+        ROS_INFO("Goal joint states have NOT been met.");
         return false;
     }
+    ROS_INFO("Goal joint states have been met.");
     return true;
 
 //    //check if the current position is within a tolerance from the goal position
