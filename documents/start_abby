@@ -8,6 +8,6 @@ ABBY arm run:
 6. rosrun irb120_IM_interface irb120_IM_interface joint_states:=
 abby/joint_states
 7. In rviz, move the 6-DOF marker to a desired pose for the tool flange
-8. In another window, trigger motion with: rosservice call move_trigger 1
+8. rosservice call move_trigger 1
 
 
