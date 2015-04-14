@@ -209,46 +209,52 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
 /**
  * Determine if the arm is currently at the goal pose.
  */
-bool isAtGoal() {
+bool isAtGoal(Vectorq6x1 qvec) {
 
-    cout << "g_p: " << g_p.transpose() << endl;
-    cout << "R: " << endl;
-    cout << g_R << endl;
+//    cout << "g_p: " << g_p.transpose() << endl;
+//    cout << "R: " << endl;
+//    cout << g_R << endl;
 
     //gather desired position values
     Vectorq6x1 q_des(6);
     //double q_des[7];
-    q_des[0] = g_p[0];
-    q_des[1] = g_p[1];
-    q_des[2] = g_p[2];
-    q_des[3] = g_quat.x();
-    q_des[4] = g_quat.y();
-    q_des[5] = g_quat.z();
+//    q_des[0] = g_p[0];
+//    q_des[1] = g_p[1];
+//    q_des[2] = g_p[2];
+//    q_des[3] = g_quat.x();
+//    q_des[4] = g_quat.y();
+//    q_des[5] = g_quat.z();
     //  q_des[6] = g_quat.w();
 
     //  g_A_flange_desired.translation();
     //  g_A_flange_desired.linear();
 
     cout << "g_q_state: " << g_q_state.transpose() << endl;
-    cout << "q_des: " << q_des.transpose() << endl;
+    cout << "qvec: " << qvec.transpose() << endl;
 
     // ROS_INFO("The state values are: x: %f, y: %f, z: %f, quatx: %f, quaty: %f, quatz: %f, quatw: %f",
     //    g_q_state[0],g_q_state[1],g_q_state[2],g_q_state[3],g_q_state[4],g_q_state[5],g_q_state[6]);
 
     // ROS_INFO("The desired values are: x: %f, y: %f, z: %f, quatx: %f, quaty: %f, quatz: %f, quatw: %f",
     //     q_des[0],q_des[1],q_des[2],q_des[3],q_des[4],q_des[5],q_des[6]);
-
-    //check if each current position value is within the tolerance
-    //of the desired positiion values.
-    for (int i = 0; i < 6; i++) {
-        //check if the current position is within a tolerance from the goal position
-        if (!(g_q_state[i] > q_des[i] - POS_TOL && g_q_state[i] < q_des[i] + POS_TOL)) {
-            ROS_INFO("The arm is not currently at the goal");
-            //when it is outside of this range, it is not at the goal position
-            return false;
-        }
+    
+    //Calculate the error between the current joint states and the desired joint states
+    Vectorq6x1 error_vector = g_q_state - qvec;
+    double errorFromGoal = error_vector.norm();
+    
+    //check if the current position is within a tolerance from the goal position
+    if (errorFromGoal > POS_TOL){  
+        return false;
     }
     return true;
+
+//    //check if the current position is within a tolerance from the goal position
+//    if (!(g_q_state[i] > q_vec[i] - POS_TOL && g_q_state[i] < q_vec[i] + POS_TOL)) {
+//        ROS_INFO("The arm is not currently at the goal");
+//        //when it is outside of this range, it is not at the goal position
+//        return false;
+//    }
+//    }
 }
 
 int main(int argc, char** argv) {
@@ -332,7 +338,7 @@ int main(int argc, char** argv) {
             //  g_trigger = true;
         }
 
-        if (first || g_trigger || !isAtGoal()) {
+        if (first || g_trigger || !isAtGoal(qvec)) {
             //no longer on the first call
             first = false;
             // reset the trigger
