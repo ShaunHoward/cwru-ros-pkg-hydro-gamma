@@ -305,6 +305,7 @@ int main(int argc, char** argv) {
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
     ros::ServiceServer service = nh.advertiseService("move_trigger", triggerService);
     ros::Subscriber sub_z = nh.subscribe("new_arm_z", 1, armZCB);
+    ros::Publisher pub_z = nh.advertise<std_msgs::Float32>("arm_z", 1);
 
     Eigen::Vector3d p;
     Eigen::Vector3d n_des, t_des, b_des;

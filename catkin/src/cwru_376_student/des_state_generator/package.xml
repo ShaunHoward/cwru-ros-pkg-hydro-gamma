@@ -42,7 +42,6 @@
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
   <build_depend>cwru_msgs</build_depend>
-  <build_depend>cwru_srv</build_depend>
   <build_depend>eigen</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
@@ -51,7 +50,6 @@
   <build_depend>robot_commander</build_depend>
   <build_depend>tf</build_depend>
   <run_depend>cwru_msgs</run_depend>
-  <run_depend>cwru_srv</run_depend>
   <run_depend>eigen</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>nav_msgs</run_depend>
