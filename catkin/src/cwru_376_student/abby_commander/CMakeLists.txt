@@ -9,7 +9,6 @@ find_package(catkin_simple REQUIRED)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  catkin_simple
   geometry_msgs
   interactive_markers
   irb120_ik
@@ -95,7 +94,7 @@ catkin_simple()
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
+#  INCLUDE_DIRS include
 #  LIBRARIES abby_commander
 #  CATKIN_DEPENDS catkin_simple cwru_srv geometry_msgs interactive_markers irb120_ik pcl_conversions pcl_ros roscpp sensor_msgs std_msgs tf trajectory_msgs
 #  DEPENDS system_lib
