@@ -1,0 +1,8 @@
+prefix=/home/smh150/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/install
+
+Name: point_cloud
+Description: Description of point_cloud
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/smh150/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/install/lib 
+Requires: 

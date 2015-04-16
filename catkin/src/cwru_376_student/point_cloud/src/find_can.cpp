@@ -34,6 +34,8 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl-1.7/pcl/impl/point_types.hpp>
 
+#include <std_msgs/Float32.h>
+
 //typedef pcl::PointCloud<pcl::PointXYZ> PointCloud; // can use this for short-hand
 
 using namespace std;
@@ -564,6 +566,11 @@ void compute_radial_error(PointCloud<pcl::PointXYZ>::Ptr inputCloud, std::vector
     cout<<"dE/dCx = "<<dEdCx<<"; dEdCy = "<<dEdCy<<endl;
 }
 
+//void publishCylinderOrigin(){
+//    
+//
+//}
+
 int main(int argc, char** argv) {
     // Do some initialization here
     ros::init(argc, argv, "process_pcl");
@@ -579,6 +586,7 @@ int main(int argc, char** argv) {
     // have rviz display both of these topics
     ros::Publisher pubCloud = nh.advertise<sensor_msgs::PointCloud2> ("/plane_model", 1);
     ros::Publisher pubPcdCloud = nh.advertise<sensor_msgs::PointCloud2> ("/kinect_pointcloud", 1);
+    ros::Publisher pubCanZ = nh.advertise<std_msgs::Float32>("can_z", 1);
 
     // service used to interactively change processing modes
     ros::ServiceServer service = nh.advertiseService("process_mode", modeService);
@@ -600,6 +608,7 @@ int main(int argc, char** argv) {
     double E;
     double dEdCx=0.0;
     double dEdCy=0.0;
+    bool tried_model_fit = false;
  
     int ans;
     Eigen::Vector3f can_center_wrt_plane;
@@ -608,6 +617,7 @@ int main(int argc, char** argv) {
     //use these for fixing errors in registration of can cloud
     Eigen::Vector3f dEdC;
     Eigen::Vector3f dEdC_norm;
+    std_msgs::Float32 canZMessage;
     
     while (ros::ok()) {
         if (g_trigger) {
@@ -690,6 +700,7 @@ int main(int argc, char** argv) {
                     g_cylinder_origin = g_A_plane*can_center_wrt_plane; 
                     A_plane_to_sensor.translation() = g_cylinder_origin;
                     transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+                    tried_model_fit = true;
                     break;
                     
                 case FIND_ON_TABLE:
@@ -699,7 +710,13 @@ int main(int argc, char** argv) {
                     
                 default:
                     ROS_WARN("this mode is not implemented");
-
+            }
+            
+            //only publish z message if we tried to fit the model
+            if(tried_model_fit){
+                //the z-coordinate is what we care about
+                canZMessage.data = g_cylinder_origin[2];
+                pubCanZ.publish(canZMessage);
             }
         }
 

@@ -18,6 +18,8 @@
 #include "trajectory_msgs/JointTrajectoryPoint.h"
 #include <sensor_msgs/JointState.h>
 #include <tf/transform_listener.h>
+#include <std_msgs/Bool.h>
+#include <std_msgs/Float32.h>
 
 //callback to subscribe to marker state
 Eigen::Vector3d g_p;
@@ -70,6 +72,39 @@ void markerListenerCB(
         g_quat.y() = feedback->pose.orientation.y;
         g_quat.z() = feedback->pose.orientation.z;
         g_quat.w() = feedback->pose.orientation.w;
+        g_R = g_quat.matrix();
+}
+
+void alignWithCanCB(const geometry_msgs::Pose feedback) {
+//    ROS_INFO_STREAM(feedback->marker_name << " is now at "
+//            << feedback->pose.position.x << ", " << feedback->pose.position.y
+//            << ", " << feedback->pose.position.z);
+//
+//    ROS_INFO_STREAM("marker frame_id is " << feedback->header.frame_id);
+//    g_marker_pose_in.header = feedback->header;
+//    g_marker_pose_in.pose = feedback->pose;
+//    g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
+//
+//    g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
+//    g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
+//    g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
+//    g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
+//    g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
+//    g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
+//    g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;
+//    g_R = g_quat.matrix();
+//        ROS_INFO_STREAM("can pose is now at x: "
+//                << feedback->pose.position.x << ", y: " << feedback->pose.position.y
+//                << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
+//                << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
+        //copy to global vars:
+        g_p[0] = feedback.position.x;
+        g_p[1] = feedback.position.y;
+        g_p[2] = feedback.position.z;
+        g_quat.x() = feedback.orientation.x;
+        g_quat.y() = feedback.orientation.y;
+        g_quat.z() = feedback.orientation.z;
+        g_quat.w() = feedback.orientation.w;
         g_R = g_quat.matrix();
 }
 
@@ -144,13 +179,26 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
     trajectory_msgs::JointTrajectory home_trajectory;
     std::vector<Vectorq6x1> q6dof_solns;
     Vectorq6x1 qvec;
-    g_p[0] = -0.540994;
-    g_p[1] = -0.00188585;
-    g_p[2] = 0.571356;
-    g_quat.x() = 0.0128913;
-    g_quat.y() = -0.710416;
-    g_quat.z() = -0.0152647;
-    g_quat.w() = 0.703499;
+    //old home pose
+//    g_p[0] = -0.540994;
+//    g_p[1] = -0.00188585;
+//    g_p[2] = 0.571356;
+//    g_quat.x() = 0.0128913;
+//    g_quat.y() = -0.710416;
+//    g_quat.z() = -0.0152647;
+//    g_quat.w() = 0.703499;
+//    g_R = g_quat.matrix();
+
+//home pose:  x: 0.0704939, y: -0.505254, z: 0.446664, quatx: -0.544637, quaty: 0, quatz: 0, quatw: 0.838672
+
+    //put arm to the right of robot
+    g_p[0] = 0.0704939;
+    g_p[1] = -0.505254;
+    g_p[2] = 0.446664;
+    g_quat.x() = -0.544637;
+    g_quat.y() = 0;
+    g_quat.z() = 0;
+    g_quat.w() = 0.838672;
     g_R = g_quat.matrix();
 
     g_A_flange_desired.translation() = g_p;
@@ -209,34 +257,10 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
 /**
  * Determine if the arm is currently at the goal pose.
  */
-bool isAtGoal(Vectorq6x1 qvec) {
-
-//    cout << "g_p: " << g_p.transpose() << endl;
-//    cout << "R: " << endl;
-//    cout << g_R << endl;
-
-    //gather desired position values
-    Vectorq6x1 q_des(6);
-    //double q_des[7];
-//    q_des[0] = g_p[0];
-//    q_des[1] = g_p[1];
-//    q_des[2] = g_p[2];
-//    q_des[3] = g_quat.x();
-//    q_des[4] = g_quat.y();
-//    q_des[5] = g_quat.z();
-    //  q_des[6] = g_quat.w();
-
-    //  g_A_flange_desired.translation();
-    //  g_A_flange_desired.linear();
+bool isAtGoal(Vectorq6x1 qvec, std_msgs::Bool goalMessage, ros::Publisher goalPub) {
 
     cout << "g_q_state: " << g_q_state.transpose() << endl;
     cout << "qvec: " << qvec.transpose() << endl;
-
-    // ROS_INFO("The state values are: x: %f, y: %f, z: %f, quatx: %f, quaty: %f, quatz: %f, quatw: %f",
-    //    g_q_state[0],g_q_state[1],g_q_state[2],g_q_state[3],g_q_state[4],g_q_state[5],g_q_state[6]);
-
-    // ROS_INFO("The desired values are: x: %f, y: %f, z: %f, quatx: %f, quaty: %f, quatz: %f, quatw: %f",
-    //     q_des[0],q_des[1],q_des[2],q_des[3],q_des[4],q_des[5],q_des[6]);
     
     //Calculate the error between the current joint states and the desired joint states
     Vectorq6x1 error_vector = g_q_state - qvec;
@@ -244,29 +268,43 @@ bool isAtGoal(Vectorq6x1 qvec) {
     
     //check if the current position is within a tolerance from the goal position
     if (errorFromGoal > JOINT_ERR_TOL){  
+        //the arm has not reached the goal pose
         ROS_INFO("Goal joint states have NOT been met.");
+        goalMessage.data = false;
+        goalPub.publish(goalMessage);
         return false;
     }
+    
+    //the arm has reached the goal pose
+    goalMessage.data = true;
+    goalPub.publish(goalMessage);
     ROS_INFO("Goal joint states have been met.");
     return true;
+}
 
-//    //check if the current position is within a tolerance from the goal position
-//    if (!(g_q_state[i] > q_vec[i] - POS_TOL && g_q_state[i] < q_vec[i] + POS_TOL)) {
-//        ROS_INFO("The arm is not currently at the goal");
-//        //when it is outside of this range, it is not at the goal position
-//        return false;
-//    }
-//    }
+//Set the goal pose z to the new calculated arm z coordinate 
+void armZCB(const std_msgs::Float32::ConstPtr& arm_z){
+    g_p[2] = arm_z->data;
 }
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "simple_marker_listener"); // this will be the node name;
     ros::NodeHandle nh;
     ros::Publisher pub = nh.advertise<trajectory_msgs::JointTrajectory>("joint_path_command", 1);
+    
+    //publish whether we are at the goal pose of the last given marker
+    ros::Publisher goalPub = nh.advertise<std_msgs::Bool>("at_goal_pose", 1);
+    
+    //Make goal message
+    std_msgs::Bool goalMessage;
+    goalMessage.data = false;
+    goalPub.publish(goalMessage);
+    
     ROS_INFO("setting up subscribers ");
     ros::Subscriber sub_js = nh.subscribe("/abby/joint_states", 1, jointStateCB);
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
     ros::ServiceServer service = nh.advertiseService("move_trigger", triggerService);
+    ros::Subscriber sub_z = nh.subscribe("new_arm_z", 1, armZCB);
 
     Eigen::Vector3d p;
     Eigen::Vector3d n_des, t_des, b_des;
@@ -340,7 +378,7 @@ int main(int argc, char** argv) {
             //  g_trigger = true;
         }
 
-        if (first || g_trigger || !isAtGoal(qvec)) {
+        if (first || g_trigger || !isAtGoal(qvec, goalMessage, goalPub)) {
             //no longer on the first call
             first = false;
             // reset the trigger

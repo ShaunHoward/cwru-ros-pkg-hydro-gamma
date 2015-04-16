@@ -10,4 +10,30 @@ abby/joint_states
 7. In rviz, move the 6-DOF marker to a desired pose for the tool flange
 8. rosservice call move_trigger 1
 
+Abby for final project:
+
+To enable motion, release the tethered e-stop. The orange light will start blinking obnoxiously.
+
+//launch abby
+1. roscore
+2. rviz rviz
+1. roslaunch cwru_base start_base_simple.launch
+
+//Have abby move to table here
+
+//Then do pcl stuff
+2a. cd ~/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/cwru_376_student/point_cloud
+2b. rosrun example_pcl pcd_save
+3. rosrun point_cloud find_can
+4a. Select a patch of points on the table top
+4b. rosservice call process_mode 0
+5. rosservice call process_mode 1
+6a. Select a patch of points on the side of the can 
+6b. rosservice call process_mode 2
+7. rosservice call process_mode 3 until model is fit to point cloud
+
+Run abby_commander
+
+//Have abby move arm to top of can and move down on z axis to top of can, then grab can, move arm up, back up about 1.5 ft, then put in goal pose/position to move to
+
 
