@@ -250,6 +250,7 @@ int main(int argc, char **argv) {
             vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
             ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
             path_message.request.path.poses.push_back(vertex);
+            path_trigger = false;
         }
         else{
             //wait

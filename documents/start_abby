@@ -36,4 +36,15 @@ Run abby_commander
 
 //Have abby move arm to top of can and move down on z axis to top of can, then grab can, move arm up, back up about 1.5 ft, then put in goal pose/position to move to
 
+starting actual abby robot
+1. turn black power switch on
+2. put key into auto mode 
+3. acknowledge ABB message on touch screeen
+4. enable motors by pressing white button above mode switch key (button should light up)
+5. press pp to main on touch screen
+6. press yes on the next screen that pops up
+7. press the play button on the pendant 
+8. press the person in top right corner of touch screen to see messages
+9. on the touch screen set pendant to continuous (bottom right button should bring up side menu)
+10. run code!
 

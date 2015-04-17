@@ -27,6 +27,7 @@ cs_add_executable(simple_marker_listener src/simple_marker_listener.cpp)
 cs_add_executable(marker_listener_v2 src/marker_listener_v2.cpp)
 cs_add_executable(example_marker_user_app src/example_marker_user_app.cpp)
 cs_add_executable(example_marker_user_app_v2 src/example_marker_user_app_v2.cpp)
+cs_add_executable(path_marker src/path_marker.cpp)
 # target_link_library(example my_lib)
 
 cs_install()
