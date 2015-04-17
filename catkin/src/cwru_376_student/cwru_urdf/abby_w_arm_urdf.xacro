@@ -798,7 +798,7 @@
   <!--now set the position/orientation of the above box: -->
   <joint name="kinect_joint" type="fixed">
       <axis xyz="0 1 0" />
-      <origin xyz="0.45 0 1.65" rpy="0 0.92 0"/>
+      <origin xyz="0.45 0 2" rpy="0 0.92 0"/>
       <parent link="base_link"/>
       <child link="kinect_link"/>
   </joint>

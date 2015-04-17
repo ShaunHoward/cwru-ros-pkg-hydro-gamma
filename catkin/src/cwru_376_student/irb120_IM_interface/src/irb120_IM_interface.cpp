@@ -43,36 +43,36 @@ using namespace std;
 
 void markerListenerCB(
         const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
-//    ROS_INFO_STREAM(feedback->marker_name << " is now at "
-//            << feedback->pose.position.x << ", " << feedback->pose.position.y
-//            << ", " << feedback->pose.position.z);
-//
-//    ROS_INFO_STREAM("marker frame_id is " << feedback->header.frame_id);
-//    g_marker_pose_in.header = feedback->header;
-//    g_marker_pose_in.pose = feedback->pose;
-//    g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
-//
-//    g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
-//    g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
-//    g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
-//    g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
-//    g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
-//    g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
-//    g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;
-//    g_R = g_quat.matrix();
-        ROS_INFO_STREAM(feedback->marker_name << " is now at x: "
-                << feedback->pose.position.x << ", y: " << feedback->pose.position.y
-                << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
-                << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
-        //copy to global vars:
-        g_p[0] = feedback->pose.position.x;
-        g_p[1] = feedback->pose.position.y;
-        g_p[2] = feedback->pose.position.z;
-        g_quat.x() = feedback->pose.orientation.x;
-        g_quat.y() = feedback->pose.orientation.y;
-        g_quat.z() = feedback->pose.orientation.z;
-        g_quat.w() = feedback->pose.orientation.w;
-        g_R = g_quat.matrix();
+    ROS_INFO_STREAM(feedback->marker_name << " is now at "
+            << feedback->pose.position.x << ", " << feedback->pose.position.y
+            << ", " << feedback->pose.position.z);
+
+    ROS_INFO_STREAM("marker frame_id is " << feedback->header.frame_id);
+    g_marker_pose_in.header = feedback->header;
+    g_marker_pose_in.pose = feedback->pose;
+    g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
+
+    g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
+    g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
+    g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
+    g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
+    g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
+    g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
+    g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;
+    g_R = g_quat.matrix();
+//        ROS_INFO_STREAM(feedback->marker_name << " is now at x: "
+//                << feedback->pose.position.x << ", y: " << feedback->pose.position.y
+//                << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
+//                << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
+//        //copy to global vars:
+//        g_p[0] = feedback->pose.position.x;
+//        g_p[1] = feedback->pose.position.y;
+//        g_p[2] = feedback->pose.position.z;
+//        g_quat.x() = feedback->pose.orientation.x;
+//        g_quat.y() = feedback->pose.orientation.y;
+//        g_quat.z() = feedback->pose.orientation.z;
+//        g_quat.w() = feedback->pose.orientation.w;
+//        g_R = g_quat.matrix();
 }
 
 void alignWithCanCB(const geometry_msgs::Pose feedback) {
@@ -304,7 +304,7 @@ int main(int argc, char** argv) {
     ros::Subscriber sub_js = nh.subscribe("/abby/joint_states", 1, jointStateCB);
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
     ros::ServiceServer service = nh.advertiseService("move_trigger", triggerService);
-    ros::Subscriber sub_z = nh.subscribe("new_arm_z", 1, armZCB);
+   // ros::Subscriber sub_z = nh.subscribe("new_arm_z", 1, armZCB);
     ros::Publisher pub_z = nh.advertise<std_msgs::Float32>("arm_z", 1);
 
     Eigen::Vector3d p;
@@ -347,40 +347,41 @@ int main(int argc, char** argv) {
     //std::cout << A_fwd_DH.linear() << std::endl;
     //std::cout << "A origin: " << A_fwd_DH.translation().transpose() << std::endl;   
 
-//    g_tfListener = new tf::TransformListener; //create a transform listener
-//    // wait to start receiving valid tf transforms between map and odom:
-//    bool tferr = true;
-//    ROS_INFO("waiting for tf between base_link and link1 of arm...");
-//    while (tferr) {
-//        tferr = false;
-//        try {
-//            //try to lookup transform from target frame "odom" to source frame "map"
-//            //The direction of the transform returned will be from the target_frame to the source_frame.
-//            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
-//            g_tfListener->lookupTransform("base_link", "link1", ros::Time(0), g_armlink1_wrt_baseLink);
-//        } catch (tf::TransformException &exception) {
-//            ROS_ERROR("%s", exception.what());
-//            tferr = true;
-//            ros::Duration(0.5).sleep(); // sleep for half a second
-//            ros::spinOnce();
-//        }
-//    }
-//    ROS_INFO("tf is good");
-//    // from now on, tfListener will keep track of transforms 
+    g_tfListener = new tf::TransformListener; //create a transform listener
+    // wait to start receiving valid tf transforms between map and odom:
+    bool tferr = true;
+    ROS_INFO("waiting for tf between base_link and link1 of arm...");
+    while (tferr) {
+        tferr = false;
+        try {
+            //try to lookup transform from target frame "odom" to source frame "map"
+            //The direction of the transform returned will be from the target_frame to the source_frame.
+            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+            g_tfListener->lookupTransform("base_link", "link1", ros::Time(0), g_armlink1_wrt_baseLink);
+        } catch (tf::TransformException &exception) {
+            ROS_ERROR("%s", exception.what());
+            tferr = true;
+            ros::Duration(0.5).sleep(); // sleep for half a second
+            ros::spinOnce();
+        }
+    }
+    ROS_INFO("tf is good");
+    // from now on, tfListener will keep track of transforms 
 
     int nsolns;
 
     while (ros::ok()) {
         ros::spinOnce();
         
-        if (first) {
-            //      first = false;
-            initialize_arm_position(pub, R_urdf_wrt_DH, ik_solver);
-            //  g_trigger = true;
-        }
+//        if (first) {
+//            //      first = false;
+//            initialize_arm_position(pub, R_urdf_wrt_DH, ik_solver);
+//            //  g_trigger = true;
+//        }
 
-        if (first || g_trigger || !isAtGoal(qvec, goalMessage, goalPub)) {
-            //no longer on the first call
+       // if (first || g_trigger || !isAtGoal(qvec, goalMessage, goalPub)) {
+        if (g_trigger){
+        //no longer on the first call
             first = false;
             // reset the trigger
             g_trigger = false;
