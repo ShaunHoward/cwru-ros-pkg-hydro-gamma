@@ -5,10 +5,11 @@
  * Created on April 16, 2015, 2:46 PM
  */
 
+#include <ros/ros.h>
 #include <cstdlib>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
-#include <ros/ros.h>
+
 #include <iostream>
 #include <math.h>
 #include <stdlib.h>
@@ -35,7 +36,7 @@ const int FINEST = 2;
 /**
  * Use this service to set processing modes interactively.
  */
-bool lowerService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response) {
+bool triggerService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response) {
     ROS_INFO("mode select service callback activated");
     
     // boring, but valid response info
@@ -100,11 +101,13 @@ int main(int argc, char** argv) {
    // ros::Subscriber sub_goal = nh.subscribe("at_goal_pose", 1, goalPoseCB);
     ros::Subscriber sub_can_z = nh.subscribe("can_z", 1, canZCB);
     ros::Subscriber sub_arm_z = nh.subscribe("arm_z", 1, armZCB);
-    //ros::ServiceServer service = nh.advertiseService("lower_trigger", lowerService);
+    ros::ServiceServer service = nh.advertiseService("lower_trigger", triggerService);
     ros::Publisher pub_z = nh.advertise<std_msgs::Float32>("new_arm_z", 1);
     std_msgs::Float32 new_arm_z;
+    ROS_INFO("Initialized the vertical abby commander");
     //ros::Subscriber sub_goal_pose = nh.subscribe("")
     while(ros::ok()){
+        ROS_INFO("In abby commander loop");
         ros::spinOnce();
         if (g_trigger) {
             ROS_INFO("g_trigger enabled");

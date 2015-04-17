@@ -1,19 +1,14 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(abby_commander)
 
-
-find_package(catkin_simple REQUIRED)
-
-
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  catkin_simple
   geometry_msgs
   interactive_markers
   irb120_ik
-  pcl_conversions
-  pcl_ros
   roscpp
   sensor_msgs
   std_msgs
@@ -23,6 +18,9 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 catkin_simple()
+
+# C++0x support - not quite the same as final C++11!
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -117,20 +115,23 @@ include_directories(
 # )
 
 ## Declare a cpp executable
- add_executable(abby_commander src/abby_commander.cpp)
+ cs_add_executable(abby_commander src/abby_commander.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(abby_commander_node abby_commander_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(abby_commander
-   ${catkin_LIBRARIES}
- )
+# target_link_libraries(abby_commander
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
 #############
+
+cs_install()
+cs_export()
 
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
