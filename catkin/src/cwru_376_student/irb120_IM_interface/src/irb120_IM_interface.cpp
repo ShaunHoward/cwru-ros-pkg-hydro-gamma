@@ -389,7 +389,7 @@ int main(int argc, char** argv) {
             A_flange_des_DH = g_A_flange_desired;
             A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
             cout << "R des DH: " << endl;
-            cout << A_flange_des_DH.linear() << endl;
+           // cout << A_flange_des_DH.linear() << endl;
             nsolns = ik_solver.ik_solve(A_flange_des_DH);
             ROS_INFO("there are %d solutions", nsolns);
 

@@ -127,6 +127,8 @@ int main(int argc, char** argv) {
                     break;
             }
          }
+
+         ROS_INFO("Modified arm z is: %f", curr_arm_z);
         
         //publish the new z to update the arm pose
         new_arm_z.data = curr_arm_z;
