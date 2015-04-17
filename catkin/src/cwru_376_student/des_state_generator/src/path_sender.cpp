@@ -16,6 +16,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <interactive_markers/interactive_marker_server.h>
 
 #include <ros/ros.h> //ALWAYS need to include this
 
@@ -26,8 +27,30 @@
 #include <cwru_srv/simple_bool_service_message.h> // this is a pre-defined service message, contained in shared "cwru_srv" package
 #include <cwru_srv/path_service_message.h>
 
-//utility to convert from heading to quaternion, planar motion
+bool path_trigger = false;
+double marker_x,marker_y,marker_phi;
 
+void pathMarkerListenerCB(
+        const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
+    ROS_INFO_STREAM(feedback->marker_name << " is now at "
+            << feedback->pose.position.x << ", " << feedback->pose.position.y
+            << ", " << feedback->pose.position.z);
+    marker_x = feedback->pose.position.x;
+    marker_y = feedback->pose.position.y;
+    marker_phi = feedback->pose.orientation.z;
+}
+
+bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response) {
+    ROS_INFO("path service callback activated");
+    // boring, but valid response info
+    response.resp = true;
+    //inform "main" that we have a new goal!
+    path_trigger = true;
+    return true;
+}
+
+
+//utility to convert from heading to quaternion, planar motion
 geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi) {
     geometry_msgs::Quaternion quaternion;
     quaternion.x = 0.0;
@@ -38,7 +61,6 @@ geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi) {
 }
 
 //utility to fill a Pose object from planar x,y,phi info
-
 geometry_msgs::Pose xyPhi2Pose(double x, double y, double phi) {
     geometry_msgs::Pose pose; // a pose object to populate
     pose.orientation = convertPlanarPhi2Quaternion(phi); // convert from heading to corresponding quaternion
@@ -51,16 +73,19 @@ geometry_msgs::Pose xyPhi2Pose(double x, double y, double phi) {
 int main(int argc, char **argv) {
     double dt = 0.01;
     ros::init(argc, argv, "test_path_sender"); // name of this node 
+
     ros::NodeHandle nh;
     ros::ServiceClient client = nh.serviceClient<cwru_srv::path_service_message>("appendPathService");
+    ros::ServiceServer service = nh.advertiseService("path_trigger", triggerService);
+    ros::Subscriber sub_im = nh.subscribe("path_marker/feedback", 1, pathMarkerListenerCB);
 
     cwru_srv::path_service_message path_message;
     geometry_msgs::PoseStamped vertex; // this contains a header and a pose; the pose contains a point and a quaternion
     double x, y, phi;
 
     vertex.header.stamp = ros::Time::now(); // look up the time and put it in the header; use same time stamp for all vertices in this path
-    
     vertex.header.frame_id = "map"; // specify this, so tf will know how to transform it
+
     // fill in the interesting data: (x,y) and phi = location and heading
     //vertex 1:
     //x=1.0;
@@ -170,6 +195,8 @@ int main(int argc, char **argv) {
     path_message.request.path.poses.push_back(vertex);
 */
 
+
+/* amcl points
     x = 7.65263438466;
     y = 14.5143860241;
     phi = -0.918061444575; 
@@ -177,41 +204,57 @@ int main(int argc, char **argv) {
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 
-   x = 5.09993113083;
+    x = 5.09993113083;
     y = 11.9590104928;
     phi = 0.931375845707; 
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 
-   x = -3.33305079521;
+    x = -3.33305079521;
     y = 20.7515996994;
     phi = 0.927774077288; 
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 
-x = 0.652917432199;
+    x = 0.652917432199;
     y = 24.4962222805;
     phi = -0.920845477744; 
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 
-x = -3.68119336817;
+    x = -3.68119336817;
     y = 20.442523328;
     phi = -0.355685201734; 
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 
-x = 5.64358315338;
+    x = 5.64358315338;
     y = 11.6388698361;
     phi = -0.923632539266; 
     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
-
+*/
+    //path sender loop detects if service is triggered to add the path to marker or not
+    while(ros::ok()){
+        ros::spinOnce();
+        if(path_trigger){
+            //push point
+            x = marker_x;
+            y = marker_y;
+            phi = marker_phi;
+            vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
+            ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+            path_message.request.path.poses.push_back(vertex);
+        }
+        else{
+            //wait
+        }
+    }
     if (client.call(path_message)) {
         ROS_INFO("got ack from server");
     } else {
