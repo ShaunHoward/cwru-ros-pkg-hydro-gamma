@@ -43,69 +43,69 @@ using namespace std;
 
 void markerListenerCB(
         const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
-//    ROS_INFO_STREAM(feedback->marker_name << " is now at "
-//            << feedback->pose.position.x << ", " << feedback->pose.position.y
-//            << ", " << feedback->pose.position.z);
-//
-//    ROS_INFO_STREAM("marker frame_id is " << feedback->header.frame_id);
-//    g_marker_pose_in.header = feedback->header;
-//    g_marker_pose_in.pose = feedback->pose;
-//    g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
-//
-//    g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
-//    g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
-//    g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
-//    g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
-//    g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
-//    g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
-//    g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;
-//    g_R = g_quat.matrix();
-        ROS_INFO_STREAM(feedback->marker_name << " is now at x: "
-                << feedback->pose.position.x << ", y: " << feedback->pose.position.y
-                << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
-                << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
-        //copy to global vars:
-        g_p[0] = feedback->pose.position.x;
-        g_p[1] = feedback->pose.position.y;
-        g_p[2] = feedback->pose.position.z;
-        g_quat.x() = feedback->pose.orientation.x;
-        g_quat.y() = feedback->pose.orientation.y;
-        g_quat.z() = feedback->pose.orientation.z;
-        g_quat.w() = feedback->pose.orientation.w;
-        g_R = g_quat.matrix();
+    ROS_INFO_STREAM(feedback->marker_name << " is now at "
+            << feedback->pose.position.x << ", " << feedback->pose.position.y
+            << ", " << feedback->pose.position.z);
+
+    ROS_INFO_STREAM("marker frame_id is " << feedback->header.frame_id);
+    g_marker_pose_in.header = feedback->header;
+    g_marker_pose_in.pose = feedback->pose;
+    g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
+
+    g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
+    g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
+    g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
+    g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
+    g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
+    g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
+    g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;
+    g_R = g_quat.matrix();
+    ROS_INFO_STREAM(feedback->marker_name << " is now at x: "
+            << g_p[0] << ", y: " << g_p[1]
+            << ", z: " << g_p[2] << ", quatx: " << g_quat.x()
+            << ", quaty: " << g_quat.y() << ", quatz: " << g_quat.z() << ", quatw: " << g_quat.w());
+    //        //copy to global vars:
+    //        g_p[0] = feedback->pose.position.x;
+    //        g_p[1] = feedback->pose.position.y;
+    //        g_p[2] = feedback->pose.position.z;
+    //        g_quat.x() = feedback->pose.orientation.x;
+    //        g_quat.y() = feedback->pose.orientation.y;
+    //        g_quat.z() = feedback->pose.orientation.z;
+    //        g_quat.w() = feedback->pose.orientation.w;
+    //        g_R = g_quat.matrix();
 }
 
 void alignWithCanCB(const geometry_msgs::Pose feedback) {
-//    ROS_INFO_STREAM(feedback->marker_name << " is now at "
-//            << feedback->pose.position.x << ", " << feedback->pose.position.y
-//            << ", " << feedback->pose.position.z);
-//
-//    ROS_INFO_STREAM("marker frame_id is " << feedback->header.frame_id);
-//    g_marker_pose_in.header = feedback->header;
-//    g_marker_pose_in.pose = feedback->pose;
-//    g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
-//
-//    g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
-//    g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
-//    g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
-//    g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
-//    g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
-//    g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
-//    g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;
-//    g_R = g_quat.matrix();
-//        ROS_INFO_STREAM("can pose is now at x: "
-//                << feedback->pose.position.x << ", y: " << feedback->pose.position.y
-//                << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
-//                << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
-        //copy to global vars:
-        g_p[0] = feedback.position.x;
-        g_p[1] = feedback.position.y;
-        g_p[2] = feedback.position.z;
-        g_quat.x() = feedback.orientation.x;
-        g_quat.y() = feedback.orientation.y;
-        g_quat.z() = feedback.orientation.z;
-        g_quat.w() = feedback.orientation.w;
-        g_R = g_quat.matrix();
+    //    ROS_INFO_STREAM(feedback->marker_name << " is now at "
+    //            << feedback->pose.position.x << ", " << feedback->pose.position.y
+    //            << ", " << feedback->pose.position.z);
+    //
+    //    ROS_INFO_STREAM("marker frame_id is " << feedback->header.frame_id);
+    //    g_marker_pose_in.header = feedback->header;
+    //    g_marker_pose_in.pose = feedback->pose;
+    //    g_tfListener->transformPose("link1", g_marker_pose_in, g_marker_pose_wrt_arm_base);
+    //
+    //    g_p[0] = g_marker_pose_wrt_arm_base.pose.position.x;
+    //    g_p[1] = g_marker_pose_wrt_arm_base.pose.position.y;
+    //    g_p[2] = g_marker_pose_wrt_arm_base.pose.position.z;
+    //    g_quat.x() = g_marker_pose_wrt_arm_base.pose.orientation.x;
+    //    g_quat.y() = g_marker_pose_wrt_arm_base.pose.orientation.y;
+    //    g_quat.z() = g_marker_pose_wrt_arm_base.pose.orientation.z;
+    //    g_quat.w() = g_marker_pose_wrt_arm_base.pose.orientation.w;
+    //    g_R = g_quat.matrix();
+    //        ROS_INFO_STREAM("can pose is now at x: "
+    //                << feedback->pose.position.x << ", y: " << feedback->pose.position.y
+    //                << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
+    //                << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
+    //copy to global vars:
+    g_p[0] = feedback.position.x;
+    g_p[1] = feedback.position.y;
+    g_p[2] = feedback.position.z;
+    g_quat.x() = feedback.orientation.x;
+    g_quat.y() = feedback.orientation.y;
+    g_quat.z() = feedback.orientation.z;
+    g_quat.w() = feedback.orientation.w;
+    g_R = g_quat.matrix();
 }
 
 void jointStateCB(const sensor_msgs::JointStatePtr &js_msg) {
@@ -180,26 +180,42 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
     std::vector<Vectorq6x1> q6dof_solns;
     Vectorq6x1 qvec;
     //old home pose
-//    g_p[0] = -0.540994;
-//    g_p[1] = -0.00188585;
-//    g_p[2] = 0.571356;
-//    g_quat.x() = 0.0128913;
-//    g_quat.y() = -0.710416;
-//    g_quat.z() = -0.0152647;
-//    g_quat.w() = 0.703499;
-//    g_R = g_quat.matrix();
+    //    g_p[0] = -0.540994;
+    //    g_p[1] = -0.00188585;
+    //    g_p[2] = 0.571356;
+    //    g_quat.x() = 0.0128913;
+    //    g_quat.y() = -0.710416;
+    //    g_quat.z() = -0.0152647;
+    //    g_quat.w() = 0.703499;
+    //    g_R = g_quat.matrix();
 
-//home pose:  x: 0.0704939, y: -0.505254, z: 0.446664, quatx: -0.544637, quaty: 0, quatz: 0, quatw: 0.838672
+    //home pose:  x: 0.0704939, y: -0.505254, z: 0.446664, quatx: -0.544637, quaty: 0, quatz: 0, quatw: 0.838672
+    //
+    //    //home pose in link_1 frame
+    //    //put arm to the right of robot
+    //    g_p[0] = 0.0704939;
+    //    g_p[1] = -0.505254;
+    //    g_p[2] = 0.446664;
+    //    g_quat.x() = -0.544637;
+    //    g_quat.y() = 0;
+    //    g_quat.z() = 0;
+    //    g_quat.w() = 0.838672;
+    //    g_R = g_quat.matrix();
 
-    //put arm to the right of robot
-    g_p[0] = 0.0704939;
-    g_p[1] = -0.505254;
-    g_p[2] = 0.446664;
-    g_quat.x() = -0.544637;
-    g_quat.y() = 0;
-    g_quat.z() = 0;
-    g_quat.w() = 0.838672;
+    //home pose in base_link frame
+    g_p[0] = -0.110573;
+    g_p[1] = -0.336946;
+    g_p[2] = 0.503469;
+    g_quat.x() = 3.56917e-08;
+    g_quat.y() = -0.0260768;
+    g_quat.z() = 1.15523e-08;
+    g_quat.w() = 0.99966;
     g_R = g_quat.matrix();
+
+    ROS_INFO_STREAM("Home pose is at x: "
+            << g_p[0] << ", y: " << g_p[1]
+            << ", z: " << g_p[2] << ", quatx: " << g_quat.x()
+            << ", quaty: " << g_quat.y() << ", quatz: " << g_quat.z() << ", quatw: " << g_quat.w());
 
     g_A_flange_desired.translation() = g_p;
     g_A_flange_desired.linear() = g_R;
@@ -210,48 +226,6 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
     Eigen::Affine3d A_flange_des_DH;
     A_flange_des_DH = g_A_flange_desired;
     A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
-
-    // int nsolns = ik_solver.ik_solve(A_flange_des_DH);
-    // ROS_INFO("there are %d solutions", nsolns);
-    // if(nsolns > 0){
-    //     ik_solver.get_solns(q6dof_solns);
-
-    //     // See how many results we get.
-    //     int amount = q6dof_solns.size();
-
-    //     // counter for comparing results, choice for the best result index.
-    //     int counter = 0, choice = 0;
-
-    //     // Result matrix consists of members under double type.
-    //     // Assign a REALLY large value.
-    //     double minSum = 10000;
-    //     double moveSum;
-
-    //     // Go through all results...
-    //     for (; counter < amount; ++counter) {
-    //         moveSum = 0;
-
-    //         // Add up absolute values of all members of a single matrix.
-    //         for (int i = 0; i < q6dof_solns[0].size(); ++i) {
-    //             // Every matrix is 6 * 1, so the second parameter is always 0.
-    //             // Type is double, so use abs instead of fabs.
-    //             moveSum += abs(q6dof_solns[counter](i, 0));
-    //         }
-
-    //         if (moveSum < minSum) {
-    //             minSum = moveSum;
-    //             choice = counter;
-    //         }
-    //     }
-    //     // Print debug info in terminal.
-    //     ROS_INFO("Choose result No.%d.", choice);
-    //     // Choose the best result.
-    //     qvec = q6dof_solns[choice];
-    //     stuff_trajectory(qvec, home_trajectory);
-    //     ROS_INFO("publishng initial trajectory");
-    //     //pub.publish(home_trajectory);   
-    // }
-
 }
 
 /**
@@ -261,20 +235,20 @@ bool isAtGoal(Vectorq6x1 qvec, std_msgs::Bool goalMessage, ros::Publisher goalPu
 
     cout << "g_q_state: " << g_q_state.transpose() << endl;
     cout << "qvec: " << qvec.transpose() << endl;
-    
+
     //Calculate the error between the current joint states and the desired joint states
     Vectorq6x1 error_vector = g_q_state - qvec;
     double errorFromGoal = error_vector.norm();
-    
+
     //check if the current position is within a tolerance from the goal position
-    if (errorFromGoal > JOINT_ERR_TOL){  
+    if (errorFromGoal > JOINT_ERR_TOL) {
         //the arm has not reached the goal pose
         ROS_INFO("Goal joint states have NOT been met.");
         goalMessage.data = false;
         goalPub.publish(goalMessage);
         return false;
     }
-    
+
     //the arm has reached the goal pose
     goalMessage.data = true;
     goalPub.publish(goalMessage);
@@ -283,7 +257,8 @@ bool isAtGoal(Vectorq6x1 qvec, std_msgs::Bool goalMessage, ros::Publisher goalPu
 }
 
 //Set the goal pose z to the new calculated arm z coordinate 
-void armZCB(const std_msgs::Float32::ConstPtr& arm_z){
+
+void armZCB(const std_msgs::Float32::ConstPtr& arm_z) {
     g_p[2] = arm_z->data;
 }
 
@@ -291,20 +266,20 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "simple_marker_listener"); // this will be the node name;
     ros::NodeHandle nh;
     ros::Publisher pub = nh.advertise<trajectory_msgs::JointTrajectory>("joint_path_command", 1);
-    
+
     //publish whether we are at the goal pose of the last given marker
     ros::Publisher goalPub = nh.advertise<std_msgs::Bool>("at_goal_pose", 1);
-    
+
     //Make goal message
     std_msgs::Bool goalMessage;
     goalMessage.data = false;
     goalPub.publish(goalMessage);
-    
+
     ROS_INFO("setting up subscribers ");
     ros::Subscriber sub_js = nh.subscribe("/abby/joint_states", 1, jointStateCB);
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
     ros::ServiceServer service = nh.advertiseService("move_trigger", triggerService);
-    ros::Subscriber sub_z = nh.subscribe("new_arm_z", 1, armZCB);
+    // ros::Subscriber sub_z = nh.subscribe("new_arm_z", 1, armZCB);
     ros::Publisher pub_z = nh.advertise<std_msgs::Float32>("arm_z", 1);
 
     Eigen::Vector3d p;
@@ -347,39 +322,40 @@ int main(int argc, char** argv) {
     //std::cout << A_fwd_DH.linear() << std::endl;
     //std::cout << "A origin: " << A_fwd_DH.translation().transpose() << std::endl;   
 
-//    g_tfListener = new tf::TransformListener; //create a transform listener
-//    // wait to start receiving valid tf transforms between map and odom:
-//    bool tferr = true;
-//    ROS_INFO("waiting for tf between base_link and link1 of arm...");
-//    while (tferr) {
-//        tferr = false;
-//        try {
-//            //try to lookup transform from target frame "odom" to source frame "map"
-//            //The direction of the transform returned will be from the target_frame to the source_frame.
-//            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
-//            g_tfListener->lookupTransform("base_link", "link1", ros::Time(0), g_armlink1_wrt_baseLink);
-//        } catch (tf::TransformException &exception) {
-//            ROS_ERROR("%s", exception.what());
-//            tferr = true;
-//            ros::Duration(0.5).sleep(); // sleep for half a second
-//            ros::spinOnce();
-//        }
-//    }
-//    ROS_INFO("tf is good");
-//    // from now on, tfListener will keep track of transforms 
+    g_tfListener = new tf::TransformListener; //create a transform listener
+    // wait to start receiving valid tf transforms between map and odom:
+    bool tferr = true;
+    ROS_INFO("waiting for tf between base_link and link1 of arm...");
+    while (tferr) {
+        tferr = false;
+        try {
+            //try to lookup transform from target frame "odom" to source frame "map"
+            //The direction of the transform returned will be from the target_frame to the source_frame.
+            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+            g_tfListener->lookupTransform("base_link", "link1", ros::Time(0), g_armlink1_wrt_baseLink);
+        } catch (tf::TransformException &exception) {
+            ROS_ERROR("%s", exception.what());
+            tferr = true;
+            ros::Duration(0.5).sleep(); // sleep for half a second
+            ros::spinOnce();
+        }
+    }
+    ROS_INFO("tf is good");
+    // from now on, tfListener will keep track of transforms 
 
     int nsolns;
 
     while (ros::ok()) {
         ros::spinOnce();
-        
+
         if (first) {
             //      first = false;
             initialize_arm_position(pub, R_urdf_wrt_DH, ik_solver);
             //  g_trigger = true;
         }
 
-        if (first || g_trigger || !isAtGoal(qvec, goalMessage, goalPub)) {
+        if (first || g_trigger){ //|| !isAtGoal(qvec, goalMessage, goalPub)) {
+            //if (g_trigger) {
             //no longer on the first call
             first = false;
             // reset the trigger
@@ -389,7 +365,7 @@ int main(int argc, char** argv) {
             A_flange_des_DH = g_A_flange_desired;
             A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
             cout << "R des DH: " << endl;
-           // cout << A_flange_des_DH.linear() << endl;
+            // cout << A_flange_des_DH.linear() << endl;
             nsolns = ik_solver.ik_solve(A_flange_des_DH);
             ROS_INFO("there are %d solutions", nsolns);
 
