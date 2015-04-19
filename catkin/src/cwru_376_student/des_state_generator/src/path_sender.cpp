@@ -72,7 +72,7 @@ geometry_msgs::Pose xyPhi2Pose(double x, double y, double phi) {
 
 int main(int argc, char **argv) {
     double dt = 0.01;
-    ros::init(argc, argv, "test_path_sender"); // name of this node 
+    ros::init(argc, argv, "path_sender"); // name of this node 
 
     ros::NodeHandle nh;
     ros::ServiceClient client = nh.serviceClient<cwru_srv::path_service_message>("appendPathService");
@@ -84,7 +84,8 @@ int main(int argc, char **argv) {
     double x, y, phi;
 
     vertex.header.stamp = ros::Time::now(); // look up the time and put it in the header; use same time stamp for all vertices in this path
-    vertex.header.frame_id = "map"; // specify this, so tf will know how to transform it
+    vertex.header.frame_id = "base_link";
+//vertex.header.frame_id = "map"; // specify this, so tf will know how to transform it
 
     // fill in the interesting data: (x,y) and phi = location and heading
     //vertex 1:
@@ -239,6 +240,8 @@ int main(int argc, char **argv) {
     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
     path_message.request.path.poses.push_back(vertex);
 */
+
+// from now on, tfListener will keep track of transforms
     //path sender loop detects if service is triggered to add the path to marker or not
     while(ros::ok()){
         ros::spinOnce();
@@ -251,16 +254,19 @@ int main(int argc, char **argv) {
             ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
             path_message.request.path.poses.push_back(vertex);
             path_trigger = false;
-        }
-        else{
-            //wait
-        }
+            if (client.call(path_message)) {
+                ROS_INFO("got ack from server");
+            }  else {
+                 ROS_ERROR("Failed to call service lookup_by_name");
+                return 1;
+            }
+         } 
     }
-    if (client.call(path_message)) {
-        ROS_INFO("got ack from server");
-    } else {
-        ROS_ERROR("Failed to call service lookup_by_name");
-        return 1;
-    }
+    // if (client.call(path_message)) {
+    //     ROS_INFO("got ack from server");
+    // } else {
+            //      ROS_ERROR("Failed to call service lookup_by_name");
+            //     return 1;
+            // }
     return 0;
 }

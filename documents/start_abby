@@ -10,6 +10,30 @@ abby/joint_states
 7. In rviz, move the 6-DOF marker to a desired pose for the tool flange
 8. rosservice call move_trigger 1
 
+ABBY Gazebo model:
+
+1. roscore
+2. rviz rviz
+3. roslaunch cwru_urdf abby_w_arm.launch
+4a. cd /home/smh150/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/cwru_376_student/cwru_urdf
+4b. rosrun map_server map_server startingPenMap.yaml
+4c. rosrun amcl amcl scan:=/scan
+5. rosrun des_state_generator des_state_generator
+6. rosrun des_state_generator path_sender
+7. rosrun steering_algorithm steering_algorithm
+8. rosrun example_interactive_marker path_marker
+9. rosservice call path_trigger 1  (sends pose of marker to the path sender)
+10a. cd ~/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/cwru_376_student/point_cloud
+10b. rosrun example_pcl pcd_save
+11. rosrun point_cloud find_can
+12a. Select a patch of points on the table top
+12b. rosservice call process_mode 0
+13. rosservice call process_mode 1
+14a. Select a patch of points on the side of the can 
+15b. rosservice call process_mode 2
+16. rosservice call process_mode 3 until model is fit to point cloud
+
+
 Abby for final project:
 
 To enable motion, release the tethered e-stop. The orange light will start blinking obnoxiously.

@@ -35,14 +35,16 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
 
     // wait to start receiving valid tf transforms between map and odom:
     bool tferr = true;
-    ROS_INFO("waiting for tf between map and odom...");
+    //ROS_INFO("waiting for tf between map and odom...");
+    ROS_INFO("waiting for tf between base_link and odom...");
     while (tferr) {
         tferr = false;
         try {
             //try to lookup transform from target frame "odom" to source frame "map"
             //The direction of the transform returned will be from the target_frame to the source_frame. 
             //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
-            tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+            //tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+            tfListener_->lookupTransform("odom", "base_link", ros::Time(0), mapToOdom_);
         } catch (tf::TransformException &exception) {
             ROS_ERROR("%s", exception.what());
             tferr = true;
@@ -327,14 +329,15 @@ geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::Po
     ROS_INFO("new subgoal: goal in map pose is (x,y) = (%f, %f)", map_pose.pose.position.x, map_pose.pose.position.y);
 
     //now, use the tf listener to find the transform from map coords to odom coords:
-    tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+    //tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+    tfListener_->lookupTransform("odom", "base_link", ros::Time(0), mapToOdom_);
     
     //here's one way to transform: operator "*" defined for class tf::Transform
     tf_odom_goal = mapToOdom_*tf_map_goal; 
     ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)", tf_odom_goal.x(), tf_odom_goal.y());
 
     //must update the time stamp of the next map pose
-    map_pose.header.stamp = ros::Time::now();
+    //map_pose.header.stamp = ros::Time::now();
 
     //let's transform the map_pose goal point into the odom frame:
     tfListener_->transformPose("odom", map_pose, odom_pose);
@@ -350,7 +353,7 @@ geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::Po
         std::cin>>ans;
     }
     return odom_pose;
-    //  return map_pose;
+   //   return map_pose;
 }
 
 /**
