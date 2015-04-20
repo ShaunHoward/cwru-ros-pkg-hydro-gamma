@@ -76,15 +76,20 @@ int main(int argc, char **argv) {
 
     ros::NodeHandle nh;
     ros::ServiceClient client = nh.serviceClient<cwru_srv::path_service_message>("appendPathService");
+    ros::ServiceClient flushService = nh.serviceClient<cwru_srv::simple_bool_service_message>("flushPathService");
     ros::ServiceServer service = nh.advertiseService("path_trigger", triggerService);
     ros::Subscriber sub_im = nh.subscribe("path_marker/feedback", 1, pathMarkerListenerCB);
 
     cwru_srv::path_service_message path_message;
+    cwru_srv::simple_bool_service_message flush_message;
     geometry_msgs::PoseStamped vertex; // this contains a header and a pose; the pose contains a point and a quaternion
     double x, y, phi;
 
+                  //a timer for desired rate, e.g. 50Hz
+    ros::Rate sleep_timer(50);
+
     vertex.header.stamp = ros::Time::now(); // look up the time and put it in the header; use same time stamp for all vertices in this path
-    vertex.header.frame_id = "base_link";
+    vertex.header.frame_id = "map";
 //vertex.header.frame_id = "map"; // specify this, so tf will know how to transform it
 
     // fill in the interesting data: (x,y) and phi = location and heading
@@ -136,13 +141,13 @@ int main(int argc, char **argv) {
 //    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
 //    path_message.request.path.poses.push_back(vertex);
     
-//     //vertex 1:
-//    x = 3;
-//    y = 3;
-//    phi = 0; //this is just the end rotation we want
-//    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
-//    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
-//    path_message.request.path.poses.push_back(vertex);
+    //vertex 1:
+   // x = 3;
+   // y = 3;
+   // phi = 0; //this is just the end rotation we want
+   // ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+   // vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+   // path_message.request.path.poses.push_back(vertex);
 
 //    //vertex 2:
 //    x = 5;
@@ -164,37 +169,37 @@ int main(int argc, char **argv) {
     //vertex 1
     //x = -3.452093;
     //y = -3.270599;
- /*   x = 4.75539;
-	//x = 5.5;    
-	y = 0;
-    phi = -1.57; //this is just the end rotation we want
-    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
-    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
-    path_message.request.path.poses.push_back(vertex);
+//    x = 4.75539;
+// 	//x = 5.5;    
+// 	y = 0;
+//     phi = -1.57; //this is just the end rotation we want
+//     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+//     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+//     path_message.request.path.poses.push_back(vertex);
 
-    //vertex 2
-    //x = -12;
-    //y = 5;
-    x = 4.75539;
-//	x = 5.5;    
-	y = -12.069;
-    phi = -3.14; //this is just the end rotation we want
-    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
-    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
-    path_message.request.path.poses.push_back(vertex);
-    //transmit this path message:
+//     //vertex 2
+//     //x = -12;
+//     //y = 5;
+//     x = 4.75539;
+// //	x = 5.5;    
+// 	y = -12.069;
+//     phi = -3.14; //this is just the end rotation we want
+//     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+//     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+//     path_message.request.path.poses.push_back(vertex);
+//     //transmit this path message:
 
-    //vetex 3 
-    //x = -5.96538;
-    //y = 11.313902;
-    x = -3.97857;
-//	x=1;
-    y = -12.069;
-    phi = -3.14; //this is just the end rotation we want
-    ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
-    vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
-    path_message.request.path.poses.push_back(vertex);
-*/
+//     //vetex 3 
+//     //x = -5.96538;
+//     //y = 11.313902;
+//     x = -3.97857;
+// //	x=1;
+//     y = -12.069;
+//     phi = -3.14; //this is just the end rotation we want
+//     ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
+//     vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi
+//     path_message.request.path.poses.push_back(vertex);
+
 
 
 /* amcl points
@@ -242,10 +247,18 @@ int main(int argc, char **argv) {
 */
 
 // from now on, tfListener will keep track of transforms
-    //path sender loop detects if service is triggered to add the path to marker or not
+//    path sender loop detects if service is triggered to add the path to marker or not
     while(ros::ok()){
         ros::spinOnce();
         if(path_trigger){
+            //flush the path queue
+            flush_message.request.req = true;
+            if (flushService.call(flush_message)) {
+                ROS_INFO("server successfully called for flushing path queue");
+            }  else {
+                ROS_ERROR("Failed to call service for flushing path queue");
+                return 1;
+            }
             //push point
             x = marker_x;
             y = marker_y;
@@ -255,18 +268,19 @@ int main(int argc, char **argv) {
             path_message.request.path.poses.push_back(vertex);
             path_trigger = false;
             if (client.call(path_message)) {
-                ROS_INFO("got ack from server");
+                ROS_INFO("server successfully called for pushing path points to queue");
             }  else {
-                 ROS_ERROR("Failed to call service lookup_by_name");
+                ROS_ERROR("Failed to call service for pushing path points to queue");
                 return 1;
             }
          } 
+      //  sleep_timer.sleep();
     }
     // if (client.call(path_message)) {
     //     ROS_INFO("got ack from server");
     // } else {
-            //      ROS_ERROR("Failed to call service lookup_by_name");
-            //     return 1;
-            // }
+    //              ROS_ERROR("Failed to call service lookup_by_name");
+    //             return 1;
+    //         }
     return 0;
 }

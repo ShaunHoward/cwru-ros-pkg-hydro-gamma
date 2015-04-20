@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     // create an interactive marker for our server
     visualization_msgs::InteractiveMarker int_marker;
     // later, change the reference frame to the "map" frame
-    int_marker.header.frame_id = "base_link"; // the repuference frame for pose coordinates
+    int_marker.header.frame_id = "map"; // the repuference frame for pose coordinates
     int_marker.name = "path_marker"; //name the marker
     int_marker.description = "Interactive Marker";
 
