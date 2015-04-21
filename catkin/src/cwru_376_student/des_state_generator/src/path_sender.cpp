@@ -259,6 +259,7 @@ int main(int argc, char **argv) {
                 ROS_ERROR("Failed to call service for flushing path queue");
                 return 1;
             }
+            path_message.request.path.poses.clear();
             //push point
             x = marker_x;
             y = marker_y;

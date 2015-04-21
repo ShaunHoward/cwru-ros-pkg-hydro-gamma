@@ -14,7 +14,7 @@ void processFeedback(
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "simple_marker"); // this will be the node name;
+    ros::init(argc, argv, "motion_marker"); // this will be the node name;
 
     // create an interactive marker server on the topic namespace simple_marker
     interactive_markers::InteractiveMarkerServer server("path_marker");
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     /** specify/push-in the origin for this marker */
     temp_point_start.x = 0.38; 
     temp_point_start.y = 0.0;
-    temp_point_start.z = 0.67;
+    temp_point_start.z = 2;
     //sphere_marker.points.push_back(temp_point_start);
     //sphere_marker.color.r = 1.0; // make this marker red
     //sphere_marker.color.g = 0.0;
@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
     int_marker.controls.push_back(rotz_control);
     
     /** Scale Down: this makes all of the arrows/disks for the user controls smaller than the default size */
-    int_marker.scale = 0.2;
+    int_marker.scale = 1;
     
     //let's pre-position the marker, else it will show up at the frame origin by default
     int_marker.pose.position.x = temp_point_start.x;

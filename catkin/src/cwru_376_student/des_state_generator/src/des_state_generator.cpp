@@ -205,7 +205,7 @@ void DesStateGenerator::odomCallback(const nav_msgs::Odometry& odom_rcvd) {
  */
 bool DesStateGenerator::flushPathCallback(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response) {
     ROS_INFO("service flush-Path callback activated");
-    while (!path_queue_.empty()) {
+    while (path_queue_.size() >0) {
         ROS_INFO("clearing the path queue...");
         std::cout << ' ' << path_queue_.front();
         path_queue_.pop();
@@ -589,6 +589,8 @@ cwru_msgs::PathSegment DesStateGenerator::build_line_segment(Eigen::Vector2d v1,
  */
 void DesStateGenerator::unpack_next_path_segment() {
     cwru_msgs::PathSegment path_segment;
+    //ROS_INFO("queue now contains %d vertices", (int)path_queue_.size());
+
     ROS_INFO("unpack_next_path_segment: ");
     if (segment_queue_.empty()) {
         ROS_INFO("no more segments in the path-segment queue");
@@ -717,6 +719,8 @@ void DesStateGenerator::update_des_state() {
         default:
             des_state_ = update_des_state_halt();
     }
+    //ROS_INFO("queue now contains %d vertices", (int)path_queue_.size());
+
     des_state_publisher_.publish(des_state_); //send out our message
 }
 
@@ -1008,6 +1012,7 @@ int main(int argc, char** argv) {
     ROS_INFO("main: going into main loop");
 
     while (ros::ok()) {
+
         if (desStateGenerator.get_current_path_seg_done()) {
             //here if we have completed a path segment, so try to get another one
             // if necessary, construct new path segments from new polyline path subgoal
