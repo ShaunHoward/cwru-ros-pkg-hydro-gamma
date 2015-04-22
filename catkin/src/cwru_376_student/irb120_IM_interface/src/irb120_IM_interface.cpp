@@ -293,7 +293,7 @@ bool isAtGoal(Vectorq6x1 qvec, std_msgs::Bool goalMessage, ros::Publisher goalPu
 void lower_arm(){
 
     //the current arm z is the 3rd value in the position vector
-    curr_arm_z = g_p[2];
+    curr_arm_z = g_p[0];
 
     ROS_INFO("lower_trigger enabled");
     lower_trigger = false; // reset the trigger
@@ -302,19 +302,19 @@ void lower_arm(){
     //0 for fine, 1 for finer, 2 for finest
     switch (g_fit_z) {
         case FINE:
-            curr_arm_z -= .1;
+            curr_arm_z += .05;
             break;
         case FINER:
-            curr_arm_z -= .01;
+            curr_arm_z += .01;
             break;
         case FINEST:
-            curr_arm_z -= .001;
+            curr_arm_z += .005;
             break;
     }
     ROS_INFO("Modified arm z is: %f", curr_arm_z);
 
     //z-adjusted pose in base_link frame
-    g_p[2] = curr_arm_z;
+    g_p[0] = curr_arm_z;
     g_R = g_quat.matrix();
 
     ROS_INFO_STREAM("Home pose is at x: "

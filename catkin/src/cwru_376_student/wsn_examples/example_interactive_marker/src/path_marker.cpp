@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     // create an interactive marker for our server
     visualization_msgs::InteractiveMarker int_marker;
     // later, change the reference frame to the "map" frame
-    int_marker.header.frame_id = "map"; // the repuference frame for pose coordinates
+    int_marker.header.frame_id = "odom"; // the repuference frame for pose coordinates
     int_marker.name = "path_marker"; //name the marker
     int_marker.description = "Interactive Marker";
 
@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     /** specify/push-in the origin for this marker */
     temp_point_start.x = 0.38; 
     temp_point_start.y = 0.0;
-    temp_point_start.z = 2;
+    temp_point_start.z = 0.5;
     //sphere_marker.points.push_back(temp_point_start);
     //sphere_marker.color.r = 1.0; // make this marker red
     //sphere_marker.color.g = 0.0;

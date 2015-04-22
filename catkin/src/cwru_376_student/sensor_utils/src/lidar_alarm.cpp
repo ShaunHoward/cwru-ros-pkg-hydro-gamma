@@ -4,7 +4,7 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/Bool.h>
 
-const double MIN_SAFE_DISTANCE = 0.5; // set alarm if anything is within 0.5m of the front of robot
+const double MIN_SAFE_DISTANCE = 1.0128; // set alarm if anything is within 0.5m of the front of robot
 
 //Values that are utilized for laser callback
 float closest_ping = 0.0;
@@ -76,17 +76,25 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         range_min_ = laser_scan.range_min;
         range_max_ = laser_scan.range_max;
 
-        //find the indices to start and stop checking pings from lidar at
-        min_ping_index = (int) abs(start_min_angle - angle_min_) / angle_increment_; //159
-        max_ping_index = (int) (end_max_angle + 1.5 * abs(angle_min_)) / angle_increment_; //477
-        ROS_INFO("LIDAR setup: min_ping_index = %i", min_ping_index);
-        ROS_INFO("LIDAR setup: max_ping_index = %i", max_ping_index);
+        // //find the indices to start and stop checking pings from lidar at
+        // min_ping_index = (int) abs(start_min_angle - angle_min_) / angle_increment_; //159
+        // max_ping_index = (int) (end_max_angle + 1.5 * abs(angle_min_)) / angle_increment_; //477
+        // ROS_INFO("LIDAR setup: min_ping_index = %i", min_ping_index);
+        // ROS_INFO("LIDAR setup: max_ping_index = %i", max_ping_index);
+
+        //changed this to get the ping straight in front of robot
+        min_ping_index = (int) abs(0.0 -angle_min_)/angle_increment_;
+        ROS_INFO("LIDAR setup: ping_index = %d", min_ping_index);
     }
 
-    //gets the closest ping distance found in range -30 degrees to 30 degrees from front, center
-    //of robot
-    closest_ping = getClosestPingDist(laser_scan.ranges, min_ping_index, max_ping_index);
-    ROS_INFO("The closest ping is: %f", closest_ping);
+    //changed this to just get the ping directly in front of the robot
+    closest_ping = laser_scan.ranges[min_ping_index];
+    ROS_INFO("ping dist in front = %f", closest_ping);
+
+    // //gets the closest ping distance found in range -30 degrees to 30 degrees from front, center
+    // //of robot
+    // closest_ping = getClosestPingDist(laser_scan.ranges, min_ping_index, max_ping_index);
+    // ROS_INFO("The closest ping is: %f", closest_ping);
 
     //sound lidar alarm if object closer than min safe distance
     if (closest_ping < MIN_SAFE_DISTANCE) {
@@ -122,7 +130,8 @@ int main(int argc, char **argv) {
     lidar_alarm_publisher_ = pub;
     ros::Publisher pub2 = nh.advertise<std_msgs::Float32>("lidar_dist", 1);
     lidar_dist_publisher_ = pub2;
-    ros::Subscriber lidar_subscriber = nh.subscribe("base_laser1_scan", 1, laserCallback); //base_laser1_scan for Jinx
+    //ros::Subscriber lidar_subscriber = nh.subscribe("base_laser1_scan", 1, laserCallback); //base_laser1_scan for Jinx
+    ros::Subscriber lidar_subscriber = nh.subscribe("scan", 1, laserCallback);
     ros::spin();
     return 0;
 }

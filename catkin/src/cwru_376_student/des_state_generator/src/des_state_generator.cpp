@@ -30,29 +30,29 @@ DesStateGenerator::DesStateGenerator(ros::NodeHandle* nodehandle, SteerVelProfil
     //not currently in a halt on the robot
     halt = false;
 
-    //transform listener is used for amcl navigation
-    tfListener_ = new tf::TransformListener;
+    // //transform listener is used for amcl navigation
+    // tfListener_ = new tf::TransformListener;
 
-    // wait to start receiving valid tf transforms between map and odom:
-    bool tferr = true;
-    //ROS_INFO("waiting for tf between map and odom...");
-    ROS_INFO("waiting for tf between base_link and odom...");
-    while (tferr) {
-        tferr = false;
-        try {
-            //try to lookup transform from target frame "odom" to source frame "map"
-            //The direction of the transform returned will be from the target_frame to the source_frame. 
-            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
-            tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
-            // tfListener_->lookupTransform("odom", "base_link", ros::Time(0), mapToOdom_);
-        } catch (tf::TransformException &exception) {
-            ROS_ERROR("%s", exception.what());
-            tferr = true;
-            ros::Duration(0.5).sleep(); // sleep for half a second
-            ros::spinOnce();
-        }
-    }
-    ROS_INFO("tf is good");
+    // // wait to start receiving valid tf transforms between map and odom:
+    // bool tferr = true;
+    // //ROS_INFO("waiting for tf between map and odom...");
+    // ROS_INFO("waiting for tf between base_link and odom...");
+    // while (tferr) {
+    //     tferr = false;
+    //     try {
+    //         //try to lookup transform from target frame "odom" to source frame "map"
+    //         //The direction of the transform returned will be from the target_frame to the source_frame. 
+    //         //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+    //         tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+    //         // tfListener_->lookupTransform("odom", "base_link", ros::Time(0), mapToOdom_);
+    //     } catch (tf::TransformException &exception) {
+    //         ROS_ERROR("%s", exception.what());
+    //         tferr = true;
+    //         ros::Duration(0.5).sleep(); // sleep for half a second
+    //         ros::spinOnce();
+    //     }
+    // }
+    // ROS_INFO("tf is good");
   //  from now on, tfListener will keep track of transforms
 
     //creates subscribers necessary to generate desired states
@@ -313,47 +313,47 @@ double DesStateGenerator::compute_heading_from_v1_v2(Eigen::Vector2d v1, Eigen::
  */
 geometry_msgs::PoseStamped DesStateGenerator::map_to_odom_pose(geometry_msgs::PoseStamped map_pose) {
  //   to use tf, need to convert coords from a geometry_msgs::Pose into a tf::Point
-    tf::Point tf_map_goal;
+   //  tf::Point tf_map_goal;
     
-    //fill in the data members of this tf::Point
-    tf_map_goal.setX(map_pose.pose.position.x); 
-    tf_map_goal.setY(map_pose.pose.position.y);
-    tf_map_goal.setZ(map_pose.pose.position.z);
+   //  //fill in the data members of this tf::Point
+   //  tf_map_goal.setX(map_pose.pose.position.x); 
+   //  tf_map_goal.setY(map_pose.pose.position.y);
+   //  tf_map_goal.setZ(map_pose.pose.position.z);
     
-    //another tf::Point for result
-    tf::Point tf_odom_goal;
+   //  //another tf::Point for result
+   //  tf::Point tf_odom_goal;
     
-    // and we'll convert back to a geometry_msgs::Pose to return our result
-    geometry_msgs::PoseStamped odom_pose; 
-    const geometry_msgs::PoseStamped c_map_pose = map_pose;
-    ROS_INFO("new subgoal: goal in map pose is (x,y) = (%f, %f)", map_pose.pose.position.x, map_pose.pose.position.y);
+   //  // and we'll convert back to a geometry_msgs::Pose to return our result
+   //  geometry_msgs::PoseStamped odom_pose; 
+   //  const geometry_msgs::PoseStamped c_map_pose = map_pose;
+   //  ROS_INFO("new subgoal: goal in map pose is (x,y) = (%f, %f)", map_pose.pose.position.x, map_pose.pose.position.y);
 
-    //now, use the tf listener to find the transform from map coords to odom coords:
-    tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
-   // tfListener_->lookupTransform("odom", "base_link", ros::Time(0), mapToOdom_);
+   //  //now, use the tf listener to find the transform from map coords to odom coords:
+   //  tfListener_->lookupTransform("odom", "map", ros::Time(0), mapToOdom_);
+   // // tfListener_->lookupTransform("odom", "base_link", ros::Time(0), mapToOdom_);
     
-    //here's one way to transform: operator "*" defined for class tf::Transform
-    tf_odom_goal = mapToOdom_*tf_map_goal; 
-    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)", tf_odom_goal.x(), tf_odom_goal.y());
+   //  //here's one way to transform: operator "*" defined for class tf::Transform
+   //  tf_odom_goal = mapToOdom_*tf_map_goal; 
+   //  ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)", tf_odom_goal.x(), tf_odom_goal.y());
 
-    //must update the time stamp of the next map pose
-    map_pose.header.stamp = ros::Time::now();
+   //  //must update the time stamp of the next map pose
+   //  map_pose.header.stamp = ros::Time::now();
 
-    //let's transform the map_pose goal point into the odom frame:
-    tfListener_->transformPose("odom", map_pose, odom_pose);
-    //tf::TransformListener tfl;
-    //tfl.transformPoint("odom",c_map_pose,odom_pose);
-    //tfl.transformPose()
-    ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)", odom_pose.pose.position.x, odom_pose.pose.position.y);
-    ROS_INFO("odom_pose frame id: ");
+   //  //let's transform the map_pose goal point into the odom frame:
+   //  tfListener_->transformPose("odom", map_pose, odom_pose);
+   //  //tf::TransformListener tfl;
+   //  //tfl.transformPoint("odom",c_map_pose,odom_pose);
+   //  //tfl.transformPose()
+   //  ROS_INFO("new subgoal: goal in odom pose is (x,y) = (%f, %f)", odom_pose.pose.position.x, odom_pose.pose.position.y);
+   //  ROS_INFO("odom_pose frame id: ");
 
-    std::cout << odom_pose.header.frame_id << std::endl;
-    if (DEBUG_MODE) {
-        std::cout << "DEBUG: enter 1: ";
-        std::cin>>ans;
-    }
-    return odom_pose;
-  //    return map_pose;
+   //  std::cout << odom_pose.header.frame_id << std::endl;
+   //  if (DEBUG_MODE) {
+   //      std::cout << "DEBUG: enter 1: ";
+   //      std::cin>>ans;
+   //  }
+   //  return odom_pose;
+      return map_pose;
 }
 
 /**

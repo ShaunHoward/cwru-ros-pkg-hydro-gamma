@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     ros::Rate sleep_timer(50);
 
     vertex.header.stamp = ros::Time::now(); // look up the time and put it in the header; use same time stamp for all vertices in this path
-    vertex.header.frame_id = "map";
+    vertex.header.frame_id = "odom";
 //vertex.header.frame_id = "map"; // specify this, so tf will know how to transform it
 
     // fill in the interesting data: (x,y) and phi = location and heading
@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
                 return 1;
             }
          } 
-      //  sleep_timer.sleep();
+        sleep_timer.sleep();
     }
     // if (client.call(path_message)) {
     //     ROS_INFO("got ack from server");
