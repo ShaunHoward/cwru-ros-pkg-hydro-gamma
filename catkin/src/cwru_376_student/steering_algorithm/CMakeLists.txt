@@ -117,14 +117,16 @@ include_directories(
 
 ## Declare a cpp executable
 # add_executable(steering_algorithm_node src/steering_algorithm_node.cpp)
-cs_add_executable(steering_algorithm src/steering_algorithm.cpp)
+cs_add_executable(steering_algorithm_abby src/steering_algorithm_abby.cpp)
+cs_add_executable(steering_algorithm_jinx src/steering_algorithm_jinx.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(steering_algorithm_node steering_algorithm_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(steering_algorithm steer_vel_profiler)
+ target_link_libraries(steering_algorithm_abby steer_vel_profiler)
+ target_link_libraries(steering_algorithm_jinx steer_vel_profiler)
 
 #############
 ## Install ##

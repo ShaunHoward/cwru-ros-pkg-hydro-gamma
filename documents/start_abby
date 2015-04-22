@@ -8,6 +8,7 @@ ABBY arm run:
 6. rosrun irb120_IM_interface irb120_IM_interface joint_states:=
 abby/joint_states
 7. In rviz, move the 6-DOF marker to a desired pose for the tool flange
+NOTE: Red axis controls where the flange moves to, so the red axis must point up and down for the marker
 8. rosservice call move_trigger 1
 
 ABBY Gazebo model:
