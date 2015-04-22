@@ -15,6 +15,9 @@ void processFeedback(
     ROS_INFO_STREAM(feedback->marker_name << " is now at "
             << feedback->pose.position.x << ", " << feedback->pose.position.y
             << ", " << feedback->pose.position.z);
+        ROS_INFO_STREAM(feedback->marker_name << " is now at quat x:"
+            << feedback->pose.orientation.x << ", y:" << feedback->pose.orientation.y
+            << ", z:" << feedback->pose.orientation.z << ", w:" << feedback->pose.orientation.w);
     ROS_INFO_STREAM("reference frame is: "<<feedback->header.frame_id);
 }
 
@@ -206,6 +209,12 @@ int main(int argc, char** argv) {
     int_marker.pose.position.x = temp_point_start.x;
     int_marker.pose.position.y = temp_point_start.y;
     int_marker.pose.position.z = temp_point_start.z;
+
+    //set an initial rotation in terms of the arm's coordinate frame (we want to move up and down mostly)
+    int_marker.pose.orientation.x = 2.02697e-09;
+    int_marker.pose.orientation.y = 0.711434;
+    int_marker.pose.orientation.z = 2.68796e-07;
+    int_marker.pose.orientation.w = 0.702753;
     
     // add the interactive marker to our collection &
     // tell the server to call processFeedback() when feedback arrives for it

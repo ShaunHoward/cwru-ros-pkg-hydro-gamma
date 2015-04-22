@@ -21,6 +21,9 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 
+// this is a pre-defined service message, contained in shared "cwru_srv" package
+#include <cwru_srv/simple_int_service_message.h> 
+
 //callback to subscribe to marker state
 Eigen::Vector3d g_p;
 Vectorq6x1 g_q_state;
@@ -30,6 +33,15 @@ Eigen::Quaterniond g_quat;
 Eigen::Matrix3d g_R;
 Eigen::Affine3d g_A_flange_desired;
 bool g_trigger = false;
+
+int g_fit_z = -1;
+bool lower_trigger = false;
+double curr_arm_z = 0.0;
+
+//define some processing modes; set these interactively via service
+const int FINE = 0;
+const int FINER = 1;
+const int FINEST = 2;
 
 //have a tolerance on the goal pose position values
 const double JOINT_ERR_TOL = 0.1f;
@@ -133,6 +145,22 @@ bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_
     return true;
 }
 
+/**
+ * Use this service to set processing modes interactively.
+ */
+bool lowerService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response) {
+    ROS_INFO("mode select service callback activated");
+    
+    // boring, but valid response info
+    response.resp = true; 
+    g_fit_z = request.req;
+    
+    //signal that we received a request; trigger a response
+    lower_trigger = true; 
+    cout << "Lower mode set to: " << g_fit_z << endl;
+    return true;
+}
+
 //command robot to move to "qvec" using a trajectory message, sent via ROS-I
 
 void stuff_trajectory(Vectorq6x1 qvec, trajectory_msgs::JointTrajectory &new_trajectory) {
@@ -223,9 +251,9 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
     cout << "R: " << endl;
     cout << g_R << endl;
 
-    Eigen::Affine3d A_flange_des_DH;
-    A_flange_des_DH = g_A_flange_desired;
-    A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
+ //   Eigen::Affine3d A_flange_des_DH;
+  //  A_flange_des_DH = g_A_flange_desired;
+   // A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
 }
 
 /**
@@ -256,10 +284,49 @@ bool isAtGoal(Vectorq6x1 qvec, std_msgs::Bool goalMessage, ros::Publisher goalPu
     return true;
 }
 
-//Set the goal pose z to the new calculated arm z coordinate 
+// //Set the goal pose z to the new calculated arm z coordinate 
 
-void armZCB(const std_msgs::Float32::ConstPtr& arm_z) {
-    g_p[2] = arm_z->data;
+// void armZCB(const std_msgs::Float32::ConstPtr& arm_z) {
+//     g_p[2] = arm_z->data;
+// }
+
+void lower_arm(){
+
+    //the current arm z is the 3rd value in the position vector
+    curr_arm_z = g_p[2];
+
+    ROS_INFO("lower_trigger enabled");
+    lower_trigger = false; // reset the trigger
+    
+    //switch to fit according to closeness of flange to can
+    //0 for fine, 1 for finer, 2 for finest
+    switch (g_fit_z) {
+        case FINE:
+            curr_arm_z -= .1;
+            break;
+        case FINER:
+            curr_arm_z -= .01;
+            break;
+        case FINEST:
+            curr_arm_z -= .001;
+            break;
+    }
+    ROS_INFO("Modified arm z is: %f", curr_arm_z);
+
+    //z-adjusted pose in base_link frame
+    g_p[2] = curr_arm_z;
+    g_R = g_quat.matrix();
+
+    ROS_INFO_STREAM("Home pose is at x: "
+            << g_p[0] << ", y: " << g_p[1]
+            << ", z: " << g_p[2] << ", quatx: " << g_quat.x()
+            << ", quaty: " << g_quat.y() << ", quatz: " << g_quat.z() << ", quatw: " << g_quat.w());
+
+    g_A_flange_desired.translation() = g_p;
+    g_A_flange_desired.linear() = g_R;
+    cout << "g_p: " << g_p.transpose() << endl;
+    cout << "R: " << endl;
+    cout << g_R << endl;
 }
 
 int main(int argc, char** argv) {
@@ -279,8 +346,8 @@ int main(int argc, char** argv) {
     ros::Subscriber sub_js = nh.subscribe("/abby/joint_states", 1, jointStateCB);
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
     ros::ServiceServer service = nh.advertiseService("move_trigger", triggerService);
-    // ros::Subscriber sub_z = nh.subscribe("new_arm_z", 1, armZCB);
-    ros::Publisher pub_z = nh.advertise<std_msgs::Float32>("arm_z", 1);
+    ros::ServiceServer lower_service = nh.advertiseService("lower_trigger", lowerService);
+   // ros::Publisher pub_z = nh.advertise<std_msgs::Float32>("arm_z", 1);
 
     Eigen::Vector3d p;
     Eigen::Vector3d n_des, t_des, b_des;
@@ -354,12 +421,16 @@ int main(int argc, char** argv) {
             //  g_trigger = true;
         }
 
-        if (first || g_trigger){ //|| !isAtGoal(qvec, goalMessage, goalPub)) {
+        if (first || g_trigger || lower_trigger){ //|| !isAtGoal(qvec, goalMessage, goalPub)) {
             //if (g_trigger) {
             //no longer on the first call
             first = false;
-            // reset the trigger
+            // reset the triggers
             g_trigger = false;
+
+            if (lower_trigger){
+                lower_arm();
+            }
 
             //is this point reachable?
             A_flange_des_DH = g_A_flange_desired;

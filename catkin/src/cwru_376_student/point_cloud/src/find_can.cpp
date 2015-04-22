@@ -424,8 +424,6 @@ void copy_cloud(PointCloud<pcl::PointXYZ>::Ptr inputCloud, vector<int> &indices,
     }
 }
 
-
-
 /**
  * Given a cloud, identify which points are within z_eps of z_nom; put these point indices in "indices".
  * If the cloud has been rotated such that we expect a plane with normals (0,0,1) and offset z_nom,
@@ -565,11 +563,6 @@ void compute_radial_error(PointCloud<pcl::PointXYZ>::Ptr inputCloud, std::vector
     cout<<"E = "<<E<<endl;    
     cout<<"dE/dCx = "<<dEdCx<<"; dEdCy = "<<dEdCy<<endl;
 }
-
-//void publishCylinderOrigin(){
-//    
-//
-//}
 
 int main(int argc, char** argv) {
     // Do some initialization here
