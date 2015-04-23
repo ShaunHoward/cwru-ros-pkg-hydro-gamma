@@ -147,6 +147,8 @@ int main(int argc, char** argv) {
     int_marker.pose.position.x = temp_point_start.x;
     int_marker.pose.position.y = temp_point_start.y;
     int_marker.pose.position.z = temp_point_start.z;
+    int_marker.pose.orientation.w = 0;
+    int_marker.pose.orientation.z = 0;
     
     // add the interactive marker to our collection &
     // tell the server to call processFeedback() when feedback arrives for it

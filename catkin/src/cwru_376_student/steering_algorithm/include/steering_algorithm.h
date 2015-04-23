@@ -37,7 +37,8 @@
 
 //speed and omega gains
 //accounts for the heading error in odom vs des state
-const double K_PHI = .1; // control gains for steering
+//const double K_PHI = .1; // control gains for steering Jinx
+const double K_PHI = .2; // control gains for steering Abby
 //accounts for the displacement error in odom vs des state
 const double K_DISP = 3.0;
 //accounts for the trip distance error in odom vs des state
@@ -46,15 +47,15 @@ const double K_TRIP_DIST = .5;
 const double K_LAT = .08;
 
 //Tolerance values for each type of error calculated during steering of the robot
-const double LAT_ERR_TOL = 0.05;
-const double HEAD_ERR_TOL = 0.02;
-const double TRIP_ERR_TOL = 0.3;
+const double LAT_ERR_TOL = 0.03; //0.05 for Jinx
+const double HEAD_ERR_TOL = 0.01; //0.02 for Jinx
+const double TRIP_ERR_TOL = 0.2; //0.3 for Jinx
 
 // define a class, including a constructor, member variables and member functions
 class SteeringController
 {
 public:
-    //"main" will need to instantiate a ROS nodehandle, then pass it to the constructor
+    //"main" will need to instantiate a ROS  nodehandle, then pass it to the constructor
     SteeringController(ros::NodeHandle* nodehandle); 
     
     //uses odom state and desired state to compute twist command, and publish it

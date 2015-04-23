@@ -215,9 +215,9 @@ void SteeringController::my_clever_steering_algorithm() {
     
     //Account for the heading error and left odom drift.
     if (heading_err < -HEAD_ERR_TOL) {
-	controller_omega += 2 * K_PHI * heading_err;
+	   controller_omega += 2 * K_PHI * heading_err;
     } else if (heading_err > HEAD_ERR_TOL){
-	controller_omega += K_PHI * heading_err;
+	   controller_omega += K_PHI * heading_err;
     }
     
     //Acount for lateral error

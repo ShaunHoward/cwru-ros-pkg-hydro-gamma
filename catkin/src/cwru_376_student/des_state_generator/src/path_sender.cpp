@@ -28,7 +28,20 @@
 #include <cwru_srv/path_service_message.h>
 
 bool path_trigger = false;
+bool first = true;
 double marker_x,marker_y,marker_phi;
+double last_phi = 0.0;
+double d_phi = 0.0;
+
+/**
+ * Converts a quaternion to phi values for planar motion.
+ * 
+ * @param quaternion - the quaternion to convert to a phi for planar motion
+ */
+double convertPlanarQuat2Phi(double quat_z, double quat_w) {
+    double phi = 2.0 * atan2(quat_z, quat_w); // cheap conversion from quaternion to heading for planar motion
+    return phi;
+}
 
 void pathMarkerListenerCB(
         const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
@@ -37,7 +50,7 @@ void pathMarkerListenerCB(
             << ", " << feedback->pose.position.z);
     marker_x = feedback->pose.position.x;
     marker_y = feedback->pose.position.y;
-    marker_phi = feedback->pose.orientation.z;
+    marker_phi = convertPlanarQuat2Phi(feedback->pose.orientation.z, feedback->pose.orientation.w);
 }
 
 bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response) {
@@ -59,6 +72,8 @@ geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi) {
     quaternion.w = cos(phi / 2.0);
     return (quaternion);
 }
+
+
 
 //utility to fill a Pose object from planar x,y,phi info
 geometry_msgs::Pose xyPhi2Pose(double x, double y, double phi) {
@@ -260,13 +275,23 @@ int main(int argc, char **argv) {
                 return 1;
             }
             path_message.request.path.poses.clear();
+
+            if (first){
+                last_phi = marker_phi;
+                d_phi = marker_phi;
+                first = false;
+            } else {
+                d_phi = marker_phi - last_phi;
+            }
             //push point
             x = marker_x;
             y = marker_y;
-            phi = marker_phi;
+            phi = d_phi;
             vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
             ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
             path_message.request.path.poses.push_back(vertex);
+            last_phi = marker_phi;
+
             path_trigger = false;
             if (client.call(path_message)) {
                 ROS_INFO("server successfully called for pushing path points to queue");
