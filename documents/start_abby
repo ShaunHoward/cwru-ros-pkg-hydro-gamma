@@ -16,9 +16,12 @@ ABBY Gazebo model:
 1. roscore
 2. rviz rviz
 3. roslaunch cwru_urdf abby_w_arm.launch
-4a. cd /home/smh150/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/cwru_376_student/cwru_urdf
-4b. rosrun map_server map_server startingPenMap.yaml
-4c. rosrun amcl amcl scan:=/scan
+
+//4a. cd /home/smh150/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/
+//cwru_376_student/cwru_urdf
+//4b. rosrun map_server map_server startingPenMap.yaml
+//4c. rosrun amcl amcl scan:=/scan
+
 5. rosrun des_state_generator des_state_generator
 6. rosrun des_state_generator path_sender
 7. rosrun steering_algorithm steering_algorithm

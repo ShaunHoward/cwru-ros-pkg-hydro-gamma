@@ -39,6 +39,7 @@
 //accounts for the heading error in odom vs des state
 //const double K_PHI = .1; // control gains for steering Jinx
 const double K_PHI = .2; // control gains for steering Abby
+
 //accounts for the displacement error in odom vs des state
 const double K_DISP = 3.0;
 //accounts for the trip distance error in odom vs des state
@@ -47,9 +48,10 @@ const double K_TRIP_DIST = .5;
 const double K_LAT = .08;
 
 //Tolerance values for each type of error calculated during steering of the robot
-const double LAT_ERR_TOL = 0.03; //0.05 for Jinx
-const double HEAD_ERR_TOL = 0.01; //0.02 for Jinx
-const double TRIP_ERR_TOL = 0.2; //0.3 for Jinx
+
+const double LAT_ERR_TOL = 0.05; //0.05 for Jinx, same for Abby
+const double HEAD_ERR_TOL = 0.01; //0.02 for Jinx, 0.01 for Abby
+const double TRIP_ERR_TOL = 0.2; //0.3 for Jinx, 0.2 for Abby
 
 // define a class, including a constructor, member variables and member functions
 class SteeringController
