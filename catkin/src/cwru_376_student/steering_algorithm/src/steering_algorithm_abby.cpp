@@ -210,11 +210,8 @@ void SteeringController::my_clever_steering_algorithm() {
         controller_speed += trip_dist_err;
         
         // saturate speed command at specified limits
- //       controller_speed = MAX_SPEED*sat(controller_speed/MAX_SPEED); 
+        controller_speed = MAX_SPEED*sat(controller_speed/MAX_SPEED); 
     }    
-
-    // saturate speed command at specified limits
-    controller_speed = MAX_SPEED*sat(controller_speed/MAX_SPEED); 
     
     //Account for the heading error and left odom drift.
     if (heading_err < -HEAD_ERR_TOL) {

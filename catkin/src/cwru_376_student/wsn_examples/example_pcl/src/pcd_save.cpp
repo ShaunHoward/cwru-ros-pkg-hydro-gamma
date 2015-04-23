@@ -41,22 +41,22 @@ const tf::TransformListener* tfListener_;
 tf::StampedTransform kinectToRobot; 
 
 void kinectCB(const sensor_msgs::PointCloud2ConstPtr& cloud) {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pclKinect(new PointCloud<pcl::PointXYZ>);
-    pcl::fromROSMsg(*cloud, *g_pclKinect);
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr pclKinect(new PointCloud<pcl::PointXYZ>);
+    //pcl::fromROSMsg(*cloud, *g_pclKinect);
     pcl::PointCloud<pcl::PointXYZRGB> cloud_rcvd;
     pcl::PointCloud<pcl::PointXYZRGB> cloud_points;
     
     pcl::fromROSMsg(*cloud, cloud_rcvd);
     
     try {
-        tfListener_->lookupTransform("base_link", cloud->header.frame_id, ros::Time(0), kinectToRobot);
+        tfListener_->lookupTransform("odom", cloud_rcvd.header.frame_id, ros::Time(0), kinectToRobot);
     }
     catch (tf::TransformException e) {
         ROS_ERROR("Transform Exception caught: %s",e.what());
     }
 
     pcl_ros::transformPointCloud (cloud_rcvd, cloud_points, kinectToRobot);
-    cloud_points.header.frame_id="base_link";
+    cloud_points.header.frame_id="odom";
     sensor_msgs::PointCloud2 temp_cloud;
     pcl::toROSMsg(cloud_points, temp_cloud);
     pcl::fromROSMsg(temp_cloud, *g_pclKinect);
@@ -69,6 +69,13 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "process_pcl");
     ros::NodeHandle nh;
     ros::Rate rate(2);
+
+    ROS_INFO("Waiting on a tf from kinect to robot frame");
+    tf::TransformListener tf_listener_;
+    tfListener_ = &tf_listener_;
+
+    ROS_INFO("Received a good tf");
+
     // Subscribers
     ros::Subscriber getPCLPoints = nh.subscribe<sensor_msgs::PointCloud2> ("/kinect/depth/points", 1, kinectCB);
 
