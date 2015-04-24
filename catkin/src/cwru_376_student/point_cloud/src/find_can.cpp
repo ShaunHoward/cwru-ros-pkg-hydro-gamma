@@ -82,6 +82,7 @@ const int IDENTIFY_PLANE = 1;
 const int FIND_PNTS_ABOVE_PLANE = 2;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_INIT = 3;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE = 4;
+const int TRANSFORM_TO_ROBOT = 5;
 
 //choose a tolerance for plane fitting, e.g. 1cm
 const double Z_EPS = 0.01; 
@@ -118,6 +119,60 @@ Eigen::Vector3f g_plane_origin;
 Eigen::Affine3f g_A_plane;
 double g_z_plane_nom;
 std::vector<int> g_indices_of_plane; //indices of patch that do not contain outliers 
+
+const tf::TransformListener* tfListener_;
+tf::StampedTransform kinectToRobot; 
+
+void transform_to_robot(const PointCloud<pcl::PointXYZ>::Ptr cloud_rcvd) {
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr pclKinect(new PointCloud<pcl::PointXYZ>);
+    //pcl::fromROSMsg(*cloud, *g_pclKinect);
+   // pcl::PointCloud<pcl::PointXYZRGB> cloud_rcvd;
+    pcl::PointCloud<pcl::PointXYZ> cloud_points;
+    
+    //pcl::fromROSMsg(*cloud, cloud_rcvd);
+    
+    try {
+        tfListener_->lookupTransform("base_link", cloud_rcvd->header.frame_id, ros::Time(0), kinectToRobot);
+    }
+    catch (tf::TransformException e) {
+        ROS_ERROR("Transform Exception caught: %s",e.what());
+    }
+
+    pcl_ros::transformPointCloud (*cloud_rcvd, cloud_points, kinectToRobot);
+    cloud_points.header.frame_id="base_link";
+    sensor_msgs::PointCloud2 temp_cloud;
+    pcl::toROSMsg(cloud_points, temp_cloud);
+    pcl::fromROSMsg(temp_cloud, *g_canEstimate);
+
+    try {
+        tfListener_->lookupTransform("base_link", "world", ros::Time(0), kinectToRobot);
+    }
+    catch (tf::TransformException e) {
+        ROS_ERROR("Transform Exception caught: %s",e.what());
+    }
+
+    const tf::Vector3 kinect_vector(g_cylinder_origin[0], g_cylinder_origin[1], g_cylinder_origin[2]);
+    const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "world");
+    // geometry_msgs::Vector3 v;
+    // v.x = g_cylinder_origin[0];
+    // v.y = g_cylinder_origin[1];
+    // v.z = g_cylinder_origin[2];
+    // geometry_msgs::Vector3Stamped kinect_vector;
+    // kinect_vector.vector = v;
+    // kinect_vector.vector.x = g_cylinder_origin[0];
+    // kinect_vector.vector.y = g_cylinder_origin[1];
+    // kinect_vector.vector.z = g_cylinder_origin[2];
+    //kinect_vector.header.stamp = ros::Time::now();
+
+    //const geometry_msgs::Vector3Stamped robot_vector;
+    tf::Stamped<tf::Vector3> robot_vector;
+
+    tfListener_->transformVector(string("base_link"), stamped_kinect, robot_vector);
+
+    g_cylinder_origin[0] = robot_vector.getX();
+    g_cylinder_origin[1] = robot_vector.getY();
+    g_cylinder_origin[2] = robot_vector.getZ();
+}
 
 /**
  * Use this service to set processing modes interactively.
@@ -618,7 +673,7 @@ int main(int argc, char** argv) {
 
     // have rviz display both of these topics
     ros::Publisher pubCloud = nh.advertise<sensor_msgs::PointCloud2> ("/plane_model", 1);
-    ros::Publisher pubPcdCloud = nh.advertise<sensor_msgs::PointCloud2> ("/kinect_pointcloud", 1);
+    ros::Publisher pubPcdCloud = nh.advertise<sensor_msgs::PointCloud2> ("/pcd_from_disk", 1);
     ros::Publisher pubCanZ = nh.advertise<std_msgs::Float32>("can_z", 1);
 
     // service used to interactively change processing modes
@@ -642,6 +697,13 @@ int main(int argc, char** argv) {
     double dEdCx=0.0;
     double dEdCy=0.0;
     bool tried_model_fit = false;
+
+
+    ROS_INFO("Waiting on a tf from kinect to robot frame");
+    tf::TransformListener tf_listener_;
+    tfListener_ = &tf_listener_;
+
+    ROS_INFO("Received a good tf");
  
     int ans;
     Eigen::Vector3f can_center_wrt_plane;
@@ -741,16 +803,36 @@ int main(int argc, char** argv) {
                         //set the cylinder origin to the latest optimized guess
                         g_cylinder_origin = g_A_plane*can_center_wrt_plane; 
                         A_plane_to_sensor.translation() = g_cylinder_origin;
-                        transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+                        
                         tried_model_fit = true;
                     }
-                    
+                    transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
+
+                    //transform_to_robot(g_canCloud);
+                    //copy_cloud(g_canCloud, g_display_cloud);
                     g_trigger = false;
                     break;
                     
+                case TRANSFORM_TO_ROBOT:
+                    //do point cloud transformation to base_link
+                    ROS_INFO("Transforming point cloud from kinect_pc_frame to base_link");
+                    //transform cylinder origin to robot frame
+                    A_plane_to_sensor.translation() = g_cylinder_origin;
+                    //set the cylinder origin to the latest optimized guess
+                   //g_cylinder_origin = g_A_plane*can_center_wrt_plane;
+                   // transform_to_robot(g_canCloud);
+                    
+                    
+                   // transform_cloud(g_canEstimate, A_plane_to_sensor, g_display_cloud);
+
+                    //transform_to_robot(g_canCloud);
+                    copy_cloud(g_canEstimate, g_display_cloud);
+                    g_trigger = false;
+                    break;
                 default:
                     ROS_WARN("this mode is not implemented");
             }
+
             
             // //only publish z message if we tried to fit the model
             // if(tried_model_fit){
