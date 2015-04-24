@@ -145,14 +145,14 @@ void transform_to_robot(const PointCloud<pcl::PointXYZ>::Ptr cloud_rcvd) {
     pcl::fromROSMsg(temp_cloud, *g_canEstimate);
 
     try {
-        tfListener_->lookupTransform("base_link", "world", ros::Time(0), kinectToRobot);
+        tfListener_->lookupTransform("base_link", "kinect_pc_frame", ros::Time(0), kinectToRobot);
     }
     catch (tf::TransformException e) {
         ROS_ERROR("Transform Exception caught: %s",e.what());
     }
 
     const tf::Vector3 kinect_vector(g_cylinder_origin[0], g_cylinder_origin[1], g_cylinder_origin[2]);
-    const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "world");
+    const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "kinect_pc_frame");
     // geometry_msgs::Vector3 v;
     // v.x = g_cylinder_origin[0];
     // v.y = g_cylinder_origin[1];
@@ -589,7 +589,7 @@ void make_can_cloud(PointCloud<pcl::PointXYZ>::Ptr canCloud, double r_can, doubl
             i++;
         }
     //canCloud->header = inputCloud->header;
-    canCloud->header.frame_id = "world"; 
+    canCloud->header.frame_id = "kinect_pc_frame"; 
     //canCloud->header.stamp = ros::Time::now();
     canCloud->is_dense = true;
     canCloud->width = npts;
@@ -691,7 +691,7 @@ int main(int argc, char** argv) {
             << g_cloud_from_disk->width * g_cloud_from_disk->height
             << " data points from test_pcd.pcd  " << std::endl;
 
-    g_cloud_from_disk->header.frame_id = "world"; //looks like PCD does not encode the reference frame id
+    g_cloud_from_disk->header.frame_id = "kinect_pc_frame"; //looks like PCD does not encode the reference frame id
     double z_threshold=0.0;
     double E;
     double dEdCx=0.0;
@@ -810,23 +810,23 @@ int main(int argc, char** argv) {
 
                     //transform_to_robot(g_canCloud);
                     //copy_cloud(g_canCloud, g_display_cloud);
-                    g_trigger = false;
-                    break;
+                    // g_trigger = false;
+                    // break;
                     
                 case TRANSFORM_TO_ROBOT:
                     //do point cloud transformation to base_link
                     ROS_INFO("Transforming point cloud from kinect_pc_frame to base_link");
                     //transform cylinder origin to robot frame
-                    A_plane_to_sensor.translation() = g_cylinder_origin;
+                    
                     //set the cylinder origin to the latest optimized guess
-                   //g_cylinder_origin = g_A_plane*can_center_wrt_plane;
-                   // transform_to_robot(g_canCloud);
+                    //g_cylinder_origin = g_A_plane*can_center_wrt_plane;
+                    //transform_to_robot(g_display_cloud);
+                    //A_plane_to_sensor.translation() = g_cylinder_origin;
                     
-                    
-                   // transform_cloud(g_canEstimate, A_plane_to_sensor, g_display_cloud);
+                    //transform_cloud(g_canEstimate, A_plane_to_sensor, g_display_cloud);
 
                     //transform_to_robot(g_canCloud);
-                    copy_cloud(g_canEstimate, g_display_cloud);
+                    //copy_cloud(g_canEstimate, g_display_cloud);
                     g_trigger = false;
                     break;
                 default:
