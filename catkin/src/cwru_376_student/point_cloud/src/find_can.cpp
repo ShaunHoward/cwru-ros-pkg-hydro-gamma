@@ -70,17 +70,18 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr g_cloud_transformed(new pcl::PointCloud<pcl:
 pcl::PointCloud<pcl::PointXYZ>::Ptr g_display_cloud(new pcl::PointCloud<pcl::PointXYZ>); // this cloud gets published--viewable in rviz
 pcl::PointCloud<pcl::PointXYZ>::Ptr g_pclSelect(new pcl::PointCloud<pcl::PointXYZ>); // holds published points, per Rviz tool
 pcl::PointCloud<pcl::PointXYZ>::Ptr g_canCloud(new pcl::PointCloud<pcl::PointXYZ>); // holds model for a can
+pcl::PointCloud<pcl::PointXYZ>::Ptr g_canEstimate(new pcl::PointCloud<pcl::PointXYZ>); // holds model for a can
 // PointXYZRGB would be colorized
 
 // a matrix useful for rotating the data
 Eigen::Matrix3f g_R_transform; 
 
 //define some processing modes; set these interactively via service
-const int IDENTIFY_PLANE = 0;
-const int FIND_PNTS_ABOVE_PLANE = 1;
-const int COMPUTE_CYLINDRICAL_FIT_ERR_INIT = 2;
-const int COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE = 3;
-const int FIND_ON_TABLE = 4;
+const int FIND_ON_TABLE = 0;
+const int IDENTIFY_PLANE = 1;
+const int FIND_PNTS_ABOVE_PLANE = 2;
+const int COMPUTE_CYLINDRICAL_FIT_ERR_INIT = 3;
+const int COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE = 4;
 
 //choose a tolerance for plane fitting, e.g. 1cm
 const double Z_EPS = 0.01; 
@@ -479,6 +480,35 @@ void filter_cloud_above_z(PointCloud<pcl::PointXYZ>::Ptr inputCloud, double z_th
 }
 
 /**
+ * Given a cloud, identify which points are ABOVE z_threshold; put these point indices in "indices".
+ * This can be useful, e.g., for finding objects "on" a table.
+ */
+void filter_cloud_above_z(PointCloud<pcl::PointXYZ>::Ptr inputCloud, PointCloud<pcl::PointXYZ>::Ptr outputCloud, double z_threshold) {
+    int npts = inputCloud->points.size();
+    Eigen::Vector3f pt;
+    //double dz;
+    int ans;
+    int curr_index = 0;
+
+    //takes approx 10 points from center of the cloud above z
+    int mid_lower = (npts / 2) - 5;
+    int mid_upper = (npts / 2) + 5;
+    for (int i = 0; i < npts; ++i) {
+        pt = inputCloud->points[i].getVector3fMap();
+        //cout<<"pt: "<<pt.transpose()<<endl;
+        //dz = pt[2] - z_threshold;
+        //only take points from near the middle of the point cloud
+        if (pt[2] > z_threshold && mid_lower <= i && i <= mid_upper) {
+            outputCloud->points.push_back(inputCloud->points[i]);
+            //cout<<"dz = "<<dz<<"; saving this point...enter 1 to continue: ";
+            //cin>>ans;
+        }
+    }
+    int n_extracted = outputCloud->points.size();
+    cout << " number of points extracted = " << n_extracted << endl;
+}
+
+/**
  * This is a pretty specific function, but useful for illustrating how to create a point cloud that
  * can be visualized in rviz.
  * Create a cloud to visualize a can of radius r, height h.
@@ -621,42 +651,49 @@ int main(int argc, char** argv) {
     Eigen::Vector3f dEdC;
     Eigen::Vector3f dEdC_norm;
     std_msgs::Float32 canZMessage;
-    
+
     while (ros::ok()) {
         if (g_trigger) {
             ROS_INFO("g_trigger enabled");
-            g_trigger = false; // reset the trigger
 
             // what we do here depends on our mode; mode is settable via a service
             switch (g_pcl_process_mode) { 
+                case FIND_ON_TABLE:
+                    ROS_INFO("Executing all modes.");
+
                 case IDENTIFY_PLANE:
-                    ROS_INFO("MODE 0: identifying plane based on patch selection...");
+                    ROS_INFO("MODE 1: identifying plane based on patch selection...");
                     
                     // results in g_display_cloud (in orig frame), as well as 
                     find_plane(g_plane_params, g_indices_of_plane); 
                     //g_cloud_transformed (rotated version of original cloud); g_indices_of_plane indicate points on the plane
-                    break;
                     
                 case FIND_PNTS_ABOVE_PLANE:
-                    ROS_INFO("filtering for points above identified plane");
+                    ROS_INFO("MODE 2: filtering for points above identified plane");
+
                     // w/ affine transform, z-coord of points on plane (in plane frame) should be ~0
-                    z_threshold = 0.0+Z_EPS; //g_plane_params[3] + Z_EPS;
+                    z_threshold = 0.0 + Z_EPS; //g_plane_params[3] + Z_EPS;
+
                     ROS_INFO("filtering for points above %f ", z_threshold);
 
                     filter_cloud_above_z(g_cloud_transformed, z_threshold, indices_pts_above_plane);
+
                     //extract these points--but in original, non-rotated frame; useful for display
                     copy_cloud(g_cloud_from_disk, indices_pts_above_plane, g_display_cloud);
-                    break;
                     
                 case COMPUTE_CYLINDRICAL_FIT_ERR_INIT:
+                    ROS_INFO("MODE 3: Creating centroid and a can model for the cloud");
+                    //g_cylinder_origin = computeCentroid(g_canEstimate);
 
-                    ROS_INFO("creating a can cloud");
+                    //the cylinder origin will temporarily be the centroid of the points about the plane
+                    g_cylinder_origin = computeCentroid(g_cloud_from_disk, indices_pts_above_plane);
+                    
                     make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
 
-                    // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
-                    for (int i=0;i<3;i++) {
-                        g_cylinder_origin[i] = g_patch_centroid[i];
-                    }
+                    // // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
+                    // for (int i=0;i<3;i++) {
+                    //     g_cylinder_origin[i] = g_patch_centroid[i];
+                    // }
                     
                     //walk back from the normal of the surface by one radius
                     //to get near the center of the object
@@ -666,7 +703,7 @@ int main(int argc, char** argv) {
                     //has z-height fixed based on plane height
                     g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
                    
-                    // now, cast this into the rotated coordinate frame:
+                    //now, cast this into the rotated coordinate frame:
                     can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin; 
 
                     cout<<"initial guess for cylinder fit: "<<endl;
@@ -678,9 +715,10 @@ int main(int argc, char** argv) {
                     A_plane_to_sensor.linear() = g_R_transform;
                     A_plane_to_sensor.translation() = g_cylinder_origin;
                     transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
-                    break;
                     
-                case COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE:        
+                case COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE:    
+
+                    //Minimize the error between the model and the point cloud can origin    
                     while (E > FIT_TOL){
                         cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
                           
@@ -696,7 +734,7 @@ int main(int argc, char** argv) {
                         can_center_wrt_plane[0] -= 0.001 * dEdC_norm[0];
                         can_center_wrt_plane[1] -= 0.001 * dEdC_norm[1];
 
-                        ROS_INFO("attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
+                        ROS_INFO(" MODE 4: attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
                         compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
                         cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
 
@@ -706,23 +744,20 @@ int main(int argc, char** argv) {
                         transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
                         tried_model_fit = true;
                     }
-                    break;
                     
-                case FIND_ON_TABLE:
-                    ROS_INFO("filtering for objects on most recently defined plane: not implemented yet");
-                    //really, this is steps 0,1,2 and 3, above
+                    g_trigger = false;
                     break;
                     
                 default:
                     ROS_WARN("this mode is not implemented");
             }
             
-            //only publish z message if we tried to fit the model
-            if(tried_model_fit){
-                //the z-coordinate is what we care about
-                canZMessage.data = g_cylinder_origin[2];
-                pubCanZ.publish(canZMessage);
-            }
+            // //only publish z message if we tried to fit the model
+            // if(tried_model_fit){
+            //     //the z-coordinate is what we care about
+            //     canZMessage.data = g_cylinder_origin[2];
+            //     pubCanZ.publish(canZMessage);
+            // }
         }
 
         //keep displaying the original scene
