@@ -14,6 +14,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h> 
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Vector3.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -153,10 +154,7 @@ void transform_to_robot(const PointCloud<pcl::PointXYZ>::Ptr cloud_rcvd) {
 
     const tf::Vector3 kinect_vector(g_cylinder_origin[0], g_cylinder_origin[1], g_cylinder_origin[2]);
     const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "kinect_pc_frame");
-    // geometry_msgs::Vector3 v;
-    // v.x = g_cylinder_origin[0];
-    // v.y = g_cylinder_origin[1];
-    // v.z = g_cylinder_origin[2];
+
     // geometry_msgs::Vector3Stamped kinect_vector;
     // kinect_vector.vector = v;
     // kinect_vector.vector.x = g_cylinder_origin[0];
@@ -524,7 +522,7 @@ void filter_cloud_above_z(PointCloud<pcl::PointXYZ>::Ptr inputCloud, double z_th
         pt = inputCloud->points[i].getVector3fMap();
         //cout<<"pt: "<<pt.transpose()<<endl;
         //dz = pt[2] - z_threshold;
-        if (pt[2] > z_threshold) {
+        if (pt[2] < H_CYLINDER && pt[2] > z_threshold) {
             indices.push_back(i);
             //cout<<"dz = "<<dz<<"; saving this point...enter 1 to continue: ";
             //cin>>ans;
@@ -674,7 +672,7 @@ int main(int argc, char** argv) {
     // have rviz display both of these topics
     ros::Publisher pubCloud = nh.advertise<sensor_msgs::PointCloud2> ("/plane_model", 1);
     ros::Publisher pubPcdCloud = nh.advertise<sensor_msgs::PointCloud2> ("/pcd_from_disk", 1);
-    ros::Publisher pubCanZ = nh.advertise<std_msgs::Float32>("can_z", 1);
+    ros::Publisher pubCanCoords = nh.advertise<geometry_msgs::Vector3>("can_coords", 1);
 
     // service used to interactively change processing modes
     ros::ServiceServer service = nh.advertiseService("process_mode", modeService);
@@ -712,11 +710,17 @@ int main(int argc, char** argv) {
     //use these for fixing errors in registration of can cloud
     Eigen::Vector3f dEdC;
     Eigen::Vector3f dEdC_norm;
-    std_msgs::Float32 canZMessage;
+
+    //number of error fit revision iterations
+    int numIter = 0;
+
+    //track the origin of the can
+    geometry_msgs::Vector3 can_origin;
 
     while (ros::ok()) {
         if (g_trigger) {
             ROS_INFO("g_trigger enabled");
+            numIter = 0;
 
             // what we do here depends on our mode; mode is settable via a service
             switch (g_pcl_process_mode) { 
@@ -752,7 +756,7 @@ int main(int argc, char** argv) {
                     
                     make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
 
-                    // // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
+                    // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
                     // for (int i=0;i<3;i++) {
                     //     g_cylinder_origin[i] = g_patch_centroid[i];
                     // }
@@ -779,9 +783,9 @@ int main(int argc, char** argv) {
                     transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
                     
                 case COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE:    
-
+                    
                     //Minimize the error between the model and the point cloud can origin    
-                    while (E > FIT_TOL){
+                    while (E > FIT_TOL && numIter < 100){
                         cout<<"current cx,cy = "<<can_center_wrt_plane[0]<<", "<<can_center_wrt_plane[1]<<endl;
                           
                         dEdC[0] = dEdCx;
@@ -805,6 +809,7 @@ int main(int argc, char** argv) {
                         A_plane_to_sensor.translation() = g_cylinder_origin;
                         
                         tried_model_fit = true;
+                        numIter++;
                     }
                     transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
 
@@ -814,8 +819,15 @@ int main(int argc, char** argv) {
                     // break;
                     
                 case TRANSFORM_TO_ROBOT:
+
+                    //publish the origin of the can for the arm to subscribe to
+                    can_origin.x = g_cylinder_origin[0];
+                    can_origin.y = g_cylinder_origin[1];
+                    can_origin.z = g_cylinder_origin[2] + H_CYLINDER; //adjust origin to top of can
+                    ROS_INFO("Publishing the can origin: x: %f, y: %f, z %f", can_origin.x, can_origin.y, can_origin.z);
+                    pubCanCoords.publish(can_origin);
                     //do point cloud transformation to base_link
-                    ROS_INFO("Transforming point cloud from kinect_pc_frame to base_link");
+                    //ROS_INFO("Transforming point cloud from kinect_pc_frame to base_link");
                     //transform cylinder origin to robot frame
                     
                     //set the cylinder origin to the latest optimized guess
@@ -831,15 +843,11 @@ int main(int argc, char** argv) {
                     break;
                 default:
                     ROS_WARN("this mode is not implemented");
+                    break;
             }
 
             
-            // //only publish z message if we tried to fit the model
-            // if(tried_model_fit){
-            //     //the z-coordinate is what we care about
-            //     canZMessage.data = g_cylinder_origin[2];
-            //     pubCanZ.publish(canZMessage);
-            // }
+
         }
 
         //keep displaying the original scene

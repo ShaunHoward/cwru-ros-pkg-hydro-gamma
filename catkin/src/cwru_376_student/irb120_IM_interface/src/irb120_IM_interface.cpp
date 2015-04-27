@@ -46,6 +46,9 @@ const int FINEST = 2;
 //have a tolerance on the goal pose position values
 const double JOINT_ERR_TOL = 0.1f;
 
+//account for the gripper height
+const double GRIPPER_HEIGHT = 0.15f;
+
 tf::TransformListener* g_tfListener;
 tf::StampedTransform g_armlink1_wrt_baseLink;
 geometry_msgs::PoseStamped g_marker_pose_in;
@@ -87,7 +90,7 @@ void markerListenerCB(
     //        g_R = g_quat.matrix();
 }
 
-void alignWithCanCB(const geometry_msgs::Pose feedback) {
+void alignWithCanCB(const geometry_msgs::Vector3 feedback) {
     //    ROS_INFO_STREAM(feedback->marker_name << " is now at "
     //            << feedback->pose.position.x << ", " << feedback->pose.position.y
     //            << ", " << feedback->pose.position.z);
@@ -109,15 +112,18 @@ void alignWithCanCB(const geometry_msgs::Pose feedback) {
     //                << feedback->pose.position.x << ", y: " << feedback->pose.position.y
     //                << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
     //                << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
-    //copy to global vars:
-    g_p[0] = feedback.position.x;
-    g_p[1] = feedback.position.y;
-    g_p[2] = feedback.position.z;
-    g_quat.x() = feedback.orientation.x;
-    g_quat.y() = feedback.orientation.y;
-    g_quat.z() = feedback.orientation.z;
-    g_quat.w() = feedback.orientation.w;
-    g_R = g_quat.matrix();
+    
+    //copy to global vector and adjust for gripper height
+    g_p[0] = feedback.x;
+    g_p[1] = feedback.y;
+    g_p[2] = feedback.z + GRIPPER_HEIGHT;
+    ROS_INFO("The flange is set to go to: x: %f, y: %f, z: %f", g_p[0], g_p[1], g_p[2]);
+
+    g_A_flange_desired.translation() = g_p;
+    g_A_flange_desired.linear() = g_R;
+    cout << "g_p: " << g_p.transpose() << endl;
+    cout << "R: " << endl;
+    cout << g_R << endl;
 }
 
 void jointStateCB(const sensor_msgs::JointStatePtr &js_msg) {
@@ -345,7 +351,14 @@ int main(int argc, char** argv) {
     ROS_INFO("setting up subscribers ");
     ros::Subscriber sub_js = nh.subscribe("/abby/joint_states", 1, jointStateCB);
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
+
+    //must determine can coordinates in order to move to above can
+    ros::Subscriber sub_can_coords = nh.subscribe("can_coords", 1, alignWithCanCB);
+
+
     ros::ServiceServer service = nh.advertiseService("move_trigger", triggerService);
+    
+    //service for lowering arm in step heights, from big to small
     ros::ServiceServer lower_service = nh.advertiseService("lower_trigger", lowerService);
    // ros::Publisher pub_z = nh.advertise<std_msgs::Float32>("arm_z", 1);
 
