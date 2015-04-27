@@ -40,6 +40,7 @@ add_service_files(
   path_service_message.srv
   simple_bool_service_message.srv
   simple_int_service_message.srv
+  simple_float_service_message.srv
   )
 
 ## Generate actions in the 'action' folder
