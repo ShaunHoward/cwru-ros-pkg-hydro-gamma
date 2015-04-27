@@ -44,15 +44,20 @@ const int FINER = 1;
 const int FINEST = 2;
 
 //have a tolerance on the goal pose position values
-const double JOINT_ERR_TOL = 0.1f;
+const double JOINT_ERR_TOL = 0.1;
 
 //account for the gripper height
-const double GRIPPER_HEIGHT = 0.15f;
+const double GRIPPER_HEIGHT = 0.25;
+
+// estimated height of cylinder
+const double H_CYLINDER = 0.3; 
 
 tf::TransformListener* g_tfListener;
 tf::StampedTransform g_armlink1_wrt_baseLink;
 geometry_msgs::PoseStamped g_marker_pose_in;
 geometry_msgs::PoseStamped g_marker_pose_wrt_arm_base;
+geometry_msgs::PoseStamped g_can_pose_in;
+geometry_msgs::PoseStamped g_can_pose_wrt_arm_base;
 
 using namespace std;
 
@@ -113,25 +118,58 @@ void alignWithCanCB(const geometry_msgs::Vector3 feedback) {
     //                << ", z: " << feedback->pose.position.z << ", quatx: " << feedback->pose.orientation.x 
     //                << ", quaty: " << feedback->pose.orientation.y << ", quatz: " << feedback->pose.orientation.z << ", quatw: " << feedback->pose.orientation.w);
     
-    //copy to global vector and adjust for gripper height
-    g_p[0] = feedback.x;
-    g_p[1] = feedback.y;
-    g_p[2] = feedback.z + GRIPPER_HEIGHT;
-    ROS_INFO("The flange is set to go to: x: %f, y: %f, z: %f", g_p[0], g_p[1], g_p[2]);
+    //ROS_INFO_STREAM("can frame_id is " << feedback.header.frame_id);
+    ROS_INFO("Can origin is at: x: %f, y: %f, z: %f", feedback.x, feedback.y, feedback.z);
+    g_can_pose_in.header.stamp = ros::Time::now();
+    g_can_pose_in.header.frame_id = "kinect_pc_frame";
+    g_can_pose_in.pose.position.x = feedback.x;
+    g_can_pose_in.pose.position.y = feedback.y;
+    g_can_pose_in.pose.position.z = feedback.z;
 
-    g_A_flange_desired.translation() = g_p;
-    g_A_flange_desired.linear() = g_R;
-    cout << "g_p: " << g_p.transpose() << endl;
-    cout << "R: " << endl;
-    cout << g_R << endl;
+    //quat x:0.672401, y:0.191158, z:0.67706, w:0.230054
+    g_can_pose_in.pose.orientation.x = 0.672401;
+    g_can_pose_in.pose.orientation.y = 0.191158;
+    g_can_pose_in.pose.orientation.z = 0.67706;
+    g_can_pose_in.pose.orientation.w = 0.230054;
+    g_tfListener->transformPose("link1", g_can_pose_in, g_can_pose_wrt_arm_base);
+
+    //copy to global vector and adjust for gripper height
+    // g_p[0] = feedback.x;
+    // g_p[1] = feedback.y;
+    // g_p[2] = feedback.z + GRIPPER_HEIGHT;
+    g_p[0] = g_can_pose_wrt_arm_base.pose.position.x - H_CYLINDER - GRIPPER_HEIGHT;
+    g_p[1] = g_can_pose_wrt_arm_base.pose.position.y;
+    g_p[2] = g_can_pose_wrt_arm_base.pose.position.z;
+    g_quat.x() = g_can_pose_wrt_arm_base.pose.orientation.x;
+    g_quat.y() = g_can_pose_wrt_arm_base.pose.orientation.y;
+    g_quat.z() = g_can_pose_wrt_arm_base.pose.orientation.z;
+    g_quat.w() = g_can_pose_wrt_arm_base.pose.orientation.w;
+
+    // //keep quaternion the same as the marker values, always have link1 parallel to table plane
+    // g_quat.x() = -1.88635e-07;
+    // g_quat.y() = 0.00613656;
+    // g_quat.z() = 1.915e-07;
+    // g_quat.w() = 0.999981;
+    ROS_INFO("The flange is set to go to: x: %f, y: %f, z: %f", g_p[0], g_p[1], g_p[2]);
+    g_R = g_quat.matrix();
+
+    ROS_INFO_STREAM("The flange should go to: x: "
+        << g_p[0] << ", y: " << g_p[1]
+        << ", z: " << g_p[2] << ", quatx: " << g_quat.x()
+        << ", quaty: " << g_quat.y() << ", quatz: " << g_quat.z() << ", quatw: " << g_quat.w());
+
+    // g_A_flange_desired.linear() = g_R;
+    // cout << "g_p: " << g_p.transpose() << endl;
+    // cout << "R: " << endl;
+    // cout << g_R << endl;
 }
 
 void jointStateCB(const sensor_msgs::JointStatePtr &js_msg) {
-    ROS_INFO("Got joint states from callback");
+    //ROS_INFO("Got joint states from callback");
     for (int i = 0; i < 6; i++) {
         g_q_state[i] = js_msg->position[i];
     }
-    cout << "g_q_state: " << g_q_state.transpose() << endl;
+    //cout << "g_q_state: " << g_q_state.transpose() << endl;
 }
 
 bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response) {
@@ -240,10 +278,10 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
     g_p[0] = -0.110573;
     g_p[1] = -0.336946;
     g_p[2] = 0.503469;
-    g_quat.x() = 3.56917e-08;
-    g_quat.y() = -0.0260768;
-    g_quat.z() = 1.15523e-08;
-    g_quat.w() = 0.99966;
+    g_quat.x() = -1.88635e-07;
+    g_quat.y() = 0.00613656;
+    g_quat.z() = 1.915e-07;
+    g_quat.w() = 0.999981;
     g_R = g_quat.matrix();
 
     ROS_INFO_STREAM("Home pose is at x: "
@@ -409,7 +447,7 @@ int main(int argc, char** argv) {
     while (tferr) {
         tferr = false;
         try {
-            //try to lookup transform from target frame "odom" to source frame "map"
+            //try to lookup transform from target frame "base_link" to source frame "link"
             //The direction of the transform returned will be from the target_frame to the source_frame.
             //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
             g_tfListener->lookupTransform("base_link", "link1", ros::Time(0), g_armlink1_wrt_baseLink);

@@ -117,59 +117,78 @@ Eigen::Vector4f g_plane_params;
 Eigen::Vector3f g_patch_centroid;
 Eigen::Vector3f g_plane_normal;
 Eigen::Vector3f g_plane_origin;
+Eigen::Vector3f g_can_origin_robot;
 Eigen::Affine3f g_A_plane;
 double g_z_plane_nom;
 std::vector<int> g_indices_of_plane; //indices of patch that do not contain outliers 
 
+// tf::TransformListener* g_tfListener;
+// tf::StampedTransform g_baseLink_wrt_kinect;
+
 const tf::TransformListener* tfListener_;
 tf::StampedTransform kinectToRobot; 
 
-void transform_to_robot(const PointCloud<pcl::PointXYZ>::Ptr cloud_rcvd) {
+void transform_to_robot(){//const PointCloud<pcl::PointXYZ>::Ptr cloud_rcvd) {
     //pcl::PointCloud<pcl::PointXYZ>::Ptr pclKinect(new PointCloud<pcl::PointXYZ>);
     //pcl::fromROSMsg(*cloud, *g_pclKinect);
    // pcl::PointCloud<pcl::PointXYZRGB> cloud_rcvd;
-    pcl::PointCloud<pcl::PointXYZ> cloud_points;
+    //pcl::PointCloud<pcl::PointXYZ> cloud_points;
     
     //pcl::fromROSMsg(*cloud, cloud_rcvd);
     
-    try {
-        tfListener_->lookupTransform("base_link", cloud_rcvd->header.frame_id, ros::Time(0), kinectToRobot);
-    }
-    catch (tf::TransformException e) {
-        ROS_ERROR("Transform Exception caught: %s",e.what());
-    }
+    // try {
+    //     tfListener_->lookupTransform("base_link", cloud_rcvd->header.frame_id, ros::Time(0), kinectToRobot);
+    // }
+    // catch (tf::TransformException e) {
+    //     ROS_ERROR("Transform Exception caught: %s",e.what());
+    // }
 
-    pcl_ros::transformPointCloud (*cloud_rcvd, cloud_points, kinectToRobot);
-    cloud_points.header.frame_id="base_link";
-    sensor_msgs::PointCloud2 temp_cloud;
-    pcl::toROSMsg(cloud_points, temp_cloud);
-    pcl::fromROSMsg(temp_cloud, *g_canEstimate);
+    // pcl_ros::transformPointCloud (*cloud_rcvd, cloud_points, kinectToRobot);
+    // cloud_points.header.frame_id="base_link";
+    // sensor_msgs::PointCloud2 temp_cloud;
+    // pcl::toROSMsg(cloud_points, temp_cloud);
+    // pcl::fromROSMsg(temp_cloud, *g_canEstimate);
+    // ROS_INFO("Transforming kinect model into base_link frame");
 
-    try {
+    // const tf::Vector3 kinect_vector(g_cylinder_origin[0], g_cylinder_origin[1], g_cylinder_origin[2]);
+    // const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "kinect_pc_frame");
+
+    // // geometry_msgs::Vector3Stamped kinect_vector;
+    // // kinect_vector.vector = v;
+    // // kinect_vector.vector.x = g_cylinder_origin[0];
+    // // kinect_vector.vector.y = g_cylinder_origin[1];
+    // // kinect_vector.vector.z = g_cylinder_origin[2];
+    // //kinect_vector.header.stamp = ros::Time::now();
+
+    // //const geometry_msgs::Vector3Stamped robot_vector;
+    // tf::Stamped<tf::Vector3> robot_vector;
+
+    // g_tfListener->transformVector("base_link", stamped_kinect, robot_vector);
+
+    // g_can_origin_robot[0] = robot_vector.getX();
+    // g_can_origin_robot[1] = robot_vector.getY();
+    // g_can_origin_robot[2] = robot_vector.getZ();
+
+     try {
         tfListener_->lookupTransform("base_link", "kinect_pc_frame", ros::Time(0), kinectToRobot);
-    }
-    catch (tf::TransformException e) {
+        }
+        catch (tf::TransformException e) {
         ROS_ERROR("Transform Exception caught: %s",e.what());
-    }
-
-    const tf::Vector3 kinect_vector(g_cylinder_origin[0], g_cylinder_origin[1], g_cylinder_origin[2]);
-    const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "kinect_pc_frame");
-
-    // geometry_msgs::Vector3Stamped kinect_vector;
-    // kinect_vector.vector = v;
-    // kinect_vector.vector.x = g_cylinder_origin[0];
-    // kinect_vector.vector.y = g_cylinder_origin[1];
-    // kinect_vector.vector.z = g_cylinder_origin[2];
-    //kinect_vector.header.stamp = ros::Time::now();
-
-    //const geometry_msgs::Vector3Stamped robot_vector;
-    tf::Stamped<tf::Vector3> robot_vector;
-
-    tfListener_->transformVector(string("base_link"), stamped_kinect, robot_vector);
-
-    g_cylinder_origin[0] = robot_vector.getX();
-    g_cylinder_origin[1] = robot_vector.getY();
-    g_cylinder_origin[2] = robot_vector.getZ();
+        }
+        const tf::Vector3 kinect_vector(g_cylinder_origin[0], g_cylinder_origin[1], g_cylinder_origin[2]);
+        const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "kinect_pc_frame");
+        // geometry_msgs::Vector3Stamped kinect_vector;
+        // kinect_vector.vector = v;
+        // kinect_vector.vector.x = g_cylinder_origin[0];
+        // kinect_vector.vector.y = g_cylinder_origin[1];
+        // kinect_vector.vector.z = g_cylinder_origin[2];
+        //kinect_vector.header.stamp = ros::Time::now();
+        //const geometry_msgs::Vector3Stamped robot_vector;
+        tf::Stamped<tf::Vector3> robot_vector;
+        tfListener_->transformVector(string("base_link"), stamped_kinect, robot_vector);
+        g_cylinder_origin[0] = robot_vector.getX();
+        g_cylinder_origin[1] = robot_vector.getY();
+        g_cylinder_origin[2] = robot_vector.getZ();
 }
 
 /**
@@ -697,10 +716,30 @@ int main(int argc, char** argv) {
     bool tried_model_fit = false;
 
 
+    // g_tfListener = new tf::TransformListener; //create a transform listener
+    // // wait to start receiving valid tf transforms between map and odom:
+    // bool tferr = true;
+    // ROS_INFO("waiting for tf between base_link and link1 of arm...");
+    // while (tferr) {
+    //     tferr = false;
+    //     try {
+    //         //try to lookup transform from target frame "base_link" to source frame "link"
+    //         //The direction of the transform returned will be from the target_frame to the source_frame.
+    //         //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+    //         g_tfListener->lookupTransform("kinect_pc_frame", "base_link", ros::Time(0),  g_baseLink_wrt_kinect);
+    //     } catch (tf::TransformException &exception) {
+    //         ROS_ERROR("%s", exception.what());
+    //         tferr = true;
+    //         ros::Duration(0.5).sleep(); // sleep for half a second
+    //         ros::spinOnce();
+    //     }
+    // }
+    // ROS_INFO("tf is good");
+    // // from now on, tfListener will keep track of transforms 
+
     ROS_INFO("Waiting on a tf from kinect to robot frame");
     tf::TransformListener tf_listener_;
     tfListener_ = &tf_listener_;
-
     ROS_INFO("Received a good tf");
  
     int ans;
@@ -819,16 +858,22 @@ int main(int argc, char** argv) {
                     // break;
                     
                 case TRANSFORM_TO_ROBOT:
+                    //transform cylinder origin to robot frame
+                    //transform_to_robot();
 
                     //publish the origin of the can for the arm to subscribe to
                     can_origin.x = g_cylinder_origin[0];
                     can_origin.y = g_cylinder_origin[1];
-                    can_origin.z = g_cylinder_origin[2] + H_CYLINDER; //adjust origin to top of can
+                    can_origin.z = g_cylinder_origin[2];
+
+                    //can_origin.x = g_can_origin_robot[0];
+                    //can_origin.y = g_can_origin_robot[1];
+                    //can_origin.z = g_can_origin_robot[2] + H_CYLINDER; //adjust origin to top of can
                     ROS_INFO("Publishing the can origin: x: %f, y: %f, z %f", can_origin.x, can_origin.y, can_origin.z);
                     pubCanCoords.publish(can_origin);
                     //do point cloud transformation to base_link
                     //ROS_INFO("Transforming point cloud from kinect_pc_frame to base_link");
-                    //transform cylinder origin to robot frame
+                    
                     
                     //set the cylinder origin to the latest optimized guess
                     //g_cylinder_origin = g_A_plane*can_center_wrt_plane;
