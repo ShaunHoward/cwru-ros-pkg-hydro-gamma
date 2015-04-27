@@ -167,7 +167,9 @@ include_directories(
 # catkin_add_nosetests(test)
 
 # Executables
-cs_add_executable(vel_profiler src/vel_profiler.cpp src/SteerVelProfiler.cpp)
+cs_add_executable(vel_profiler src/vel_profiler.cpp)
+cs_add_executable(abby_vel_profiler src/abby_vel_profiler.cpp)
+target_link_libraries(abby_vel_profiler steer_vel_profiler)
 # target_link_library(example my_lib)
  
 cs_install()
