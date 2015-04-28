@@ -132,7 +132,25 @@ void alignWithCanCB(const geometry_msgs::Vector3 feedback) {
     g_can_pose_in.pose.orientation.y = 0.191158;
     g_can_pose_in.pose.orientation.z = 0.67706;
     g_can_pose_in.pose.orientation.w = 0.230054;
-    g_tfListener->transformPose("link1", g_can_pose_in, g_can_pose_wrt_arm_base);
+    
+    // wait to start receiving valid tf transforms between map and odom:
+    bool tferr = true;
+    ROS_INFO("waiting for tf between base_link and link1 of arm...");
+    while (tferr) {
+        tferr = false;
+        try {
+            //try to lookup transform from target frame "base_link" to source frame "link"
+            //The direction of the transform returned will be from the target_frame to the source_frame.
+            //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
+            g_tfListener->transformPose("link1", g_can_pose_in, g_can_pose_wrt_arm_base);
+        } catch (tf::TransformException &exception) {
+            ROS_ERROR("%s", exception.what());
+            tferr = true;
+            ros::Duration(0.5).sleep(); // sleep for half a second
+            ros::spinOnce();
+        }
+    }
+    ROS_INFO("tf is good");
 
     //copy to global vector and adjust for gripper height
     // g_p[0] = feedback.x;
