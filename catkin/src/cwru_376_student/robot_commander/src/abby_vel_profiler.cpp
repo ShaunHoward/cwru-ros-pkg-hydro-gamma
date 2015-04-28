@@ -36,8 +36,15 @@ double ref_point_x;
 double ref_point_y;
 ros::Time lastCallbackTime;
 geometry_msgs::Twist velocityCommand;
-double phiLeftTime;
-
+double phiCompleted;
+const float maxOmega = 1.0; //this might need to change if value is too small to move robot
+const float maxAlpha = 1; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
+// compute properties of rotational trapezoidal velocity profile plan:
+float turnAccelTime = maxOmega / maxAlpha; //...assumes start from rest
+float turnDecelTime = maxOmega / maxAlpha; //(for same decel as accel); assumes brake to full halt
+//float turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
+float rotationalAccelerationPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime);
+float rotationalDecelerationPhi = 0.5 * maxAlpha * (turnDecelTime * turnDecelTime);
 
 /**
  * Computes the minimum angle from the given angle, accounting for periodicity.
@@ -74,7 +81,7 @@ void pathMarkerListenerCB(
         const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
     marker_x_ = feedback->pose.position.x;
     marker_y_ = feedback->pose.position.y;
-    marker_phi_ = min_dang(convertPlanarQuat2Phi(feedback->pose.orientation.z, feedback->pose.orientation.w));
+    marker_phi_ = convertPlanarQuat2Phi(feedback->pose.orientation.z, feedback->pose.orientation.w);
     ROS_INFO_STREAM(feedback->marker_name << " is now at "
             << feedback->pose.position.x << ", " << feedback->pose.position.y
             << ", " << marker_phi_);
@@ -194,22 +201,90 @@ void moveOnSegment(ros::Publisher velPublisher, float seglength, ros::Rate rTime
 }
 
 bool isDoneRotating(bool turnRight){
-    phiLeftTime = phiLeftTime + steeringProfiler_.getDeltaPhi(turnRight);
-    return (phiLeftTime >= steeringProfiler_.desiredPhi);
+    return (phiCompleted >= steeringProfiler_.desiredPhi);
+}
+
+/**
+ * Slows down the robot's rotational velocity trapezoidally according to
+ * the phi left to rotate on the current rotation segment as well as
+ * rotational deceleration constants.
+ * 
+ * @param turnRight - whether the robot is currently turning right
+ * @return the scheduled omega for slowing down the robot spin
+ */
+float turnSlowDown(bool turnRight) {
+    float scheduledOmega = 0.0f;
+
+    //Set the phi (angle) turned thus far in the current rotation segment
+    phiCompleted = phiCompleted + steeringProfiler_.getDeltaPhi(turnRight);
+    ROS_INFO("Phi rotated: %f", phiCompleted);
+
+    //Set the phi left to rotate on the current rotation segment
+    double phiLeft = fabs(steeringProfiler_.desiredPhi) - phiCompleted;
+    ROS_INFO("rads left: %f", phiLeft);
+
+    //use rotate.phiLeft to decide what omega should be, as per plan
+    if (phiLeft <= 0.0) { // at goal, or overshot; stop!
+        scheduledOmega = 0.0;
+    } else if (phiLeft <= rotationalDecelerationPhi) { //possibly should be braking to a halt
+        // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
+        // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
+        scheduledOmega = sqrtf(2 * phiLeft * maxAlpha);
+        ROS_INFO("braking zone: o_sched = %f", scheduledOmega);
+    } else {
+        //Not ready to decelerate robot so scheduled omega will be the max omega (need to accelerate 
+        //or hold the max omega
+        scheduledOmega = maxOmega;
+    }
+    ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
+    return scheduledOmega;
+}
+
+/**
+ * Speeds up the robot's angular velocity according to the scheduled slow-down 
+ * omega and the robot's odom omega as well as rotational accerlation constants.
+ * 
+ * @param scheduledOmega - the omega scheduled via the turn slow down function
+ * @return the new omega spin command to publish to the robot's motors
+ */
+float turnSpeedUp(float scheduledOmega) {
+    float newOmegaCommand;
+
+    //how does the current omega compare to the scheduled omega?
+    if (fabs(odom_omega_) < scheduledOmega) { // maybe we halted
+        // may need to ramp up to maxOmega; do so within accel limits
+        float testOmega = fabs(odom_omega_) + maxAlpha * dt_; // if callbacks are slow, this could be abrupt
+        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
+    } else if (fabs(odom_omega_) > scheduledOmega) { //travelling too fast--this could be trouble
+        // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
+        // need to catch up, so ramp down even faster than maxAlpha.  Try 1.2*maxAlpha.
+        ROS_INFO("odom omega: %f; sched omega: %f", fabs(odom_omega_), scheduledOmega);
+
+        //moving too fast decelerating faster than nominal maxAlpha
+        float testOmega = fabs(odom_omega_) - 1.2 * 1 * dt_;
+        // choose larger of two..don't overshoot
+        newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega;
+    } else {
+        //Just hold the scheduled omega
+        newOmegaCommand = scheduledOmega;
+    }
+
+    ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
+    return newOmegaCommand;
 }
 
 void rotateToPhi(ros::Publisher velPublisher, float rotatePhi, ros::Rate rTimer){
-    phiLeftTime = 0;
+    phiCompleted = 0;
 	steeringProfiler_.resetSegValues();
     steeringProfiler_.lastCallbackPhi = odom_phi_;
-    int diff = min_dang(rotatePhi) - min_dang(steeringProfiler_.lastCallbackPhi);
+    int diff = min_dang(rotatePhi - steeringProfiler_.lastCallbackPhi);
     steeringProfiler_.desiredPhi = fabs(diff);
 	bool turnRight;
     int turnDirection;
 	if( diff > 0 && fabs(diff) > M_PI){
 		turnRight = true;
         turnDirection = -1;
-        steeringProfiler_.desiredPhi = 2*M_PI - steeringProfiler_.desiredPhi; 
+        steeringProfiler_.desiredPhi = 2*M_PI - diff; 
 	}
     else if(diff > 0){
         turnRight = false;
@@ -218,7 +293,7 @@ void rotateToPhi(ros::Publisher velPublisher, float rotatePhi, ros::Rate rTimer)
 	else if( diff < 0 && fabs(diff) > M_PI){
 		turnRight = false;
         turnDirection = 1;
-        steeringProfiler_.desiredPhi = 2*M_PI + steeringProfiler_.desiredPhi;
+        steeringProfiler_.desiredPhi = 2*M_PI + diff;
 	}
     else{
         turnRight = true;
@@ -228,8 +303,8 @@ void rotateToPhi(ros::Publisher velPublisher, float rotatePhi, ros::Rate rTimer)
     while(ros::ok()){
         ros::spinOnce();            
         update_vel_profiler();
-    	double omegaProfile = steeringProfiler_.turnSlowDown(turnRight);
-        double commandOmega = steeringProfiler_.turnSpeedUp(omegaProfile);  
+    	double omegaProfile = turnSlowDown(turnRight);
+        double commandOmega = turnSpeedUp(omegaProfile);  
         bool doneRotating = isDoneRotating(turnRight);
 
         velocityCommand.angular.z = commandOmega*turnDirection;
