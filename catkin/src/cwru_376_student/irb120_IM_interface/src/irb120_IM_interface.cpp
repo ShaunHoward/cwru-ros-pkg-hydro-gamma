@@ -36,6 +36,7 @@ bool g_trigger = false;
 
 int g_fit_z = -1;
 bool lower_trigger = false;
+bool raise_trigger = false;
 double curr_arm_z = 0.0;
 
 //define some processing modes; set these interactively via service
@@ -50,7 +51,7 @@ const double JOINT_ERR_TOL = 0.1;
 const double GRIPPER_HEIGHT = 0.25;
 
 // estimated height of cylinder
-const double H_CYLINDER = 0.3; 
+const double H_CYLINDER = 0.12; 
 
 tf::TransformListener* g_tfListener;
 tf::StampedTransform g_armlink1_wrt_baseLink;
@@ -121,7 +122,7 @@ void alignWithCanCB(const geometry_msgs::Vector3 feedback) {
     //ROS_INFO_STREAM("can frame_id is " << feedback.header.frame_id);
     ROS_INFO("Can origin is at: x: %f, y: %f, z: %f", feedback.x, feedback.y, feedback.z);
     g_can_pose_in.header.stamp = ros::Time::now();
-    g_can_pose_in.header.frame_id = "kinect_pc_frame";
+    g_can_pose_in.header.frame_id = "/camera_depth_optical_frame";
     g_can_pose_in.pose.position.x = feedback.x;
     g_can_pose_in.pose.position.y = feedback.y;
     g_can_pose_in.pose.position.z = feedback.z;
@@ -190,7 +191,7 @@ bool triggerService(cwru_srv::simple_bool_service_messageRequest& request, cwru_
 }
 
 /**
- * Use this service to set processing modes interactively.
+ * Use this service to lower the arm.
  */
 bool lowerService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response) {
     ROS_INFO("mode select service callback activated");
@@ -204,6 +205,23 @@ bool lowerService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv
     cout << "Lower mode set to: " << g_fit_z << endl;
     return true;
 }
+
+/**
+ * Use this service to raise the arm.
+ */
+bool raiseService(cwru_srv::simple_int_service_messageRequest& request, cwru_srv::simple_int_service_messageResponse& response) {
+    ROS_INFO("mode select service callback activated");
+    
+    // boring, but valid response info
+    response.resp = true; 
+    g_fit_z = request.req;
+    
+    //signal that we received a request; trigger a response
+    raise_trigger = true; 
+    cout << "Raise mode set to: " << g_fit_z << endl;
+    return true;
+}
+
 
 //command robot to move to "qvec" using a trajectory message, sent via ROS-I
 
@@ -373,6 +391,45 @@ void lower_arm(){
     cout << g_R << endl;
 }
 
+void raise_arm(){
+
+    //the current arm z is the 3rd value in the position vector
+    curr_arm_z = g_p[0];
+
+    ROS_INFO("raise_trigger enabled");
+    raise_trigger = false; // reset the trigger
+    
+    //switch to fit according to closeness of flange to can
+    //0 for fine, 1 for finer, 2 for finest
+    switch (g_fit_z) {
+        case FINE:
+            curr_arm_z -= .05;
+            break;
+        case FINER:
+            curr_arm_z -= .01;
+            break;
+        case FINEST:
+            curr_arm_z -= .005;
+            break;
+    }
+    ROS_INFO("Modified arm z is: %f", curr_arm_z);
+
+    //z-adjusted pose in base_link frame
+    g_p[0] = curr_arm_z;
+    g_R = g_quat.matrix();
+
+    ROS_INFO_STREAM("Home pose is at x: "
+            << g_p[0] << ", y: " << g_p[1]
+            << ", z: " << g_p[2] << ", quatx: " << g_quat.x()
+            << ", quaty: " << g_quat.y() << ", quatz: " << g_quat.z() << ", quatw: " << g_quat.w());
+
+    g_A_flange_desired.translation() = g_p;
+    g_A_flange_desired.linear() = g_R;
+    cout << "g_p: " << g_p.transpose() << endl;
+    cout << "R: " << endl;
+    cout << g_R << endl;
+}
+
 int main(int argc, char** argv) {
     ros::init(argc, argv, "simple_marker_listener"); // this will be the node name;
     ros::NodeHandle nh;
@@ -387,7 +444,7 @@ int main(int argc, char** argv) {
     goalPub.publish(goalMessage);
 
     ROS_INFO("setting up subscribers ");
-    ros::Subscriber sub_js = nh.subscribe("/abby/joint_states", 1, jointStateCB);
+    ros::Subscriber sub_js = nh.subscribe("/joint_states", 1, jointStateCB);
     ros::Subscriber sub_im = nh.subscribe("example_marker/feedback", 1, markerListenerCB);
 
     //must determine can coordinates in order to move to above can
@@ -398,6 +455,7 @@ int main(int argc, char** argv) {
     
     //service for lowering arm in step heights, from big to small
     ros::ServiceServer lower_service = nh.advertiseService("lower_trigger", lowerService);
+    ros::ServiceServer raise_service = nh.advertiseService("raise_trigger", raiseService);
    // ros::Publisher pub_z = nh.advertise<std_msgs::Float32>("arm_z", 1);
 
     Eigen::Vector3d p;
@@ -472,7 +530,7 @@ int main(int argc, char** argv) {
             //  g_trigger = true;
         }
 
-        if (first || g_trigger || lower_trigger){ //|| !isAtGoal(qvec, goalMessage, goalPub)) {
+        if (first || g_trigger || lower_trigger || raise_trigger){ //|| !isAtGoal(qvec, goalMessage, goalPub)) {
             //if (g_trigger) {
             //no longer on the first call
             first = false;
@@ -481,7 +539,9 @@ int main(int argc, char** argv) {
 
             if (lower_trigger){
                 lower_arm();
-            }
+            } else if (raise_trigger){
+		raise_arm();
+	    }
 
             //is this point reachable?
             A_flange_des_DH = g_A_flange_desired;

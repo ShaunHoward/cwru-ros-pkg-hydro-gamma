@@ -40,10 +40,11 @@ ABBY Gazebo model:
 18. in rviz, add an “InteractiveMarker” display, and select topic “example_marker/update.”
 19. rosrun irb120_IM_interface irb120_IM_interface joint_states:=
 abby/joint_states
-20. In rviz, move the 6-DOF marker to a desired pose for the tool flange above the can, accounting for the gripper height
+//20. In rviz, move the 6-DOF marker to a desired pose for the tool flange above the can, accounting for the gripper height
 21. rosservice call move_trigger 1
 22. rosservice call lower_trigger (0, 1 or 2)
-
+23. rosservice call raise_trigger (0, 1 or 2)
+24. Move marker to final destination of arm
 
 Abby for final project:
 

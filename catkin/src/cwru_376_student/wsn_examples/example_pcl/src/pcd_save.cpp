@@ -52,7 +52,7 @@ ros::init(argc, argv, "process_pcl");
 ros::NodeHandle nh;
 ros::Rate rate(2);
 // Subscribers
-ros::Subscriber getPCLPoints = nh.subscribe<sensor_msgs::PointCloud2> ("/kinect/depth/points", 1, kinectCB);
+ros::Subscriber getPCLPoints = nh.subscribe<sensor_msgs::PointCloud2> ("/camera/depth/points", 1, kinectCB);
 while (ros::ok()) {
 if (got_cloud) {
 if (!saved_file) {

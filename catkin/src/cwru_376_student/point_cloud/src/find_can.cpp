@@ -88,14 +88,17 @@ const int TRANSFORM_TO_ROBOT = 5;
 //choose a tolerance for plane fitting, e.g. 1cm
 const double Z_EPS = 0.01; 
 
+//tolerance for finding can in point cloud
+const double Z_CAN_THRESHOLD = 0.03;
+
 // choose a tolerance for cylinder-fit outliers
 const double R_EPS = 0.05; 
 
 //estimated from ruler tool...example to fit a cylinder of this radius to data
-const double R_CYLINDER = 0.085; 
+const double R_CYLINDER = 0.03; 
 
 // estimated height of cylinder
-const double H_CYLINDER = 0.3; 
+const double H_CYLINDER = 0.12; 
 
 //the E fit value should be less than this
 const double FIT_TOL = 0.000001;
@@ -170,13 +173,13 @@ void transform_to_robot(){//const PointCloud<pcl::PointXYZ>::Ptr cloud_rcvd) {
     // g_can_origin_robot[2] = robot_vector.getZ();
 
      try {
-        tfListener_->lookupTransform("base_link", "kinect_pc_frame", ros::Time(0), kinectToRobot);
+        tfListener_->lookupTransform("base_link", "/camera_depth_optical_frame", ros::Time(0), kinectToRobot);
         }
         catch (tf::TransformException e) {
         ROS_ERROR("Transform Exception caught: %s",e.what());
         }
         const tf::Vector3 kinect_vector(g_cylinder_origin[0], g_cylinder_origin[1], g_cylinder_origin[2]);
-        const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "kinect_pc_frame");
+        const tf::Stamped<tf::Vector3> stamped_kinect(kinect_vector, ros::Time::now(), "/camera_depth_optical_frame");
         // geometry_msgs::Vector3Stamped kinect_vector;
         // kinect_vector.vector = v;
         // kinect_vector.vector.x = g_cylinder_origin[0];
@@ -606,7 +609,7 @@ void make_can_cloud(PointCloud<pcl::PointXYZ>::Ptr canCloud, double r_can, doubl
             i++;
         }
     //canCloud->header = inputCloud->header;
-    canCloud->header.frame_id = "kinect_pc_frame"; 
+    canCloud->header.frame_id = "/camera_depth_optical_frame"; 
     //canCloud->header.stamp = ros::Time::now();
     canCloud->is_dense = true;
     canCloud->width = npts;
@@ -708,8 +711,8 @@ int main(int argc, char** argv) {
             << g_cloud_from_disk->width * g_cloud_from_disk->height
             << " data points from test_pcd.pcd  " << std::endl;
 
-    g_cloud_from_disk->header.frame_id = "kinect_pc_frame"; //looks like PCD does not encode the reference frame id
-    double z_threshold=0.0;
+    g_cloud_from_disk->header.frame_id = "/camera_depth_optical_frame"; //looks like PCD does not encode the reference frame id
+    double z_threshold=Z_CAN_THRESHOLD;
     double E;
     double dEdCx=0.0;
     double dEdCy=0.0;
