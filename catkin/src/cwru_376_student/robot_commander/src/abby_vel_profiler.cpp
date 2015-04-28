@@ -12,8 +12,10 @@
 
 
 
-bool move_ = false;
-float moveServiceLength_ = 0.0;
+bool move_forward = false;
+bool move_back = false;
+float moveForwardLength_ = 0.0;
+float moveBackLength_ = 0.0;
 bool turn_ = false;
 float rotatePhiService_ = 0.0;
 float marker_x_ = 0.0;
@@ -34,6 +36,7 @@ double ref_point_x;
 double ref_point_y;
 ros::Time lastCallbackTime;
 geometry_msgs::Twist velocityCommand;
+double phiLeftTime;
 
 
 /**
@@ -69,21 +72,21 @@ double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion) {
 
 void pathMarkerListenerCB(
         const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
-    ROS_INFO_STREAM(feedback->marker_name << " is now at "
-            << feedback->pose.position.x << ", " << feedback->pose.position.y
-            << ", " << feedback->pose.position.z);
     marker_x_ = feedback->pose.position.x;
     marker_y_ = feedback->pose.position.y;
-    marker_phi_ = convertPlanarQuat2Phi(feedback->pose.orientation.z, feedback->pose.orientation.w);
+    marker_phi_ = min_dang(convertPlanarQuat2Phi(feedback->pose.orientation.z, feedback->pose.orientation.w));
+    ROS_INFO_STREAM(feedback->marker_name << " is now at "
+            << feedback->pose.position.x << ", " << feedback->pose.position.y
+            << ", " << marker_phi_);
 }
 
-bool moveService(cwru_srv::simple_float_service_messageRequest& request, cwru_srv::simple_float_service_messageResponse& response){
+bool forwardService(cwru_srv::simple_float_service_messageRequest& request, cwru_srv::simple_float_service_messageResponse& response){
 	//check if the value is zero if it is then don't move
 	if(request.req !=0){
-		move_ = true;
+		move_forward = true;
 	    response.resp = true;
-		moveServiceLength_ = request.req;
-		ROS_INFO("Move Service is called with segment length: %f",moveServiceLength_);
+		moveForwardLength_ = request.req;
+		ROS_INFO("Move Service is called with segment length: %f",moveForwardLength_);
 		return true;
 	}
     response.resp = false;
@@ -91,6 +94,19 @@ bool moveService(cwru_srv::simple_float_service_messageRequest& request, cwru_sr
 	return false;
 }
 
+bool backService(cwru_srv::simple_float_service_messageRequest& request, cwru_srv::simple_float_service_messageResponse& response){
+    //check if the value is zero if it is then don't move
+    if(request.req !=0){
+        move_back = true;
+        response.resp = true;
+        moveBackLength_ = request.req;
+        ROS_INFO("Move Service is called with segment length: %f",moveBackLength_);
+        return true;
+    }
+    response.resp = false;
+    ROS_INFO("Move Service was called with value of:%f \n Invalid data or with zero was entered", request.req);
+    return false;
+}
 
 bool turnService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv::simple_bool_service_messageResponse& response){
 	response.resp = true;
@@ -107,7 +123,7 @@ bool turnService(cwru_srv::simple_bool_service_messageRequest& request, cwru_srv
 void update_vel_profiler() {
     steeringProfiler_.setOdomXYValues(odom_x_, odom_y_);
     steeringProfiler_.setOdomRotationValues(odom_phi_, odom_omega_);
-    steeringProfiler_.setOdomForwardVel(odom_vel_);
+    steeringProfiler_.setOdomForwardVel(fabs(odom_vel_));
     steeringProfiler_.setOdomDT(dt_);
     steeringProfiler_.current_seg_ref_point_0 = ref_point_x;
     steeringProfiler_.current_seg_ref_point_1 = ref_point_y;
@@ -150,7 +166,8 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     odom_phi_ = convertPlanarQuat2Phi(odom_quat_); // cheap conversion from quaternion to heading for planar motion
 }
 
-void moveOnSegment(ros::Publisher velPublisher, float seglength, ros::Rate rTimer){
+void moveOnSegment(ros::Publisher velPublisher, float seglength, ros::Rate rTimer, int direction){
+    steeringProfiler_.resetSegValues();
 	steeringProfiler_.currSegLength = seglength;
 	steeringProfiler_.distanceLeft = seglength;
 	while(ros::ok()){
@@ -159,7 +176,7 @@ void moveOnSegment(ros::Publisher velPublisher, float seglength, ros::Rate rTime
         ROS_INFO("Distance to end of original path segment: %f", steeringProfiler_.distanceLeft);	
 		double speedProfile = steeringProfiler_.trapezoidalSlowDown(steeringProfiler_.currSegLength);
 	    double commandSpeed = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
-	    velocityCommand.linear.x = commandSpeed;
+	    velocityCommand.linear.x = commandSpeed * direction;
 	    ROS_INFO("cmd vel: %f",commandSpeed);
 
 	    if(steeringProfiler_.distanceLeft <= 0.0){
@@ -176,17 +193,63 @@ void moveOnSegment(ros::Publisher velPublisher, float seglength, ros::Rate rTime
     }
 }
 
-void rotateToPhi(ros::Publisher velPublisher, float rotatePhi){
-	update_vel_profiler();
+bool isDoneRotating(bool turnRight){
+    phiLeftTime = phiLeftTime + steeringProfiler_.getDeltaPhi(turnRight);
+    return (phiLeftTime >= steeringProfiler_.desiredPhi);
+}
+
+void rotateToPhi(ros::Publisher velPublisher, float rotatePhi, ros::Rate rTimer){
+    phiLeftTime = 0;
+	steeringProfiler_.resetSegValues();
+    steeringProfiler_.lastCallbackPhi = odom_phi_;
+    int diff = min_dang(rotatePhi) - min_dang(steeringProfiler_.lastCallbackPhi);
+    steeringProfiler_.desiredPhi = fabs(diff);
 	bool turnRight;
-	if(min_dang(rotatePhi)-min_dang(odom_phi_) > 0){
-		turnRight = false;
-	}
-	else{
+    int turnDirection;
+	if( diff > 0 && fabs(diff) > M_PI){
 		turnRight = true;
+        turnDirection = -1;
+        steeringProfiler_.desiredPhi = 2*M_PI - steeringProfiler_.desiredPhi; 
 	}
+    else if(diff > 0){
+        turnRight = false;
+        turnDirection = 1;
+    }
+	else if( diff < 0 && fabs(diff) > M_PI){
+		turnRight = false;
+        turnDirection = 1;
+        steeringProfiler_.desiredPhi = 2*M_PI + steeringProfiler_.desiredPhi;
+	}
+    else{
+        turnRight = true;
+        turnDirection = -1;
+    }
 	ROS_INFO("Rotating to Phi...");
-	steeringProfiler_.rotateToPhi(velPublisher, velocityCommand, rotatePhi , turnRight);
+    while(ros::ok()){
+        ros::spinOnce();            
+        update_vel_profiler();
+    	double omegaProfile = steeringProfiler_.turnSlowDown(turnRight);
+        double commandOmega = steeringProfiler_.turnSpeedUp(omegaProfile);  
+        bool doneRotating = isDoneRotating(turnRight);
+
+        velocityCommand.angular.z = commandOmega*turnDirection;
+        //Set angular z velocity to 0 when done rotating
+        if (doneRotating) {
+            velocityCommand.angular.z = 0.0;
+        }
+
+        
+        //Publish latest velocity command
+        velPublisher.publish(velocityCommand);
+
+        // sleep for remainder of timed iteration
+        rTimer.sleep();
+
+        //Break from rotation loop if done rotating
+        if (doneRotating) {
+            break;
+        }
+    }
 }
 
 int main(int argc, char** argv) {
@@ -195,7 +258,8 @@ int main(int argc, char** argv) {
 	ros::Subscriber odomSub = nh.subscribe("/odom", 1, odomCallback); 
 	ros::Subscriber sub_im = nh.subscribe("path_marker/feedback", 1, pathMarkerListenerCB); 
 	ros::Publisher velocityPublisher = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
-	ros::ServiceServer moveOnSegmentService = nh.advertiseService("moveOnSeg", moveService);
+	ros::ServiceServer moveForwardService = nh.advertiseService("moveforward", forwardService);
+    ros::ServiceServer moveBackService = nh.advertiseService("moveback", backService);
 	ros::ServiceServer rotateToPhiService = nh.advertiseService("rotateToPhi", turnService);
 	ros::Rate rTimer(1/0.05);
 	//SteerVelProfiler* steerProfiler;
@@ -203,21 +267,27 @@ int main(int argc, char** argv) {
 	bool firstcall = false;
 	while(ros::ok()){
         ros::spinOnce();
-        if(!firstcall){
-        	ref_point_x = odom_x_;
-        	ref_point_y = odom_y_;
-        	firstcall = true;
-        	ROS_INFO("Reference point initialized and waiting on service call");
-        }
-		if(move_){
+		if(move_forward){
+            ref_point_x = odom_x_;
+            ref_point_y = odom_y_;
 			//move robot and set moveSegmentService to 0 
-			moveOnSegment(velocityPublisher, moveServiceLength_, rTimer);
+			moveOnSegment(velocityPublisher, moveForwardLength_, rTimer, 1);
 			ROS_INFO("Finished Movement on Segment");
-			move_=false;
+			move_forward=false;
 		}
+        if(move_back){
+            ref_point_x = odom_x_;
+            ref_point_y = odom_y_;
+            //move robot and set moveSegmentService to 0 
+            moveOnSegment(velocityPublisher, moveBackLength_, rTimer, -1);
+            ROS_INFO("Finished Movement on Segment");
+            move_back=false;
+        }
 		if(turn_){
+            ref_point_x = odom_x_;
+            ref_point_y = odom_y_;
 			//turn robot and set rotatePhiService to 0
-			rotateToPhi(velocityPublisher, rotatePhiService_);
+			rotateToPhi(velocityPublisher, rotatePhiService_, rTimer);
 			ROS_INFO("Finished Turning");
 			turn_ = false;
 		}        

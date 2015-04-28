@@ -171,7 +171,7 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
         // need to catch up, so ramp down even faster than a_max.  Try 1.2*a_max.
         ROS_INFO("odom vel: %f; sched vel: %f", odomVel, scheduledVelocity); //debug/analysis output; can comment this out
 
-        double testVelocity = odomVel - 1.2 * MAX_ACCEL * dt; //moving too fast--try decelerating faster than nominal a_max
+        double testVelocity = fabs(odomVel) - 1.2 * MAX_ACCEL * dt; //moving too fast--try decelerating faster than nominal a_max
 
         newVelocityCommand = (testVelocity < scheduledVelocity) ? testVelocity : scheduledVelocity; // choose larger of two options...don't overshoot scheduled_vel
     } else {

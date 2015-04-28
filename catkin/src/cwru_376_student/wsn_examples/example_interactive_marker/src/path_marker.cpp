@@ -9,7 +9,7 @@ void processFeedback(
         const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback) {
     ROS_INFO_STREAM(feedback->marker_name << " is now at "
             << feedback->pose.position.x << ", " << feedback->pose.position.y
-            << ", " << feedback->pose.position.z);
+            << ", " << feedback->pose.orientation.z);
     ROS_INFO_STREAM("reference frame is: "<<feedback->header.frame_id);
 }
 
