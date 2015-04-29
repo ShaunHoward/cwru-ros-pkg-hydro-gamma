@@ -50,8 +50,8 @@ const double K_LAT = .08;
 //Tolerance values for each type of error calculated during steering of the robot
 
 const double LAT_ERR_TOL = 0.05; //0.05 for Jinx, same for Abby
-const double HEAD_ERR_TOL = 0.02; //0.02 for Jinx, 0.01 for Abby
-const double TRIP_ERR_TOL = 0.3; //0.3 for Jinx, 0.2 for Abby
+const double HEAD_ERR_TOL = 0.01; //0.02 for Jinx, 0.01 for Abby
+const double TRIP_ERR_TOL = 0.2; //0.3 for Jinx, 0.2 for Abby
 
 // define a class, including a constructor, member variables and member functions
 class SteeringController

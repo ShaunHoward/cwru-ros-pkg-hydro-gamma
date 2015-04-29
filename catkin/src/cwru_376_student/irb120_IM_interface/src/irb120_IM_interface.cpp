@@ -287,28 +287,6 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
     trajectory_msgs::JointTrajectory home_trajectory;
     std::vector<Vectorq6x1> q6dof_solns;
     Vectorq6x1 qvec;
-    //old home pose
-    //    g_p[0] = -0.540994;
-    //    g_p[1] = -0.00188585;
-    //    g_p[2] = 0.571356;
-    //    g_quat.x() = 0.0128913;
-    //    g_quat.y() = -0.710416;
-    //    g_quat.z() = -0.0152647;
-    //    g_quat.w() = 0.703499;
-    //    g_R = g_quat.matrix();
-
-    //home pose:  x: 0.0704939, y: -0.505254, z: 0.446664, quatx: -0.544637, quaty: 0, quatz: 0, quatw: 0.838672
-    //
-    //    //home pose in link_1 frame
-    //    //put arm to the right of robot
-    //    g_p[0] = 0.0704939;
-    //    g_p[1] = -0.505254;
-    //    g_p[2] = 0.446664;
-    //    g_quat.x() = -0.544637;
-    //    g_quat.y() = 0;
-    //    g_quat.z() = 0;
-    //    g_quat.w() = 0.838672;
-    //    g_R = g_quat.matrix();
 
     //home pose in base_link frame
     g_p[0] = -0.110573;
@@ -330,10 +308,6 @@ void initialize_arm_position(ros::Publisher pub, Eigen::Matrix3d R_urdf_wrt_DH, 
     cout << "g_p: " << g_p.transpose() << endl;
     cout << "R: " << endl;
     cout << g_R << endl;
-
- //   Eigen::Affine3d A_flange_des_DH;
-  //  A_flange_des_DH = g_A_flange_desired;
-   // A_flange_des_DH.linear() = g_A_flange_desired.linear() * R_urdf_wrt_DH.transpose();
 }
 
 /**
@@ -363,12 +337,6 @@ bool isAtGoal(Vectorq6x1 qvec, std_msgs::Bool goalMessage, ros::Publisher goalPu
     ROS_INFO("Goal joint states have been met.");
     return true;
 }
-
-// //Set the goal pose z to the new calculated arm z coordinate 
-
-// void armZCB(const std_msgs::Float32::ConstPtr& arm_z) {
-//     g_p[2] = arm_z->data;
-// }
 
 void lower_arm(){
 

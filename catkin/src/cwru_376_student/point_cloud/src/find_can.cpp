@@ -2,10 +2,13 @@
  * Team Gamma
  * find_can.cpp
  * 
- * Example code to acquire a pointcloud from disk, then perform various processing steps interactively.
+ * A program to acquire a pointcloud from disk, then perform various processing steps interactively.
  * Processing is invoked by point-cloud selections in rviz, as well as "mode" settings via a service
- * e.g.:  rosservice call process_mode 0 induces processing in mode zero (plane fitting)
- * adding more code for cylinder registration.
+ * e.g.:  rosservice call process_mode 0 induces processing in mode zero (plane fitting), then finds 
+ * a cloud of points above the given plane. This cloud of points should be a cylinder shape resembling
+ * a can. A model is produced to fit the point cloud can above the table with minimal error based on
+ * the initial patch of points given. Then the cylinder coordinates are published via Vector3 to a program to 
+ * move the arm above the origin in order to pick the can up on topic: "can_coords"
  */
 
 #include <stdlib.h>
@@ -83,24 +86,24 @@ const int IDENTIFY_PLANE = 1;
 const int FIND_PNTS_ABOVE_PLANE = 2;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_INIT = 3;
 const int COMPUTE_CYLINDRICAL_FIT_ERR_ITERATE = 4;
-const int TRANSFORM_TO_ROBOT = 5;
+const int PUBLISH_TO_ROBOT = 5;
 
-//choose a tolerance for plane fitting, e.g. 1cm
+// choose a tolerance for plane fitting, e.g. 1cm
 const double Z_EPS = 0.01; 
 
-//tolerance for finding can in point cloud
+// tolerance for finding can in point cloud above selected plane
 const double Z_CAN_THRESHOLD = 0.03;
 
 // choose a tolerance for cylinder-fit outliers
 const double R_EPS = 0.05; 
 
-//estimated from ruler tool...example to fit a cylinder of this radius to data
+// estimated from ruler tool...example to fit a cylinder of this radius to data
 const double R_CYLINDER = 0.03; 
 
 // estimated height of cylinder
 const double H_CYLINDER = 0.12; 
 
-//the E fit value should be less than this
+// the E fit value should be less than this
 const double FIT_TOL = 0.000001;
 
 // origin of model for cylinder registration
@@ -621,7 +624,7 @@ void make_can_cloud(PointCloud<pcl::PointXYZ>::Ptr canCloud, double r_can, doubl
 }
 
 /**
- * COMPUTE_RADIAL_ERROR:  NOT COMPLETE; RUNS, BUT HAS NOT BEEN TESTED, SO PROBABLY HAS BUGS
+ * COMPUTE_RADIAL_ERROR:
  * Try to fit a cylinder to points in inputCloud, assuming cylinder axis is vertical (0,0,1).  
  * Given radius of model and center coords, cx, cy, return the fit error and derivatives dE/dCx and dE/dCy
  * Eliminate points that are too far from expectation
@@ -674,11 +677,6 @@ void compute_radial_error(PointCloud<pcl::PointXYZ>::Ptr inputCloud, std::vector
     cout<<"dE/dCx = "<<dEdCx<<"; dEdCy = "<<dEdCy<<endl;
 }
 
-//void publishCylinderOrigin(){
-//    
-//
-//}
-
 int main(int argc, char** argv) {
     // Do some initialization here
     ros::init(argc, argv, "process_pcl");
@@ -718,28 +716,6 @@ int main(int argc, char** argv) {
     double dEdCy=0.0;
     bool tried_model_fit = false;
 
-
-    // g_tfListener = new tf::TransformListener; //create a transform listener
-    // // wait to start receiving valid tf transforms between map and odom:
-    // bool tferr = true;
-    // ROS_INFO("waiting for tf between base_link and link1 of arm...");
-    // while (tferr) {
-    //     tferr = false;
-    //     try {
-    //         //try to lookup transform from target frame "base_link" to source frame "link"
-    //         //The direction of the transform returned will be from the target_frame to the source_frame.
-    //         //Which if applied to data, will transform data in the source_frame into the target_frame. See tf/CoordinateFrameConventions#Transform_Direction
-    //         g_tfListener->lookupTransform("kinect_pc_frame", "base_link", ros::Time(0),  g_baseLink_wrt_kinect);
-    //     } catch (tf::TransformException &exception) {
-    //         ROS_ERROR("%s", exception.what());
-    //         tferr = true;
-    //         ros::Duration(0.5).sleep(); // sleep for half a second
-    //         ros::spinOnce();
-    //     }
-    // }
-    // ROS_INFO("tf is good");
-    // // from now on, tfListener will keep track of transforms 
-
     ROS_INFO("Waiting on a tf from kinect to robot frame");
     tf::TransformListener tf_listener_;
     tfListener_ = &tf_listener_;
@@ -764,7 +740,18 @@ int main(int argc, char** argv) {
             ROS_INFO("g_trigger enabled");
             numIter = 0;
 
-            // what we do here depends on our mode; mode is settable via a service
+            /**
+             * Identify the plane from a selected patch of points.
+             * Find the points above the plane and keep track of them.
+             * Compute the cylindrical fit error and make a can cloud to fit the point cloud
+             * can representation.
+             * Iterate over the model fit error to minimize it using gradient descent optimization.
+             * Publish the can coordinates to the topic "can_coords".
+             *
+             * This method of processing is essentially autonomous. All that has to be done is to select a patch from the table,
+             * call service "process_mode 0", and make sure the can model lines up with the point cloud representation. 
+             * Then the arm can be run to go pickup the can.
+             */
             switch (g_pcl_process_mode) { 
                 case FIND_ON_TABLE:
                     ROS_INFO("Executing all modes.");
@@ -791,17 +778,11 @@ int main(int argc, char** argv) {
                     
                 case COMPUTE_CYLINDRICAL_FIT_ERR_INIT:
                     ROS_INFO("MODE 3: Creating centroid and a can model for the cloud");
-                    //g_cylinder_origin = computeCentroid(g_canEstimate);
 
                     //the cylinder origin will temporarily be the centroid of the points about the plane
                     g_cylinder_origin = computeCentroid(g_cloud_from_disk, indices_pts_above_plane);
                     
                     make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
-
-                    // rough guess--estimate coords of cylinder from  centroid of most recent patch                    
-                    // for (int i=0;i<3;i++) {
-                    //     g_cylinder_origin[i] = g_patch_centroid[i];
-                    // }
                     
                     //walk back from the normal of the surface by one radius
                     //to get near the center of the object
@@ -854,48 +835,24 @@ int main(int argc, char** argv) {
                         numIter++;
                     }
                     transform_cloud(g_canCloud, A_plane_to_sensor, g_display_cloud);
-
-                    //transform_to_robot(g_canCloud);
-                    //copy_cloud(g_canCloud, g_display_cloud);
-                    // g_trigger = false;
-                    // break;
                     
-                case TRANSFORM_TO_ROBOT:
-                    //transform cylinder origin to robot frame
-                    //transform_to_robot();
+                case PUBLISH_TO_ROBOT:
 
                     //publish the origin of the can for the arm to subscribe to
                     can_origin.x = g_cylinder_origin[0];
                     can_origin.y = g_cylinder_origin[1];
                     can_origin.z = g_cylinder_origin[2];
 
-                    //can_origin.x = g_can_origin_robot[0];
-                    //can_origin.y = g_can_origin_robot[1];
-                    //can_origin.z = g_can_origin_robot[2] + H_CYLINDER; //adjust origin to top of can
                     ROS_INFO("Publishing the can origin: x: %f, y: %f, z %f", can_origin.x, can_origin.y, can_origin.z);
                     pubCanCoords.publish(can_origin);
-                    //do point cloud transformation to base_link
-                    //ROS_INFO("Transforming point cloud from kinect_pc_frame to base_link");
-                    
-                    
-                    //set the cylinder origin to the latest optimized guess
-                    //g_cylinder_origin = g_A_plane*can_center_wrt_plane;
-                    //transform_to_robot(g_display_cloud);
-                    //A_plane_to_sensor.translation() = g_cylinder_origin;
-                    
-                    //transform_cloud(g_canEstimate, A_plane_to_sensor, g_display_cloud);
 
-                    //transform_to_robot(g_canCloud);
-                    //copy_cloud(g_canEstimate, g_display_cloud);
                     g_trigger = false;
                     break;
+
                 default:
                     ROS_WARN("this mode is not implemented");
                     break;
             }
-
-            
-
         }
 
         //keep displaying the original scene
