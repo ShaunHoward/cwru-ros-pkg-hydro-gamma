@@ -39,6 +39,8 @@ geometry_msgs::Twist velocityCommand;
 double phiCompleted;
 double desiredPhi;
 
+const float MIN_OMEGA = 0.2;
+const float MIN_VEL = 0.2;
 const float maxOmega = 0.5; //this might need to change if value is too small to move robot
 const float maxAlpha = 1; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
 // compute properties of rotational trapezoidal velocity profile plan:
@@ -185,6 +187,9 @@ void moveOnSegment(ros::Publisher velPublisher, float seglength, ros::Rate rTime
         ROS_INFO("Distance to end of original path segment: %f", steeringProfiler_.distanceLeft);	
 		double speedProfile = steeringProfiler_.trapezoidalSlowDown(steeringProfiler_.currSegLength);
 	    double commandSpeed = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
+        if(commandSpeed < MIN_VEL && commandSpeed != 0.0){
+            commandSpeed = MIN_VEL;
+        }
 	    velocityCommand.linear.x = commandSpeed * direction;
 	    ROS_INFO("cmd vel: %f",commandSpeed);
 
@@ -269,6 +274,10 @@ float turnSpeedUp(float scheduledOmega) {
     } else {
         //Just hold the scheduled omega
         newOmegaCommand = scheduledOmega;
+    }
+
+    if(newOmegaCommand < MIN_OMEGA && newOmegaCommand != 0.0){
+        newOmegaCommand = MIN_OMEGA;
     }
 
     ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
