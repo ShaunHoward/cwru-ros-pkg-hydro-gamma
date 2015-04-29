@@ -1,0 +1,75 @@
+Setup Robot:
+1. Make sure to pull the code onto the robot
+2. Setup bashrc file on robot
+
+starting actual abby robot
+1. turn black power switch on
+2. put key into auto mode 
+3. acknowledge ABB message on touch screeen
+4. enable motors by pressing white button above mode switch key (button should light up)
+5. press pp to main on touch screen
+6. press yes on the next screen that pops up
+7. press the play button on the pendant 
+8. press the person in top right corner of touch screen to see messages
+
+
+SSH into Abby:
+1. Connect computer to abby via ethernet cable
+2. ssh abby@192.168.0.200
+3. use screen to have mutiple tabs in ssh 
+	Note: (new tab -> ctrl+a then c) (next tab -> ctrl+a then n)
+4. export ROS_IP=192.168.0.200
+5. roslaunch cwru_base start_abby_base.launch
+6. roslaunch industrial_robot_client robot_interface_download.launch robot_ip:=192.168.0.50
+7. in a new terminal (not ssh) cd ~/ros_workspace/cwru-ros-pkg-hydro-gamma/utils/connect/
+8. . connect_abby.bash
+9. echo $ROS_MASTER_URI    (make sure it returns abby's IP)
+10. roslaunch cwru_urdf abby_w_arm_rviz.launch (make sure devel/setup.bash is sourced)
+
+Move Robot:
+
+1. rosrun irb120_IM_interface irb120_IM_interface
+2. rosrun des_state_generator des_state_generator
+3. rosrun des_state_generator path_sender
+4a. rosrun example_interactive_marker path_marker
+4b. rosservice call path_trigger 1
+5. rosrun steering_algorithm steering_algorithm_abby 
+6a. Move marker incrementally toward table to take small steps to destination.
+6b. rosservice call path_trigger 1  (sends pose of marker to the path sender)
+6c. Repeat until robot facing table and it is visible.
+7. Kill steering_algorithm, des_state_generator, and path_sender (keep marker and arm alive!)
+
+Adjust Robot:
+
+1. rosrun robot_commander abby_vel_profiler
+2a. rosservice call moveforward distance (float)
+2b. Adjust the path marker to desired rotation
+2c. rosservice call rotateToPhi 1 (rotates to marker phi)
+2d. rosservice call moveback distance (float)
+
+Point-cloud processing
+
+1. cd ~/ros_workspace/cwru-ros-pkg-hydro-gamma/catkin/src/cwru_376_student/point_cloud
+2. rosrun example_pcl pcd_save
+3. rosrun point_cloud find_can
+4a. Select a patch of points on the table top
+4b. rosservice call process_mode 0
+5. rosservice call move_trigger 0
+6. rosservice call lower_trigger (0, 1 or 2) (repeat until low enough via rviz)
+7. rosservice call raise_trigger (0, 1 or 2)
+8. Move marker to final destination of arm
+9. rosservice call move_trigger 0
+10. kill find_can (keep arm stuff alive!)
+
+Move Robot back to start:
+
+1. rosservice call moveback distance (float)
+2. Move marker to desired rotation
+3. rosservice call rotateToPhi 1
+4. rosservice call moveforward distance (float)
+
+Turn off robot
+
+1. Kill all programs
+2. Turn off robot
+
