@@ -61,7 +61,7 @@ enum State {
 const double LENGTH_TOL = 0.05; // tolerance for path; adjust this
 const double HEADING_TOL = 0.005; // heading tolerance; adjust this
 
-const double MIN_SAFE_RANGE = 1.0;
+const double MIN_SAFE_RANGE = 0.5;
 const double MAX_SAFE_RANGE = 1.0;
 
 /**

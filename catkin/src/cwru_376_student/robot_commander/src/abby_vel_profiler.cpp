@@ -38,7 +38,8 @@ ros::Time lastCallbackTime;
 geometry_msgs::Twist velocityCommand;
 double phiCompleted;
 double desiredPhi;
-const float maxOmega = 1.0; //this might need to change if value is too small to move robot
+
+const float maxOmega = 0.5; //this might need to change if value is too small to move robot
 const float maxAlpha = 1; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
 // compute properties of rotational trapezoidal velocity profile plan:
 float turnAccelTime = maxOmega / maxAlpha; //...assumes start from rest
@@ -152,9 +153,9 @@ void odomCallback(const nav_msgs::Odometry& odom_rcvd) {
     lastCallbackTime = ros::Time::now();
 
     // on start-up, and with occasional hiccups, this delta-time can be unexpectedly large
-    if (dt_ > 0.15) {
+    if (dt_ > 0.1) {
         // can choose to clamp a max value on this, if dt_callback is used for computations elsewhere
-        dt_ = 0.1;
+        dt_ = 0.02;
         // let's complain whenever this happens
         ROS_WARN("large dt; dt = %lf", dt_);
     }
@@ -341,7 +342,7 @@ int main(int argc, char** argv) {
 	ros::ServiceServer moveForwardService = nh.advertiseService("moveforward", forwardService);
     ros::ServiceServer moveBackService = nh.advertiseService("moveback", backService);
 	ros::ServiceServer rotateToPhiService = nh.advertiseService("rotateToPhi", turnService);
-	ros::Rate rTimer(1/0.05);
+	ros::Rate rTimer(50);
 	//SteerVelProfiler* steerProfiler;
 	//steeringProfiler_(*steerProfiler);
 	bool firstcall = false;
