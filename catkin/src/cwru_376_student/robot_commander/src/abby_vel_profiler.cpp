@@ -37,6 +37,7 @@ double ref_point_y;
 ros::Time lastCallbackTime;
 geometry_msgs::Twist velocityCommand;
 double phiCompleted;
+double desiredPhi;
 const float maxOmega = 1.0; //this might need to change if value is too small to move robot
 const float maxAlpha = 1; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
 // compute properties of rotational trapezoidal velocity profile plan:
@@ -201,7 +202,7 @@ void moveOnSegment(ros::Publisher velPublisher, float seglength, ros::Rate rTime
 }
 
 bool isDoneRotating(bool turnRight){
-    return (phiCompleted >= steeringProfiler_.desiredPhi);
+    return (phiCompleted >= desiredPhi);
 }
 
 /**
@@ -216,11 +217,11 @@ float turnSlowDown(bool turnRight) {
     float scheduledOmega = 0.0f;
 
     //Set the phi (angle) turned thus far in the current rotation segment
-    phiCompleted = phiCompleted + steeringProfiler_.getDeltaPhi(turnRight);
+    phiCompleted = phiCompleted + fabs(steeringProfiler_.getDeltaPhi(turnRight));
     ROS_INFO("Phi rotated: %f", phiCompleted);
 
     //Set the phi left to rotate on the current rotation segment
-    double phiLeft = fabs(steeringProfiler_.desiredPhi) - phiCompleted;
+    double phiLeft = fabs(desiredPhi) - phiCompleted;
     ROS_INFO("rads left: %f", phiLeft);
 
     //use rotate.phiLeft to decide what omega should be, as per plan
@@ -275,16 +276,20 @@ float turnSpeedUp(float scheduledOmega) {
 
 void rotateToPhi(ros::Publisher velPublisher, float rotatePhi, ros::Rate rTimer){
     phiCompleted = 0;
+    desiredPhi = 0;
 	steeringProfiler_.resetSegValues();
     steeringProfiler_.lastCallbackPhi = odom_phi_;
-    int diff = min_dang(rotatePhi - steeringProfiler_.lastCallbackPhi);
-    steeringProfiler_.desiredPhi = fabs(diff);
+    //ROS_INFO("rotatePhi is :%f", rotatePhi);
+    //ROS_INFO("lastCallbackPhi :%d", steeringProfiler_.lastCallbackPhi);
+    float diff = min_dang(rotatePhi - steeringProfiler_.lastCallbackPhi);
+    ROS_INFO("diff is :%f", diff);
+    desiredPhi = fabs(diff);
 	bool turnRight;
     int turnDirection;
 	if( diff > 0 && fabs(diff) > M_PI){
 		turnRight = true;
         turnDirection = -1;
-        steeringProfiler_.desiredPhi = 2*M_PI - diff; 
+        desiredPhi = fabs(2*M_PI - diff); 
 	}
     else if(diff > 0){
         turnRight = false;
@@ -293,7 +298,7 @@ void rotateToPhi(ros::Publisher velPublisher, float rotatePhi, ros::Rate rTimer)
 	else if( diff < 0 && fabs(diff) > M_PI){
 		turnRight = false;
         turnDirection = 1;
-        steeringProfiler_.desiredPhi = 2*M_PI + diff;
+        desiredPhi = fabs(2*M_PI + diff);
 	}
     else{
         turnRight = true;
