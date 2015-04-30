@@ -39,16 +39,12 @@ geometry_msgs::Twist velocityCommand;
 double phiCompleted;
 double desiredPhi;
 
-const float MIN_OMEGA = 0.2;
-const float MIN_VEL = 0.2;
-const float maxOmega = 0.5; //this might need to change if value is too small to move robot
-const float maxAlpha = 1; //0.5 rad/sec^2-> takes 2 sec to get from rest to full omega
 // compute properties of rotational trapezoidal velocity profile plan:
-float turnAccelTime = maxOmega / maxAlpha; //...assumes start from rest
-float turnDecelTime = maxOmega / maxAlpha; //(for same decel as accel); assumes brake to full halt
+float turnAccelTime = MAX_OMEGA / MAX_ALPHA; //...assumes start from rest
+float turnDecelTime = MAX_OMEGA / MAX_ALPHA; //(for same decel as accel); assumes brake to full halt
 //float turnAccelPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime); //same as ramp-up distance
-float rotationalAccelerationPhi = 0.5 * maxAlpha * (turnAccelTime * turnAccelTime);
-float rotationalDecelerationPhi = 0.5 * maxAlpha * (turnDecelTime * turnDecelTime);
+float rotationalAccelerationPhi = 0.5 * MAX_ALPHA * (turnAccelTime * turnAccelTime);
+float rotationalDecelerationPhi = 0.5 * MAX_ALPHA * (turnDecelTime * turnDecelTime);
 
 /**
  * Computes the minimum angle from the given angle, accounting for periodicity.
@@ -187,8 +183,8 @@ void moveOnSegment(ros::Publisher velPublisher, float seglength, ros::Rate rTime
         ROS_INFO("Distance to end of original path segment: %f", steeringProfiler_.distanceLeft);	
 		double speedProfile = steeringProfiler_.trapezoidalSlowDown(steeringProfiler_.currSegLength);
 	    double commandSpeed = steeringProfiler_.trapezoidalSpeedUp(speedProfile);
-        if(commandSpeed < MIN_VEL && commandSpeed != 0.0){
-            commandSpeed = MIN_VEL;
+        if(commandSpeed < MIN_SPEED && commandSpeed != 0.0){
+            commandSpeed = MIN_SPEED;
         }
 	    velocityCommand.linear.x = commandSpeed * direction;
 	    ROS_INFO("cmd vel: %f",commandSpeed);
@@ -236,12 +232,12 @@ float turnSlowDown(bool turnRight) {
     } else if (phiLeft <= rotationalDecelerationPhi) { //possibly should be braking to a halt
         // dist = 0.5*a*t_halt^2; so t_halt = sqrt(2*dist/a);   v = a*t_halt
         // so v = a*sqrt(2*dist/a) = sqrt(2*dist*a)
-        scheduledOmega = sqrtf(2 * phiLeft * maxAlpha);
+        scheduledOmega = sqrtf(2 * phiLeft * MAX_ALPHA);
         ROS_INFO("braking zone: o_sched = %f", scheduledOmega);
     } else {
         //Not ready to decelerate robot so scheduled omega will be the max omega (need to accelerate 
         //or hold the max omega
-        scheduledOmega = maxOmega;
+        scheduledOmega = MAX_OMEGA;
     }
     ROS_INFO("Slow down scheduled omega is: %f", scheduledOmega);
     return scheduledOmega;
@@ -260,7 +256,7 @@ float turnSpeedUp(float scheduledOmega) {
     //how does the current omega compare to the scheduled omega?
     if (fabs(odom_omega_) < scheduledOmega) { // maybe we halted
         // may need to ramp up to maxOmega; do so within accel limits
-        float testOmega = fabs(odom_omega_) + maxAlpha * dt_; // if callbacks are slow, this could be abrupt
+        float testOmega = fabs(odom_omega_) + MAX_ALPHA * dt_; // if callbacks are slow, this could be abrupt
         newOmegaCommand = (testOmega < scheduledOmega) ? testOmega : scheduledOmega; //choose lesser of two options
     } else if (fabs(odom_omega_) > scheduledOmega) { //travelling too fast--this could be trouble
         // ramp down to the scheduled omega.  However, scheduled omega might already be ramping down at maxAlpha.
@@ -276,8 +272,8 @@ float turnSpeedUp(float scheduledOmega) {
         newOmegaCommand = scheduledOmega;
     }
 
-    if(newOmegaCommand < MIN_OMEGA && newOmegaCommand != 0.0){
-        newOmegaCommand = MIN_OMEGA;
+    if(fabs(newOmegaCommand) < MIN_OMEGA && newOmegaCommand != 0.0){
+        newOmegaCommand = steeringProfiler_.sgn(newOmegaCommand) * MIN_OMEGA;
     }
 
     ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
@@ -348,9 +344,9 @@ int main(int argc, char** argv) {
 	ros::Subscriber odomSub = nh.subscribe("/odom", 1, odomCallback); 
 	ros::Subscriber sub_im = nh.subscribe("path_marker/feedback", 1, pathMarkerListenerCB); 
 	ros::Publisher velocityPublisher = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
-	ros::ServiceServer moveForwardService = nh.advertiseService("moveforward", forwardService);
-    ros::ServiceServer moveBackService = nh.advertiseService("moveback", backService);
-	ros::ServiceServer rotateToPhiService = nh.advertiseService("rotateToPhi", turnService);
+	ros::ServiceServer moveForwardService = nh.advertiseService("move_forward", forwardService);
+    ros::ServiceServer moveBackService = nh.advertiseService("move_back", backService);
+	ros::ServiceServer rotateToPhiService = nh.advertiseService("rotate_to_phi", turnService);
 	ros::Rate rTimer(50);
 	//SteerVelProfiler* steerProfiler;
 	//steeringProfiler_(*steerProfiler);

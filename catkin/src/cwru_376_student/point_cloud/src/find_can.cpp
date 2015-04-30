@@ -94,6 +94,14 @@ const double Z_EPS = 0.01;
 // tolerance for finding can in point cloud above selected plane
 const double Z_CAN_THRESHOLD = 0.03;
 
+//choose tolerance for min distance
+//this is the min depth of the point cloud selection that we want
+const double Y_EPS = -0.1;
+
+//choose threshold for max distance
+//this is the max depth of the point cloud selection that we want
+const double Y_CAN_THRESHOLD = 0.4;
+
 // choose a tolerance for cylinder-fit outliers
 const double R_EPS = 0.05; 
 
@@ -390,7 +398,7 @@ Eigen::Vector3f computeCentroid(PointCloud<pcl::PointXYZ>::Ptr pcl_cloud, std::v
     Eigen::Vector3f centroid;
     centroid << 0, 0, 0;
     int nselect = iselect.size();
-    for (int i = 0; i < nselect; i++) {
+    for (int i = 0; i < nselect; ++i) {
         centroid += pcl_cloud->points[iselect[i]].getVector3fMap();
     }
     if (nselect > 0) {
@@ -561,6 +569,29 @@ void filter_cloud_above_z(PointCloud<pcl::PointXYZ>::Ptr inputCloud, double z_th
  * Given a cloud, identify which points are ABOVE z_threshold; put these point indices in "indices".
  * This can be useful, e.g., for finding objects "on" a table.
  */
+void filter_cloud_in_range(PointCloud<pcl::PointXYZ>::Ptr inputCloud, vector<int> &indices_above, vector<int> &indices_in_range) {
+    int npts = indices_above.size();
+    
+    cout << " number of initial points = " << npts << endl;     
+
+    Eigen::Vector3f pt;
+    indices_in_range.clear();
+    int index = 0;
+    for (int i = 0; i < npts; ++i) {
+	index = indices_above[i];
+        pt = inputCloud->points[index].getVector3fMap();
+        if (pt[1] > Y_EPS && pt[1] < Y_CAN_THRESHOLD) {
+            indices_in_range.push_back(index);
+        }
+    }
+    int n_extracted = indices_in_range.size();
+    cout << " number of points extracted = " << n_extracted << endl;
+}
+
+/**
+ * Given a cloud, identify which points are ABOVE z_threshold; put these point indices in "indices".
+ * This can be useful, e.g., for finding objects "on" a table.
+ */
 void filter_cloud_above_z(PointCloud<pcl::PointXYZ>::Ptr inputCloud, PointCloud<pcl::PointXYZ>::Ptr outputCloud, double z_threshold) {
     int npts = inputCloud->points.size();
     Eigen::Vector3f pt;
@@ -698,6 +729,7 @@ int main(int argc, char** argv) {
     ros::ServiceServer service = nh.advertiseService("process_mode", modeService);
 
     std::vector<int> indices_pts_above_plane;
+    std::vector<int> indices_pts_in_range;
 
     //load a pointcloud from file: 
     if (pcl::io::loadPCDFile<pcl::PointXYZ> ("test_pcd.pcd", *g_cloud_from_disk) == -1) //* load the file
@@ -773,14 +805,20 @@ int main(int argc, char** argv) {
 
                     filter_cloud_above_z(g_cloud_transformed, z_threshold, indices_pts_above_plane);
 
+		    ROS_INFO("filtering for points between y: %f and y: %f", Y_EPS, Y_CAN_THRESHOLD);
+		    filter_cloud_in_range(g_cloud_transformed, indices_pts_above_plane, indices_pts_in_range);
+
                     //extract these points--but in original, non-rotated frame; useful for display
-                    copy_cloud(g_cloud_from_disk, indices_pts_above_plane, g_display_cloud);
+                    copy_cloud(g_cloud_from_disk, indices_pts_in_range, g_display_cloud);
+
+		    //and also display whatever we choose to put in here
+		    pubCloud.publish(g_display_cloud); 
                     
                 case COMPUTE_CYLINDRICAL_FIT_ERR_INIT:
                     ROS_INFO("MODE 3: Creating centroid and a can model for the cloud");
 
                     //the cylinder origin will temporarily be the centroid of the points about the plane
-                    g_cylinder_origin = computeCentroid(g_cloud_from_disk, indices_pts_above_plane);
+                    g_cylinder_origin = computeCentroid(g_cloud_from_disk, indices_pts_in_range);
                     
                     make_can_cloud(g_display_cloud, R_CYLINDER, H_CYLINDER);
                     
@@ -791,14 +829,15 @@ int main(int argc, char** argv) {
                     //the initial guess for the origin of the cylinder, expressed in sensor coords,
                     //has z-height fixed based on plane height
                     g_cylinder_origin = g_cylinder_origin + (g_z_plane_nom - g_plane_normal.dot(g_cylinder_origin))*g_plane_normal;
-                   
+		    ROS_INFO("Cylinder origin guess is: x: %f, y: %f, z: %f",g_cylinder_origin[0], g_cylinder_origin[1], g_cylinder_origin[2]);
+
                     //now, cast this into the rotated coordinate frame:
                     can_center_wrt_plane = g_A_plane.inverse()*g_cylinder_origin; 
 
                     cout<<"initial guess for cylinder fit: "<<endl;
                     cout<<" attempting fit at c = "<<can_center_wrt_plane.transpose()<<endl;                
 
-                    compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                    compute_radial_error(g_cloud_transformed,indices_pts_in_range,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
                     cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
                     cout<<"R_xform: "<<g_R_transform<<endl;
                     A_plane_to_sensor.linear() = g_R_transform;
@@ -824,7 +863,7 @@ int main(int argc, char** argv) {
                         can_center_wrt_plane[1] -= 0.001 * dEdC_norm[1];
 
                         ROS_INFO(" MODE 4: attempting to fit points to cylinder, radius %f, cx = %f, cy = %f",R_CYLINDER,can_center_wrt_plane[0],can_center_wrt_plane[1]);
-                        compute_radial_error(g_cloud_transformed,indices_pts_above_plane,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
+                        compute_radial_error(g_cloud_transformed,indices_pts_in_range,R_CYLINDER,can_center_wrt_plane,E,dEdCx,dEdCy);
                         cout<<"E: "<<E<<"; dEdCx: "<<dEdCx<<"; dEdCy: "<<dEdCy<<endl;
 
                         //set the cylinder origin to the latest optimized guess
