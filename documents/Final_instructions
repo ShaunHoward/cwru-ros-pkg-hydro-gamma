@@ -32,7 +32,8 @@ Move Robot:
 2. rosrun des_state_generator des_state_generator
 3. rosrun des_state_generator path_sender
 4a. rosrun example_interactive_marker path_marker
-4b. rosservice call path_trigger 1
+4b. Move marker to initial goal about 1 meter in front of robot
+4c. rosservice call path_trigger 1
 5. rosrun steering_algorithm steering_algorithm_abby 
 6a. Move marker incrementally toward table to take small steps to destination.
 6b. rosservice call path_trigger 1  (sends pose of marker to the path sender)
@@ -42,10 +43,10 @@ Move Robot:
 Adjust Robot:
 
 1. rosrun robot_commander abby_vel_profiler
-2a. rosservice call moveforward distance (float)
+2a. rosservice call move_forward distance (float)
 2b. Adjust the path marker to desired rotation
-2c. rosservice call rotateToPhi 1 (rotates to marker phi)
-2d. rosservice call moveback distance (float)
+2c. rosservice call rotate_to_phi 1 (rotates to marker phi)
+2d. rosservice call move_back distance (float)
 
 Point-cloud processing
 
