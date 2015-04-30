@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
             //push point
             x = marker_x;
             y = marker_y;
-            phi = marker_phi;//d_phi;
+            phi = 0; //marker_phi;//d_phi;
             vertex.pose = xyPhi2Pose(x, y, phi); //x,y,phi  
             ROS_INFO("vertex: x,y,phi = %f, %f %f", x, y, phi);
             path_message.request.path.poses.push_back(vertex);

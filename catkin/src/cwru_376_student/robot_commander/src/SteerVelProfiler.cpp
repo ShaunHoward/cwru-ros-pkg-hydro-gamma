@@ -177,6 +177,12 @@ double SteerVelProfiler::trapezoidalSpeedUp(double scheduledVelocity) {
     } else {
         newVelocityCommand = scheduledVelocity; //silly third case: this is already true, if here.  Issue the scheduled velocity
     }
+
+    //give the robot some starting speed
+    if (newVelocityCommand != 0 && fabs(newVelocityCommand) < MIN_SPEED){
+	newVelocityCommand = sgn(newVelocityCommand) * MIN_SPEED;
+    }
+
     ROS_INFO("New speedup command is: %f", newVelocityCommand);
     return newVelocityCommand;
 }
@@ -261,14 +267,11 @@ double SteerVelProfiler::turnSpeedUp(double scheduledOmega) {
         newOmegaCommand = scheduledOmega;
     }
 
-   // ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
-    
-    //change the sign based on the direction we turn in
-//    if (turnRight) {
-//        newOmegaCommand = -1.0 * (newOmegaCommand);
-//    }
-    
-    //Apply gain and saturate the new omega command value  
+    //give the robot some starting speed
+    if(fabs(newOmegaCommand) < MIN_OMEGA && newOmegaCommand != 0.0){
+        newOmegaCommand = sgn(newOmegaCommand) * MIN_OMEGA;
+    }
+
     ROS_INFO("New omega speedup command is: %f", newOmegaCommand);
     return newOmegaCommand;
 }

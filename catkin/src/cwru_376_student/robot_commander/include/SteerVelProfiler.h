@@ -17,8 +17,10 @@
 #define	STEER_VEL_PROFILER_H
 
 // dynamic limitations that should be changed based on robot physics
+const double MIN_SPEED = 0.2; 
 const double MAX_SPEED = 0.5; // m/sec;
-const double MAX_OMEGA = 0.5; //1.0; // rad/sec; 
+const double MIN_OMEGA = 0.5;
+const double MAX_OMEGA = 0.8; //1.0; // rad/sec; 
 const double MAX_ACCEL = 1; // m/sec^2; 
 const double MAX_ALPHA = 1; // rad/sec^2;
 
@@ -47,7 +49,13 @@ public:
     // These will recognize Estops, lidar alarm, and software halt.
     double trapezoidalSlowDown(double segmentLength);
     double trapezoidalSpeedUp(double scheduledVelocity);
-    
+
+    //signum function: define this one in-line
+    double sgn(double x) {
+        if (x>0.0) {return 1.0; }
+        else if (x<0.0) {return -1.0;}
+        else {return 0.0;}
+    }    
     
     // Compute the rotational speed profile with trapezoidal speed profiling
     // These will recognize Estops, lidar alarm, and software halt.
